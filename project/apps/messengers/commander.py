@@ -26,7 +26,7 @@ class Commander:
 
         self.messenger = messenger
         self.state = state
-        self.command_handlers = tuple(map(lambda x: x(messenger=messenger, state=state), commands))
+        self.command_handlers = tuple(map(lambda command: command(messenger=messenger, state=state), commands))
         self.scheduler = scheduler
 
     def run(self) -> typing.NoReturn:
@@ -36,16 +36,7 @@ class Commander:
             except KeyboardInterrupt:
                 break
 
-        logging.info('Bot is stopping...')
-        schedule.clear()
-
-        for command_handler in self.command_handlers:
-            command_handler.clear()
-
-        thread_pool: ThreadPool = self.state.get(THREAD_POOL)
-        thread_pool.sync()
-
-        self.messenger.send_message('Goodbye!')
+        self._close()
 
         exit(0)
 
@@ -64,13 +55,13 @@ class Commander:
                 self.messenger.exception(e)
                 logging.exception(e)
 
-        thread_pool: ThreadPool = self.state.get(THREAD_POOL)
+        thread_pool: ThreadPool = self.state[THREAD_POOL]
         thread_pool.part_sync()
 
         time.sleep(1)
 
     def process_updates(self) -> None:
-        updates: queue.Queue = self.state.get(UPDATES)
+        updates: queue.Queue = self.state[UPDATES]
 
         for messenger_update in self.messenger.get_updates():
             updates.put(messenger_update)
@@ -101,3 +92,15 @@ class Commander:
 
         if not is_processed:
             self.messenger.send_message('Unknown command')
+
+    def _close(self) -> None:
+        logging.info('Home assistant is stopping...')
+        schedule.clear()
+
+        for command_handler in self.command_handlers:
+            command_handler.clear()
+
+        thread_pool: ThreadPool = self.state[THREAD_POOL]
+        thread_pool.sync()
+
+        self.messenger.send_message('Goodbye!')

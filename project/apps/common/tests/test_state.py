@@ -9,6 +9,9 @@ def test_state_get():
     with pytest.raises(KeyError):
         state.get('test')
 
+    with pytest.raises(KeyError):
+        state['test']
+
 
 def test_state_has():
     state = State()
@@ -25,4 +28,6 @@ def test_state_set():
     state.set('test', 123)
 
     assert state.get('test') == 123
+    assert state['test'] == 123
     assert state.get('test2') is None
+    assert state['test2'] is None

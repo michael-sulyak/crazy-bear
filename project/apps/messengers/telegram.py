@@ -74,6 +74,8 @@ class TelegramMessenger(CVMixin, BaseMessenger):
             self._updates_offset = updates[-1].update_id + 1
 
         for update in updates:
+            # TODO: Add logging
+
             if not update.message:
                 continue
 
@@ -97,14 +99,14 @@ class TelegramMessenger(CVMixin, BaseMessenger):
 
         params = text.split(' ')
         command_name = params[0]
-        command_params = (param.strip() for param in params[1:] if param)
+        command_params = tuple(param.strip() for param in params[1:] if param)
 
         return MessengerUpdate(
             messenger=self,
             text=text,
             command=MessengerCommand(
                 name=command_name,
-                args=tuple(command_params),
-                kwargs={},
+                args=command_params,
+                kwargs={},  # TODO: Implement
             ),
         )

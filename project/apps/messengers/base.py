@@ -93,6 +93,6 @@ class MessengerCommand:
 
 @dataclass
 class MessengerUpdate:
-    text: str = ''
+    text: typing.Optional[str] = None
     command: typing.Optional[MessengerCommand] = None
     messenger: typing.Optional[BaseMessenger] = None

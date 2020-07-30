@@ -4,16 +4,21 @@ import os
 import tempfile
 import typing
 
+import cv2
+import numpy as np
 import telegram
 
 
 class BaseCVMixin(abc.ABC):
     @abc.abstractmethod
-    def send_frame(self, *args, **kwargs):
+    def send_frame(self, frame: np.array, caption: typing.Optional[str] = None) -> None:
         pass
 
     @abc.abstractmethod
-    def send_frames_as_video(self, *args, **kwargs):
+    def send_frames_as_video(self,
+                             frames: typing.List[np.array], *,
+                             fps: int,
+                             caption: typing.Optional[str] = None) -> None:
         pass
 
 
@@ -21,9 +26,7 @@ class CVMixin(BaseCVMixin):
     _bot: telegram.Bot
     chat_id: int
 
-    def send_frame(self, frame, caption: typing.Optional[str] = None) -> None:
-        import cv2
-
+    def send_frame(self, frame: np.array, caption: typing.Optional[str] = None) -> None:
         is_success, buffer = cv2.imencode('.jpg', frame)
         io_buf = io.BytesIO(buffer)
         self._bot.send_photo(
@@ -32,9 +35,10 @@ class CVMixin(BaseCVMixin):
             caption=caption,
         )
 
-    def send_frames_as_video(self, frames: list, fps: int, caption: typing.Optional[str] = None) -> None:
-        import cv2
-
+    def send_frames_as_video(self,
+                             frames: typing.List[np.array], *,
+                             fps: int,
+                             caption: typing.Optional[str] = None) -> None:
         if not frames:
             return
 

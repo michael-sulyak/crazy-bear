@@ -18,6 +18,15 @@ class State:
 
         self._state = init_state
 
+    def __getitem__(self, name: str) -> typing.Any:
+        return self.get(name)
+
+    def __setitem__(self, name: str, value: typing.Any) -> None:
+        self.set(name=name, value=value)
+
+    def __delitem__(self, name: str) -> None:
+        self.remove(name)
+
     def create(self, name: str, value: typing.Any = None) -> None:
         if self.has(name):
             raise StateException(f'The state already has key "{name}".')
