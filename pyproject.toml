@@ -1,0 +1,36 @@
+[tool.poetry]
+name = "security_guard"
+version = "0.1.0"
+description = ""
+authors = ["expert_m"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+schedule = "^0.6.0"
+requests = "^2.23"
+pytz = "^2020.1"
+emoji = "^0.5.4"
+pyserial = "^3.4"
+#opencv-python = "^4.2.0"
+imutils = "^0.5.3"
+numpy = "1.18.4"
+python-telegram-bot = {version = "^12.7", extras = ["socks"]}
+matplotlib = "3.2.2"
+seaborn = "^0.10.1"
+sqlalchemy = "^1.3.16"
+sentry-sdk = "^0.15.1"
+dropbox = "^10.1.2"
+openpyxl = "^3.0.3"
+pytest = "^5.4.2"
+fire = "^0.3.1"
+wheel = "^0.34.2"
+gpiozero = "^1.5.1"
+pandas = "0.25.3"
+scipy = "1.4.1"
+
+[tool.poetry.dev-dependencies]
+python-dotenv = "^0.13.0"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
