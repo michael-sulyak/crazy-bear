@@ -1,0 +1,15 @@
+version: '3'
+
+services:
+  core:
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    env_file:
+      - envs/rpi.env
+    privileged: true
+    volumes:
+      - .:/app
+      - /dev:/dev
+    command: python3 __main__.py
