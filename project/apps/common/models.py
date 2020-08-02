@@ -57,6 +57,10 @@ class Signal(db.Base):
         ).filter(
             cls.received_at >= start_time,
             cls.type == signal_type,
-        ).group_by('time').order_by('time').all()
+        ).group_by(
+            'time',
+        ).order_by(
+            cls.received_at,
+        ).all()
 
         return signal

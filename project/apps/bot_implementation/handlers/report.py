@@ -4,7 +4,7 @@ from emoji import emojize
 
 from .. import constants
 from ..utils import get_weather
-from ...messengers.base import BaseBotCommandHandler, MessengerCommand
+from ...messengers.base import BaseBotCommandHandler, Command
 
 
 __all__ = (
@@ -17,7 +17,7 @@ class Report(BaseBotCommandHandler):
         constants.BotCommands.REPORT,
     }
 
-    def process_command(self, command: MessengerCommand) -> None:
+    def process_command(self, command: Command) -> None:
         if command.name == constants.BotCommands.REPORT:
             report = self._create_report()
             self.messenger.send_message(report)

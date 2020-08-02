@@ -76,8 +76,8 @@ class FileStorage:
         entries = self._dbx.files_list_folder(path='').entries
         entries = sorted(entries, key=lambda x: x.name, reverse=True)[saved_days:]
 
-        if entries:
-            self._dbx.files_delete_batch(entries)
+        for entry in entries:
+            self._dbx.files_delete_v2(entry.path_display)
 
 
 file_storage = FileStorage()

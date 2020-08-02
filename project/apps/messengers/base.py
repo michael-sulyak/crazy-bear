@@ -47,7 +47,7 @@ class BaseBotCommandHandler(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def process_command(self, command: 'MessengerCommand') -> None:
+    def process_command(self, command: 'Command') -> None:
         pass
 
     def update(self) -> None:
@@ -58,7 +58,7 @@ class BaseBotCommandHandler(abc.ABC):
 
 
 @dataclass
-class MessengerCommand:
+class Command:
     name: str
     args: typing.Tuple = field(default_factory=tuple)
     kwargs: typing.Dict = field(default_factory=dict)
@@ -92,7 +92,6 @@ class MessengerCommand:
 
 
 @dataclass
-class MessengerUpdate:
+class Message:
     text: typing.Optional[str] = None
-    command: typing.Optional[MessengerCommand] = None
-    messenger: typing.Optional[BaseMessenger] = None
+    command: typing.Optional[Command] = None

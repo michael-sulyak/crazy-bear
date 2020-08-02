@@ -1,6 +1,6 @@
 from .. import constants
-from ..constants import TelegramMenu
-from ...messengers.base import BaseBotCommandHandler, MessengerCommand
+from ..utils import TelegramMenu
+from ...messengers.base import BaseBotCommandHandler, Command
 
 
 __all__ = (
@@ -15,7 +15,7 @@ class Menu(BaseBotCommandHandler):
         constants.BotCommands.OTHER,
     }
 
-    def process_command(self, command: MessengerCommand) -> None:
+    def process_command(self, command: Command) -> None:
         if command.name == constants.BotCommands.RETURN:
             menu = self.state[TelegramMenu.MENU]
 

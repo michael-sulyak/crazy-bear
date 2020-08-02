@@ -7,10 +7,11 @@ from .. import constants
 from ...arduino.base import ArduinoConnector
 from ...arduino.constants import ARDUINO_CONNECTOR, ARDUINO_IS_ENABLED
 from ...arduino.models import ArduinoLog
+from ...common.constants import OFF, ON
 from ...common.utils import send_plot
 from ...guard.constants import SECURITY_IS_ENABLED, USE_CAMERA
-from ...messengers.base import BaseBotCommandHandler, MessengerCommand, MessengerUpdate
-from ...messengers.constants import UPDATES
+from ...messengers.base import BaseBotCommandHandler, Command, Message
+from ...messengers.constants import MESSAGE_QUEUE
 
 
 __all__ = (
@@ -30,11 +31,11 @@ class Arduino(BaseBotCommandHandler):
             ARDUINO_IS_ENABLED: False,
         })
 
-    def process_command(self, command: MessengerCommand) -> None:
+    def process_command(self, command: Command) -> None:
         if command.name == constants.BotCommands.ARDUINO:
-            if command.first_arg == 'on':
+            if command.first_arg == ON:
                 self._enable_arduino()
-            elif command.first_arg == 'off':
+            elif command.first_arg == OFF:
                 self._disable_arduino()
         elif command.name == constants.BotCommands.STATS:
             self._show_stats(command)
@@ -84,7 +85,7 @@ class Arduino(BaseBotCommandHandler):
         self.state.clear(ARDUINO_CONNECTOR)
         self.messenger.send_message('Arduino is off')
 
-    def _show_stats(self, command: MessengerCommand) -> None:
+    def _show_stats(self, command: Command) -> None:
         arduino_connector: ArduinoConnector = self.state[ARDUINO_CONNECTOR]
 
         if not arduino_connector:
@@ -130,7 +131,7 @@ class Arduino(BaseBotCommandHandler):
             use_camera: bool = self.state[USE_CAMERA]
 
             if use_camera:
-                updates: queue.Queue = self.state[UPDATES]
+                updates: queue.Queue = self.state[MESSAGE_QUEUE]
                 updates.put(
-                    MessengerUpdate(command=MessengerCommand(name=constants.BotCommands.CAMERA, args=('photo',))),
+                    Message(command=Command(name=constants.BotCommands.CAMERA, args=('photo',))),
                 )

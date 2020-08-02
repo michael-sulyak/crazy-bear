@@ -5,12 +5,15 @@ import typing
 
 
 class ThreadPool:
-    _timedelta_for_sync: datetime.timedelta
+    _timedelta_for_part_sync: datetime.timedelta
     _threads: typing.Deque[typing.Tuple[threading.Thread, datetime.datetime]]
     _lock = threading.Lock()
 
-    def __init__(self, timedelta_for_sync: datetime.timedelta) -> None:
-        self._timedelta_for_sync = timedelta_for_sync
+    def __init__(self, timedelta_for_part_sync: typing.Optional[datetime.timedelta] = None) -> None:
+        if timedelta_for_part_sync is None:
+            timedelta_for_part_sync = datetime.timedelta(seconds=20)
+
+        self._timedelta_for_part_sync = timedelta_for_part_sync
         self._threads = collections.deque()
 
     def run(self,
@@ -44,7 +47,7 @@ class ThreadPool:
             while self._threads:
                 thread, started_at = self._threads[0]
 
-                if now - started_at > self._timedelta_for_sync:
+                if now - started_at > self._timedelta_for_part_sync:
                     thread.join()
                     self._threads.popleft()
                 else:

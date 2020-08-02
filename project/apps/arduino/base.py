@@ -167,7 +167,7 @@ class ArduinoConnector:
                 line = line.decode()
                 line = json.loads(line)
             except (json.decoder.JSONDecodeError, UnicodeDecodeError,) as e:
-                logging.exception(e)
+                logging.warning(e)
                 continue
 
             yield ArduinoResponse(**line)

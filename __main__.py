@@ -10,13 +10,15 @@ from telegram.utils.request import Request as TelegramRequest
 from project import config
 from project.apps import db
 from project.apps.bot_implementation import handlers
-from project.apps.bot_implementation.constants import BotCommands, TelegramMenu
+from project.apps.bot_implementation.constants import BotCommands
+from project.apps.bot_implementation.utils import TelegramMenu
+from project.apps.common.constants import ON
 from project.apps.common.state import State
 from project.apps.common.storage import file_storage
 from project.apps.common.threads import ThreadPool
-from project.apps.messengers.base import MessengerCommand, MessengerUpdate
+from project.apps.messengers.base import Command, Message
 from project.apps.messengers.commander import Commander
-from project.apps.messengers.constants import INITED_AT, THREAD_POOL, UPDATES
+from project.apps.messengers.constants import INITED_AT, THREAD_POOL, MESSAGE_QUEUE
 from project.apps.messengers.telegram import TelegramMessenger
 from project.apps.messengers.utils import scheduled_task
 
@@ -29,25 +31,27 @@ sentry_sdk.init(
 
 
 def main():
+    logging.info('Starting app...')
+
     logging.info('Creating database...')
     db.Base.metadata.create_all(db.db_engine)
 
     logging.info('Removing old data...')
     file_storage.remove_old_folders()
 
-    logging.info('Starting app...')
-
-    updates = queue.Queue()
-    updates.put(MessengerUpdate(command=MessengerCommand(name=BotCommands.STATUS)))
-    updates.put(MessengerUpdate(command=MessengerCommand(name=BotCommands.ARDUINO, args=('on',))))
+    message_queue = queue.Queue()
+    message_queue.put(Message(command=Command(name=BotCommands.STATUS)))
+    message_queue.put(Message(command=Command(name=BotCommands.ARDUINO, args=(ON,))))
 
     state = State({
         INITED_AT: datetime.now(),
-        UPDATES: updates,
-        THREAD_POOL: ThreadPool(timedelta_for_sync=timedelta(seconds=20)),
+        MESSAGE_QUEUE: message_queue,
+        THREAD_POOL: ThreadPool(),
     })
 
     if config.PROXY_URL:
+        logging.info('Found proxy for Telegram.')
+
         request = TelegramRequest(
             proxy_url=config.PROXY_URL,
             urllib3_proxy_kwargs={
@@ -56,6 +60,7 @@ def main():
             },
         )
     else:
+        logging.info('Not found proxy for Telegram.')
         request = None
 
     messenger = TelegramMessenger(
@@ -69,6 +74,8 @@ def main():
     # scheduler.every().day.at('21:30').do(scheduled_task(state, BotCommands.GOOD_NIGHT))
     scheduler.every().day.at('23:55').do(scheduled_task(state, BotCommands.STATS))
 
+    logging.info('Starting bot...')
+
     smart_bot = Commander(
         messenger=messenger,
         commands=(
@@ -81,6 +88,7 @@ def main():
         state=state,
         scheduler=scheduler,
     )
+
     smart_bot.run()
 
 

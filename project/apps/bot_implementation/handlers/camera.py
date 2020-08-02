@@ -5,11 +5,12 @@ from imutils.video import VideoStream
 
 from project import config
 from .. import constants
+from ...common.constants import OFF, ON
 from ...common.storage import file_storage
 from ...common.threads import ThreadPool
 from ...guard.constants import CURRENT_FPS, SECURITY_IS_ENABLED, USE_CAMERA, VIDEO_GUARD, VIDEO_STREAM
 from ...guard.video_guard import VideoGuard
-from ...messengers.base import BaseBotCommandHandler, MessengerCommand
+from ...messengers.base import BaseBotCommandHandler, Command
 
 __all__ = (
     'Camera',
@@ -34,18 +35,18 @@ class Camera(BaseBotCommandHandler):
             CURRENT_FPS: None,
         })
 
-    def process_command(self, command: MessengerCommand) -> None:
+    def process_command(self, command: Command) -> None:
         if command.name == constants.BotCommands.CAMERA:
-            if command.first_arg == 'on':
+            if command.first_arg == ON:
                 self._enable_camera()
-            elif command.first_arg == 'off':
+            elif command.first_arg == OFF:
                 self._disable_camera()
             elif command.first_arg == 'photo':
                 self._take_picture()
         elif command.name == constants.BotCommands.SECURITY:
-            if command.first_arg == 'on':
+            if command.first_arg == ON:
                 self._enable_security()
-            elif command.first_arg == 'off':
+            elif command.first_arg == OFF:
                 self._disable_security()
 
     def update(self) -> None:

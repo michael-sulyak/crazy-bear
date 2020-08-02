@@ -18,6 +18,7 @@ VERSION = version_manager.version
 
 # Env
 ENV = env('ENV')
+DEBUG = env.bool('DEBUG')
 
 # Telegram
 TELEGRAM_CHAT_ID = env('TELEGRAM_CHAT_ID')
@@ -42,8 +43,8 @@ FPS = env.int('FPS')
 ARDUINO_TTY = env('ARDUINO_TTY')
 
 # Databases
-DATABASE_URL = 'sqlite:///:memory:'
-DATABASE_DEBUG = True
+DATABASE_URL = env('DATABASE_URL')
+DATABASE_DEBUG = DEBUG
 
 # Time
 TZ = env('TZ')

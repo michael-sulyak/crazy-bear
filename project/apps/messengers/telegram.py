@@ -7,7 +7,7 @@ import telegram
 from emoji import emojize
 from telegram.utils.request import Request as TelegramRequest
 
-from .base import BaseMessenger, MessengerCommand, MessengerUpdate
+from .base import BaseMessenger, Command, Message
 from .mixins import CVMixin
 from ... import config
 
@@ -94,17 +94,16 @@ class TelegramMessenger(CVMixin, BaseMessenger):
             else:
                 logging.debug(f'Skip telegram message: {update.message.text}')
 
-    def _parse_update(self, update) -> MessengerUpdate:
+    def _parse_update(self, update) -> Message:
         text: str = update.message.text
 
         params = text.split(' ')
         command_name = params[0]
         command_params = tuple(param.strip() for param in params[1:] if param)
 
-        return MessengerUpdate(
-            messenger=self,
+        return Message(
             text=text,
-            command=MessengerCommand(
+            command=Command(
                 name=command_name,
                 args=command_params,
                 kwargs={},  # TODO: Implement

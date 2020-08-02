@@ -5,8 +5,8 @@ import typing
 
 import schedule
 
-from .base import BaseBotCommandHandler, BaseMessenger, MessengerCommand, MessengerUpdate
-from .constants import INITED_AT, THREAD_POOL, UPDATES
+from .base import BaseBotCommandHandler, BaseMessenger, Command, Message
+from .constants import INITED_AT, THREAD_POOL, MESSAGE_QUEUE
 from ..common.state import State
 from ..common.threads import ThreadPool
 
@@ -22,7 +22,7 @@ class Commander:
                  commands: typing.Iterable,
                  state: State,
                  scheduler: schedule.Scheduler) -> None:
-        assert all(state.has_many(INITED_AT, UPDATES, THREAD_POOL))
+        assert all(state.has_many(INITED_AT, MESSAGE_QUEUE, THREAD_POOL))
 
         self.messenger = messenger
         self.state = state
@@ -61,19 +61,19 @@ class Commander:
         time.sleep(1)
 
     def process_updates(self) -> None:
-        updates: queue.Queue = self.state[UPDATES]
+        updates: queue.Queue = self.state[MESSAGE_QUEUE]
 
         for messenger_update in self.messenger.get_updates():
             updates.put(messenger_update)
 
         while not updates.empty():
             self.messenger.start_typing()
-            update: MessengerUpdate = updates.get()
+            update: Message = updates.get()
 
             if update.command:
                 self.process_command(update.command)
 
-    def process_command(self, command: MessengerCommand) -> None:
+    def process_command(self, command: Command) -> None:
         is_processed = False
 
         for handler in self.command_handlers:

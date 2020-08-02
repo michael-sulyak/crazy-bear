@@ -65,6 +65,10 @@ class ArduinoLog(db.Base):
             cls.humidity.isnot(None),
             cls.pir_sensor.isnot(None),
             cls.temperature.isnot(None),
-        ).group_by('time').order_by('time').all()
+        ).group_by(
+            'time',
+        ).order_by(
+            cls.received_at,
+        ).all()
 
         return signal

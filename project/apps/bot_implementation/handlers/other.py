@@ -10,7 +10,7 @@ from ...arduino.models import ArduinoLog
 from ...common.models import Signal
 from ...common.utils import get_cpu_temp, send_plot
 from ...guard.constants import CURRENT_FPS, SECURITY_IS_ENABLED, USE_CAMERA, VIDEO_GUARD
-from ...messengers.base import BaseBotCommandHandler, MessengerCommand
+from ...messengers.base import BaseBotCommandHandler, Command
 from ...messengers.constants import INITED_AT
 
 
@@ -54,11 +54,11 @@ class Other(BaseBotCommandHandler):
                 Signal.clear(signal_type=constants.CPU_TEMPERATURE)
                 self._last_clear_at = now
 
-    def process_command(self, command: MessengerCommand) -> None:
+    def process_command(self, command: Command) -> None:
         if command.name == constants.BotCommands.INIT:
             self.messenger.send_message('Hello!')
         elif command.name == constants.BotCommands.GOOD_NIGHT:
-            self.process_command(MessengerCommand(name=constants.BotCommands.REPORT))
+            self.process_command(Command(name=constants.BotCommands.REPORT))
             message = f'{emojize(":volcano:")} ️What you useful did today?'
             self.messenger.send_message(message)
         elif command.name == constants.BotCommands.STATUS:
@@ -105,7 +105,7 @@ class Other(BaseBotCommandHandler):
         elif command.name == constants.BotCommands.STATS:
             self._show_stats(command)
 
-    def _show_stats(self, command: MessengerCommand) -> None:
+    def _show_stats(self, command: Command) -> None:
         stats = Signal.get_avg(
             signal_type=constants.CPU_TEMPERATURE,
             delta_type=command.get_second_arg('hours'),
