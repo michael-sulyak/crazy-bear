@@ -1,10 +1,13 @@
+import logging
 import os
 import tempfile
 
 import matplotlib.pyplot as plt
+from project import config
 import seaborn as sns
 from matplotlib.ticker import AutoLocator, IndexFormatter
 
+from .tplink import TpLinkClient
 from ..messengers.base import BaseMessenger
 
 
@@ -51,3 +54,20 @@ def send_plot(messenger: BaseMessenger, title: str, attr: str, stats: list) -> N
 
         with open(image_name, 'rb') as image:
             messenger.send_image(image)
+
+
+def user_is_connected_to_router() -> bool:
+    client = TpLinkClient(username=config.ROUTER_USERNAME, password=config.ROUTER_PASSWORD, url=config.ROUTER_URL)
+
+    try:
+        connected_devices = client.get_connected_devices()
+    except Exception as e:
+        logging.exception(e)
+        return False
+
+    connected_mac_addresses = set(
+        device.get('MACAddress')
+        for device in connected_devices
+    )
+
+    return bool(connected_mac_addresses & config.ROUTER_USER_MAC_ADDRESSES)

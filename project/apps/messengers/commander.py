@@ -44,7 +44,14 @@ class Commander:
         if self.scheduler:
             self.scheduler.run_pending()
 
-        self.process_updates()
+        try:
+            self.process_updates()
+        except KeyboardInterrupt as e:
+            raise e
+        except Exception as e:
+            logging.exception(e)
+            time.sleep(1)
+            return
 
         for command_handler in self.command_handlers:
             try:

@@ -26,7 +26,7 @@ class Arduino(BaseBotCommandHandler):
     }
 
     def init_state(self) -> None:
-        self.state.create_many({
+        self.state.create_many(**{
             ARDUINO_CONNECTOR: None,
             ARDUINO_IS_ENABLED: False,
         })
@@ -67,15 +67,15 @@ class Arduino(BaseBotCommandHandler):
             arduino_connector.start()
         except serial.SerialException:
             self.state.clear(ARDUINO_CONNECTOR)
-            self.state.set_false(ARDUINO_IS_ENABLED)
+            self.state[ARDUINO_IS_ENABLED] = False
             self.messenger.send_message('Arduino can not be connected')
         else:
-            self.state.set_true(ARDUINO_IS_ENABLED)
+            self.state[ARDUINO_IS_ENABLED] = True
             self.messenger.send_message('Arduino is on')
 
     def _disable_arduino(self) -> None:
         arduino_connector: ArduinoConnector = self.state[ARDUINO_CONNECTOR]
-        self.state.set_false(ARDUINO_IS_ENABLED)
+        self.state[ARDUINO_IS_ENABLED] = False
 
         if not arduino_connector:
             self.messenger.send_message('Arduino is already off')
@@ -118,9 +118,11 @@ class Arduino(BaseBotCommandHandler):
         last_movement = None
 
         for arduino_log in reversed(new_arduino_logs):
-            if arduino_log.pir_sensor > 0:
+            if arduino_log.pir_sensor <= 1:
+                continue
+
+            if not last_movement or last_movement.pir_sensor < arduino_log.pir_sensor:
                 last_movement = arduino_log
-                break
 
         if last_movement:
             self.messenger.send_message(

@@ -27,7 +27,7 @@ class Camera(BaseBotCommandHandler):
     _last_save_photo_at: typing.Optional[datetime.datetime] = None
 
     def init_state(self) -> None:
-        self.state.create_many({
+        self.state.create_many(**{
             VIDEO_GUARD: None,
             VIDEO_STREAM: None,
             USE_CAMERA: False,
@@ -83,7 +83,7 @@ class Camera(BaseBotCommandHandler):
 
     def _enable_camera(self) -> None:
         video_stream: VideoStream = self.state[VIDEO_STREAM]
-        self.state.set_true(USE_CAMERA)
+        self.state[USE_CAMERA] = True
 
         if not video_stream:
             video_stream = VideoStream(src=config.VIDEO_SRC, resolution=config.IMAGE_RESOLUTION)
@@ -95,7 +95,7 @@ class Camera(BaseBotCommandHandler):
     def _disable_camera(self) -> None:
         video_stream: VideoStream = self.state[VIDEO_STREAM]
         security_is_enabled: bool = self.state[SECURITY_IS_ENABLED]
-        self.state.set_false(USE_CAMERA)
+        self.state[USE_CAMERA] = False
 
         if security_is_enabled:
             self._disable_security()
@@ -111,7 +111,7 @@ class Camera(BaseBotCommandHandler):
         video_stream: VideoStream = self.state[VIDEO_STREAM]
         video_guard: VideoGuard = self.state[VIDEO_GUARD]
         thread_pool: ThreadPool = self.state[THREAD_POOL]
-        self.state.set_true(SECURITY_IS_ENABLED)
+        self.state[SECURITY_IS_ENABLED] = True
 
         if not self._can_use_camera():
             return
@@ -133,11 +133,11 @@ class Camera(BaseBotCommandHandler):
             self.state[VIDEO_GUARD] = video_guard
             video_guard.start()
 
-        self.messenger.send_message('Security is enabled')
+        self.messenger.send_message('Video security is enabled')
 
     def _disable_security(self) -> None:
         video_guard: VideoGuard = self.state[VIDEO_GUARD]
-        self.state.set_false(SECURITY_IS_ENABLED)
+        self.state[SECURITY_IS_ENABLED] = False
 
         if video_guard:
             video_guard.stop()

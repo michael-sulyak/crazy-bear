@@ -19,3 +19,5 @@ class BotCommands:
 
 
 CPU_TEMPERATURE = 'cpu_temperature'
+AUTO_SECURITY_IS_ENABLED = 'auto_security_is_enabled'
+USER_IS_CONNECTED_TO_ROUTER = 'user_is_connected_to_router'

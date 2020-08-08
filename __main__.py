@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 import logging
 import queue
-from datetime import datetime, timedelta
+import signal
+from datetime import datetime
 
 import schedule
 import sentry_sdk
@@ -18,9 +19,9 @@ from project.apps.common.storage import file_storage
 from project.apps.common.threads import ThreadPool
 from project.apps.messengers.base import Command, Message
 from project.apps.messengers.commander import Commander
-from project.apps.messengers.constants import INITED_AT, THREAD_POOL, MESSAGE_QUEUE
+from project.apps.messengers.constants import INITED_AT, MESSAGE_QUEUE, THREAD_POOL
 from project.apps.messengers.telegram import TelegramMessenger
-from project.apps.messengers.utils import scheduled_task
+
 
 sentry_sdk.init(
     dsn=config.SENTRY_DSN,
@@ -28,6 +29,13 @@ sentry_sdk.init(
     environment=config.ENV,
     debug=True,
 )
+
+
+def handle_sigterm(*args):
+    raise KeyboardInterrupt()
+
+
+signal.signal(signal.SIGTERM, handle_sigterm)
 
 
 def main():
@@ -72,11 +80,11 @@ def main():
     scheduler.every().day.at('01:00').do(file_storage.remove_old_folders)
     # scheduler.every().day.at('07:00').do(scheduled_task(state, BotCommands.REPORT))
     # scheduler.every().day.at('21:30').do(scheduled_task(state, BotCommands.GOOD_NIGHT))
-    scheduler.every().day.at('23:55').do(scheduled_task(state, BotCommands.STATS))
+    # scheduler.every().day.at('23:55').do(scheduled_task(state, BotCommands.STATS))
 
     logging.info('Starting bot...')
 
-    smart_bot = Commander(
+    commander = Commander(
         messenger=messenger,
         commands=(
             handlers.Report,
@@ -84,12 +92,13 @@ def main():
             handlers.Arduino,
             handlers.Menu,
             handlers.Other,
+            handlers.AutoSecurity,
         ),
         state=state,
         scheduler=scheduler,
     )
 
-    smart_bot.run()
+    commander.run()
 
 
 if __name__ == '__main__':

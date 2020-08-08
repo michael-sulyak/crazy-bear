@@ -2,9 +2,9 @@ import requests
 from telegram import ReplyKeyboardMarkup
 
 from project import config
-from .constants import BotCommands
+from .constants import AUTO_SECURITY_IS_ENABLED, BotCommands
 from ..arduino.constants import ARDUINO_IS_ENABLED
-from ..common.constants import OFF, ON
+from ..common.constants import AUTO, OFF, ON
 from ..common.state import State
 from ..guard.constants import SECURITY_IS_ENABLED, USE_CAMERA
 
@@ -33,14 +33,14 @@ class TelegramMenu:
             return self._get_other_menu()
 
     def _get_main_menu(self) -> ReplyKeyboardMarkup:
-        use_camera, security_is_enabled, arduino_is_enabled = self.state.get_many(
-            USE_CAMERA,
-            SECURITY_IS_ENABLED,
-            ARDUINO_IS_ENABLED,
-        )
+        use_camera = self.state[USE_CAMERA]
+        security_is_enabled = self.state[SECURITY_IS_ENABLED]
+        arduino_is_enabled = self.state[ARDUINO_IS_ENABLED]
+        auto_security_is_enabled = self.state[AUTO_SECURITY_IS_ENABLED]
 
         first_line = [
             f'{BotCommands.SECURITY} {OFF if security_is_enabled else ON}',
+            f'{BotCommands.SECURITY} {AUTO} {OFF if auto_security_is_enabled else ON}',
             f'{BotCommands.ARDUINO} {OFF if arduino_is_enabled else ON}',
         ]
 

@@ -1,3 +1,4 @@
+import json
 import os
 import typing
 
@@ -7,31 +8,59 @@ class NOTHING:
 
 
 class Env:
-    def __call__(self, name: str, default: typing.Any = NOTHING) -> typing.Any:
+    def __call__(self, name: str, *, default: typing.Any = NOTHING) -> typing.Any:
         if default is NOTHING:
             return os.environ[name]
         else:
             return os.environ.get(name, default)
 
-    def int(self, *args, **kwargs) -> typing.Optional[int]:
-        result = self(*args, **kwargs)
+    def int(self, name: str, *, default: typing.Any = NOTHING) -> typing.Optional[int]:
+        result = self(name, default=default)
 
         if not result and result != 0:
             return None
 
         return int(result)
 
-    def float(self, *args, **kwargs) -> typing.Optional[float]:
-        result = self(*args, **kwargs)
+    def float(self, name: str, *, default: typing.Any = NOTHING) -> typing.Optional[float]:
+        result = self(name, default=default)
 
         if not result and result != 0:
             return None
 
         return float(result)
 
-    def bool(self, *args, **kwargs) -> typing.Optional[int]:
-        result = self(*args, **kwargs)
+    def bool(self, name: str, *, default: typing.Any = NOTHING) -> typing.Optional[int]:
+        result = self(name, default=default)
         return result in ('1', 'true',)
+
+    def tuple(self,
+              name: str, *,
+              default: typing.Any = NOTHING,
+              separator: str = ',',
+              value_type: typing.Any = str) -> tuple:
+        result = self(name, default=default)
+
+        if not result:
+            return ()
+
+        return tuple(value_type(x) for x in result.split(separator))
+
+    def frozenset(self,
+                  name: str, *,
+                  default: typing.Any = NOTHING,
+                  separator: str = ',',
+                  value_type: typing.Any = str) -> frozenset:
+        result = self.tuple(name, default=default, separator=separator, value_type=value_type)
+        return frozenset(result)
+
+    def json(self, name: str, *, default: typing.Any = NOTHING) -> typing.Any:
+        result = self(name, default=default)
+
+        if not result:
+            return None
+
+        return json.loads(result)
 
 
 env = Env()

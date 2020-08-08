@@ -23,9 +23,7 @@ class Menu(BaseBotCommandHandler):
                 self.state[TelegramMenu.MENU] = menu[:-1]
                 self.messenger.send_message('<-')
         elif command.name == constants.BotCommands.OTHER:
-            menu = self.state[TelegramMenu.MENU]
-            menu.append(TelegramMenu.OTHER_MENU)
-            self.state[TelegramMenu.MENU] = menu
+            self.state[TelegramMenu.MENU].append(TelegramMenu.OTHER_MENU)
             self.messenger.send_message('->')
         elif command.name == constants.BotCommands.STOP:
             # TODO: Implement
