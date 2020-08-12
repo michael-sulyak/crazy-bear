@@ -1,2 +1,3 @@
 # crazy-bear
+
 Home Assistant
