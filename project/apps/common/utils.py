@@ -56,7 +56,7 @@ def send_plot(messenger: BaseMessenger, title: str, attr: str, stats: list) -> N
             messenger.send_image(image)
 
 
-def user_is_connected_to_router() -> bool:
+def check_user_connection_to_router() -> bool:
     client = TpLinkClient(username=config.ROUTER_USERNAME, password=config.ROUTER_PASSWORD, url=config.ROUTER_URL)
 
     try:

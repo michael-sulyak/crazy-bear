@@ -1,6 +1,9 @@
 import abc
+import queue
 import typing
 from dataclasses import dataclass, field
+
+import schedule
 
 from . import mixins
 from ..common.state import State
@@ -32,21 +35,32 @@ class BaseMessenger(mixins.BaseCVMixin, abc.ABC):
         pass
 
 
-class BaseBotCommandHandler(abc.ABC):
+class BaseCommandHandler(abc.ABC):
     messenger: BaseMessenger
     state: State
-    support_commands: typing.Sequence
+    support_commands: typing.Set
+    message_queue: queue
+    scheduler: schedule.Scheduler
 
-    def __init__(self, messenger: BaseMessenger, state: State) -> None:
+    def __init__(self, *,
+                 messenger: BaseMessenger,
+                 state: State,
+                 message_queue: queue,
+                 scheduler: schedule.Scheduler) -> None:
         self.messenger = messenger
         self.state = state
+        self.message_queue = message_queue
+        self.scheduler = scheduler
 
         self.init_state()
+        self.init_schedule()
 
     def init_state(self) -> None:
         pass
 
-    @abc.abstractmethod
+    def init_schedule(self) -> None:
+        pass
+
     def process_command(self, command: 'Command') -> None:
         pass
 
@@ -55,6 +69,9 @@ class BaseBotCommandHandler(abc.ABC):
 
     def clear(self) -> None:
         pass
+
+    def _put_command(self, name: str, *args, **kwargs) -> None:
+        self.message_queue.put(Message(command=Command(name=name, args=args, kwargs=kwargs)))
 
 
 @dataclass

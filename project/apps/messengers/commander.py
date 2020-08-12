@@ -5,8 +5,8 @@ import typing
 
 import schedule
 
-from .base import BaseBotCommandHandler, BaseMessenger, Command, Message
-from .constants import INITED_AT, THREAD_POOL, MESSAGE_QUEUE
+from .base import BaseCommandHandler, BaseMessenger, Command, Message
+from .constants import INITED_AT, THREAD_POOL
 from ..common.state import State
 from ..common.threads import ThreadPool
 
@@ -14,20 +14,31 @@ from ..common.threads import ThreadPool
 class Commander:
     messenger: BaseMessenger
     state: State
-    command_handlers: typing.Tuple[BaseBotCommandHandler, ...]
+    command_handlers: typing.Tuple[BaseCommandHandler, ...]
     scheduler: typing.Optional[schedule.Scheduler]
+    message_queue: queue
 
     def __init__(self, *,
                  messenger: BaseMessenger,
-                 commands: typing.Iterable,
+                 command_handler_classes: typing.Iterable[typing.Type[BaseCommandHandler]],
                  state: State,
-                 scheduler: schedule.Scheduler) -> None:
-        assert all(state.has_many(INITED_AT, MESSAGE_QUEUE, THREAD_POOL))
+                 scheduler: schedule.Scheduler,
+                 message_queue: queue) -> None:
+        assert all(state.has_many(INITED_AT, THREAD_POOL))
 
         self.messenger = messenger
         self.state = state
-        self.command_handlers = tuple(map(lambda command: command(messenger=messenger, state=state), commands))
+        self.command_handlers = tuple(map(
+            lambda command: command(
+                messenger=messenger,
+                state=state,
+                message_queue=message_queue,
+                scheduler=scheduler,
+            ),
+            command_handler_classes,
+        ))
         self.scheduler = scheduler
+        self.message_queue = message_queue
 
     def run(self) -> typing.NoReturn:
         while True:
@@ -42,7 +53,13 @@ class Commander:
 
     def tick(self) -> None:
         if self.scheduler:
-            self.scheduler.run_pending()
+            try:
+                self.scheduler.run_pending()
+            except KeyboardInterrupt as e:
+                raise e
+            except Exception as e:
+                self.messenger.exception(e)
+                logging.exception(e)
 
         try:
             self.process_updates()
@@ -68,14 +85,12 @@ class Commander:
         time.sleep(1)
 
     def process_updates(self) -> None:
-        updates: queue.Queue = self.state[MESSAGE_QUEUE]
-
         for messenger_update in self.messenger.get_updates():
-            updates.put(messenger_update)
+            self.message_queue.put(messenger_update)
 
-        while not updates.empty():
+        while not self.message_queue.empty():
             self.messenger.start_typing()
-            update: Message = updates.get()
+            update: Message = self.message_queue.get()
 
             if update.command:
                 self.process_command(update.command)

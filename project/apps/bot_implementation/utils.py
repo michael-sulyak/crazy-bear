@@ -2,11 +2,10 @@ import requests
 from telegram import ReplyKeyboardMarkup
 
 from project import config
-from .constants import AUTO_SECURITY_IS_ENABLED, BotCommands
+from .constants import AUTO_SECURITY_IS_ENABLED, BotCommands, SECURITY_IS_ENABLED, USE_CAMERA
 from ..arduino.constants import ARDUINO_IS_ENABLED
 from ..common.constants import AUTO, OFF, ON
 from ..common.state import State
-from ..guard.constants import SECURITY_IS_ENABLED, USE_CAMERA
 
 
 def get_weather() -> dict:
@@ -33,15 +32,12 @@ class TelegramMenu:
             return self._get_other_menu()
 
     def _get_main_menu(self) -> ReplyKeyboardMarkup:
-        use_camera = self.state[USE_CAMERA]
-        security_is_enabled = self.state[SECURITY_IS_ENABLED]
-        arduino_is_enabled = self.state[ARDUINO_IS_ENABLED]
-        auto_security_is_enabled = self.state[AUTO_SECURITY_IS_ENABLED]
+        use_camera: bool = self.state[USE_CAMERA]
 
         first_line = [
-            f'{BotCommands.SECURITY} {OFF if security_is_enabled else ON}',
-            f'{BotCommands.SECURITY} {AUTO} {OFF if auto_security_is_enabled else ON}',
-            f'{BotCommands.ARDUINO} {OFF if arduino_is_enabled else ON}',
+            f'{BotCommands.SECURITY} {OFF if self.state[SECURITY_IS_ENABLED] else ON}',
+            f'{BotCommands.SECURITY} {AUTO} {OFF if self.state[AUTO_SECURITY_IS_ENABLED] else ON}',
+            f'{BotCommands.ARDUINO} {OFF if self.state[ARDUINO_IS_ENABLED] else ON}',
         ]
 
         second_line = [
@@ -66,6 +62,6 @@ class TelegramMenu:
     @staticmethod
     def _get_other_menu() -> ReplyKeyboardMarkup:
         return ReplyKeyboardMarkup((
-            (BotCommands.REPORT, BotCommands.STOP),
+            (BotCommands.REPORT,),
             (BotCommands.RETURN,),
         ))

@@ -19,13 +19,19 @@ class VideoGuard:
     messenger: BaseMessenger
     thread_pool: ThreadPool
     is_stopped: bool = True
+    motion_detected_callback: typing.Optional[typing.Callable] = None
     _main_thread: typing.Optional[threading.Thread] = None
 
-    def __init__(self, messenger: BaseMessenger, video_stream: VideoStream, thread_pool: ThreadPool) -> None:
+    def __init__(self, *,
+                 messenger: BaseMessenger,
+                 video_stream: VideoStream,
+                 thread_pool: ThreadPool,
+                 motion_detected_callback: typing.Optional[typing.Callable] = None) -> None:
         self.video_stream = video_stream
         self.motion_detector = MotionDetector(self.video_stream, max_fps=config.FPS, imshow=config.IMSHOW)
         self.messenger = messenger
         self.thread_pool = thread_pool
+        self.motion_detected_callback = motion_detected_callback
 
     def start(self) -> None:
         self.stop()
@@ -70,6 +76,9 @@ class VideoGuard:
                     frames=frames,
                     caption=f'Motion detected at {now.strftime("%Y-%m-%d, %H:%M:%S")}',
                 )
+
+                if self.motion_detected_callback:
+                    self.motion_detected_callback()
 
             if detector.is_occupied and now - last_sent_photo > datetime.timedelta(seconds=5):
                 self._send_image_to_storage(frame=detector.marked_frame)

@@ -1,74 +1,35 @@
 import datetime
 
-from emoji import emojize
-
 from project import config
 from .. import constants
-from ...arduino.base import ArduinoConnector
-from ...arduino.constants import ARDUINO_CONNECTOR
+from ..constants import AUTO_SECURITY_IS_ENABLED, CURRENT_FPS, SECURITY_IS_ENABLED, USE_CAMERA, VIDEO_SECURITY
+from ...arduino.constants import ARDUINO_IS_ENABLED
 from ...arduino.models import ArduinoLog
 from ...common.models import Signal
-from ...common.utils import get_cpu_temp, send_plot
-from ...guard.constants import CURRENT_FPS, SECURITY_IS_ENABLED, USE_CAMERA, VIDEO_GUARD
-from ...messengers.base import BaseBotCommandHandler, Command
+from ...common.utils import check_user_connection_to_router, get_cpu_temp, send_plot
+from ...messengers.base import BaseCommandHandler, Command
 from ...messengers.constants import INITED_AT
 
 
-class Other(BaseBotCommandHandler):
+class Other(BaseCommandHandler):
     support_commands = {
         constants.BotCommands.INIT,
-        constants.BotCommands.GOOD_NIGHT,
         constants.BotCommands.STATUS,
         constants.BotCommands.STATS,
     }
-    _last_clear_at: datetime
-    _last_processed_at: datetime
     _empty_value = '-'
 
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-
-        now = datetime.datetime.now()
-        self._last_clear_at = now
-        self._last_processed_at = now
-
-    def update(self) -> None:
-        now = datetime.datetime.now()
-
-        if now - self._last_processed_at >= datetime.timedelta(seconds=5):
-            self._last_processed_at = now
-
-            try:
-                cpu_temperature = get_cpu_temp()
-            except RuntimeError:
-                pass
-            else:
-                Signal.add(signal_type=constants.CPU_TEMPERATURE, value=cpu_temperature)
-
-                if cpu_temperature > 80:
-                    self.messenger.send_message('CPU temperature is very high!')
-                elif cpu_temperature > 70:
-                    self.messenger.send_message('CPU temperature is high!')
-
-            if now - self._last_clear_at >= datetime.timedelta(hours=1):
-                Signal.clear(signal_type=constants.CPU_TEMPERATURE)
-                self._last_clear_at = now
+    def init_schedule(self) -> None:
+        self.scheduler.every(1).hours.do(lambda: Signal.clear(signal_type=constants.CPU_TEMPERATURE))
+        self.scheduler.every(10).seconds.do(self._process_cpu_temperature)
 
     def process_command(self, command: Command) -> None:
         if command.name == constants.BotCommands.INIT:
             self.messenger.send_message('Hello!')
-        elif command.name == constants.BotCommands.GOOD_NIGHT:
-            self.process_command(Command(name=constants.BotCommands.REPORT))
-            message = f'{emojize(":volcano:")} ️What you useful did today?'
-            self.messenger.send_message(message)
         elif command.name == constants.BotCommands.STATUS:
-            arduino_connector: ArduinoConnector = self.state[ARDUINO_CONNECTOR]
-            arduino_data = None
             humidity = self._empty_value
             temperature = self._empty_value
-
-            if arduino_connector:
-                arduino_data = ArduinoLog.last_avg()
+            arduino_data = ArduinoLog.last_avg()
 
             if arduino_data:
                 if arduino_data.humidity is not None:
@@ -89,13 +50,15 @@ class Other(BaseBotCommandHandler):
 
             message = (
                 f'️*Crazy Bear* v{config.VERSION}\n\n'
-                f'Arduino: `{"On" if arduino_connector and arduino_connector.is_active else "Off"}`\n'
+                f'Arduino: `{"On" if self.state[ARDUINO_IS_ENABLED] else "Off"}`\n'
                 f'Camera: `{"On" if self.state[USE_CAMERA] else "Off"}`\n\n'
                 f'Security: `{"On" if self.state[SECURITY_IS_ENABLED] else "Off"}`\n'
-                f'Video guard: `{"On" if self.state[VIDEO_GUARD] else "Off"}`\n\n'
+                f'Auto security: `{"On" if self.state[AUTO_SECURITY_IS_ENABLED] else "Off"}`\n'
+                f'Video security: `{"On" if self.state[VIDEO_SECURITY] else "Off"}`\n\n'
                 f'Humidity: `{humidity}`\n'
                 f'Temperature: `{temperature}`\n'
                 f'CPU Temperature: `{cpu_temperature}`\n'
+                f'User is connected to router: `{"True" if check_user_connection_to_router() else "False"}`\n'
                 f'FPS: `{current_fps}`\n\n'
                 f'Now: `{datetime.datetime.now().strftime("%d.%m.%Y, %H:%M:%S")}`\n'
                 f'Started at: `{self.state[INITED_AT].strftime("%d.%m.%Y, %H:%M:%S")}`'
@@ -114,3 +77,16 @@ class Other(BaseBotCommandHandler):
 
         if stats:
             send_plot(messenger=self.messenger, stats=stats, title='CPU temperature', attr='value')
+
+    def _process_cpu_temperature(self):
+        try:
+            cpu_temperature = get_cpu_temp()
+        except RuntimeError:
+            pass
+        else:
+            Signal.add(signal_type=constants.CPU_TEMPERATURE, value=cpu_temperature)
+
+            if cpu_temperature > 80:
+                self.messenger.send_message('CPU temperature is very high!')
+            elif cpu_temperature > 70:
+                self.messenger.send_message('CPU temperature is high!')

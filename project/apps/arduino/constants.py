@@ -1,5 +1,4 @@
 ARDUINO_IS_ENABLED = 'arduino_is_enabled'
-ARDUINO_CONNECTOR = 'arduino_connector'
 
 
 class ArduinoResponseTypes:

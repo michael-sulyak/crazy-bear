@@ -1,17 +1,20 @@
-import queue
+import datetime
 import typing
+from datetime import datetime, timedelta
 
 import serial
+from pandas import DataFrame
 
-from .. import constants
+from .. import events
+from ..constants import BotCommands, PHOTO, SECURITY_IS_ENABLED, USE_CAMERA
 from ...arduino.base import ArduinoConnector
-from ...arduino.constants import ARDUINO_CONNECTOR, ARDUINO_IS_ENABLED
+from ...arduino.constants import ARDUINO_IS_ENABLED
 from ...arduino.models import ArduinoLog
 from ...common.constants import OFF, ON
+from ...common.storage import file_storage
 from ...common.utils import send_plot
-from ...guard.constants import SECURITY_IS_ENABLED, USE_CAMERA
-from ...messengers.base import BaseBotCommandHandler, Command, Message
-from ...messengers.constants import MESSAGE_QUEUE
+from ...db import db_session
+from ...messengers.base import BaseCommandHandler, Command
 
 
 __all__ = (
@@ -19,54 +22,54 @@ __all__ = (
 )
 
 
-class Arduino(BaseBotCommandHandler):
+class Arduino(BaseCommandHandler):
     support_commands = {
-        constants.BotCommands.ARDUINO,
-        constants.BotCommands.STATS,
+        BotCommands.ARDUINO,
+        BotCommands.STATS,
     }
+    _arduino_connector: typing.Optional[ArduinoConnector] = None
 
     def init_state(self) -> None:
         self.state.create_many(**{
-            ARDUINO_CONNECTOR: None,
             ARDUINO_IS_ENABLED: False,
         })
 
+    def init_schedule(self) -> None:
+        self.scheduler.every(1).hour.do(self._backup)
+
     def process_command(self, command: Command) -> None:
-        if command.name == constants.BotCommands.ARDUINO:
+        if command.name == BotCommands.ARDUINO:
             if command.first_arg == ON:
                 self._enable_arduino()
             elif command.first_arg == OFF:
                 self._disable_arduino()
-        elif command.name == constants.BotCommands.STATS:
+        elif command.name == BotCommands.STATS:
             self._show_stats(command)
 
     def update(self) -> None:
-        arduino_connector: typing.Optional[ArduinoConnector] = self.state[ARDUINO_CONNECTOR]
+        if not self._arduino_connector:
+            return
 
-        if arduino_connector and not arduino_connector.is_active:
+        if self._arduino_connector and not self._arduino_connector.is_active:
             self._disable_arduino()
-            arduino_connector = None
+            return
 
-        if arduino_connector:
-            self._process_arduino_updates()
+        self._process_arduino_updates()
 
     def clear(self) -> None:
         self._disable_arduino()
 
     def _enable_arduino(self) -> None:
-        arduino_connector: ArduinoConnector = self.state[ARDUINO_CONNECTOR]
-
-        if arduino_connector:
+        if self._arduino_connector:
             self.messenger.send_message('Arduino is already on')
             return
 
-        arduino_connector = ArduinoConnector()
-        self.state[ARDUINO_CONNECTOR] = arduino_connector
+        self._arduino_connector = ArduinoConnector()
 
         try:
-            arduino_connector.start()
+            self._arduino_connector.start()
         except serial.SerialException:
-            self.state.clear(ARDUINO_CONNECTOR)
+            self._arduino_connector = None
             self.state[ARDUINO_IS_ENABLED] = False
             self.messenger.send_message('Arduino can not be connected')
         else:
@@ -74,21 +77,20 @@ class Arduino(BaseBotCommandHandler):
             self.messenger.send_message('Arduino is on')
 
     def _disable_arduino(self) -> None:
-        arduino_connector: ArduinoConnector = self.state[ARDUINO_CONNECTOR]
         self.state[ARDUINO_IS_ENABLED] = False
 
-        if not arduino_connector:
-            self.messenger.send_message('Arduino is already off')
-            return
+        db_session.query(ArduinoLog).delete()
+        db_session.commit()
 
-        arduino_connector.finish()
-        self.state.clear(ARDUINO_CONNECTOR)
-        self.messenger.send_message('Arduino is off')
+        if self._arduino_connector:
+            self._arduino_connector.finish()
+            self._arduino_connector = None
+            self.messenger.send_message('Arduino is off')
+        else:
+            self.messenger.send_message('Arduino is already off')
 
     def _show_stats(self, command: Command) -> None:
-        arduino_connector: ArduinoConnector = self.state[ARDUINO_CONNECTOR]
-
-        if not arduino_connector:
+        if not self.state[ARDUINO_IS_ENABLED]:
             return
 
         stats = ArduinoLog.get_avg(
@@ -104,13 +106,11 @@ class Arduino(BaseBotCommandHandler):
         send_plot(messenger=self.messenger, stats=stats, title='Temperature', attr='temperature')
 
     def _process_arduino_updates(self) -> None:
-        arduino_connector: typing.Optional[ArduinoConnector] = self.state[ARDUINO_CONNECTOR]
-
-        if not arduino_connector:
+        if not self._arduino_connector:
             return
 
         security_is_enabled: bool = self.state[SECURITY_IS_ENABLED]
-        new_arduino_logs = arduino_connector.process_updates()
+        new_arduino_logs = self._arduino_connector.process_updates()
 
         if not security_is_enabled or not new_arduino_logs:
             return
@@ -125,6 +125,8 @@ class Arduino(BaseBotCommandHandler):
                 last_movement = arduino_log
 
         if last_movement:
+            events.motion_detected.send()
+
             self.messenger.send_message(
                 f'*Detected movement*\n'
                 f'Current pir sensor: `{last_movement.pir_sensor}`\n'
@@ -133,7 +135,29 @@ class Arduino(BaseBotCommandHandler):
             use_camera: bool = self.state[USE_CAMERA]
 
             if use_camera:
-                updates: queue.Queue = self.state[MESSAGE_QUEUE]
-                updates.put(
-                    Message(command=Command(name=constants.BotCommands.CAMERA, args=('photo',))),
-                )
+                self._put_command(BotCommands.CAMERA, PHOTO)
+
+    def _backup(self):
+        if not self.state[ARDUINO_IS_ENABLED]:
+            return
+
+        all_logs = db_session.query(
+            ArduinoLog.pir_sensor,
+            ArduinoLog.humidity,
+            ArduinoLog.temperature,
+            ArduinoLog.received_at,
+        ).order_by(
+            ArduinoLog.received_at,
+        ).all()
+
+        if all_logs:
+            df = DataFrame(all_logs, columns=('pir_sensor', 'humidity', 'temperature', 'received_at',))
+            file_storage.upload_df_as_xlsx(
+                file_name=f'arduino_logs/{df.iloc[0].received_at.strftime("%Y-%m-%d, %H:%M:%S")}'
+                          f'-{df.iloc[-1].received_at.strftime("%Y-%m-%d, %H:%M:%S")}.xlsx',
+                data_frame=df,
+            )
+
+        day_ago = datetime.today() - timedelta(days=1)
+        db_session.query(ArduinoLog).filter(ArduinoLog.received_at <= day_ago).delete()
+        db_session.commit()

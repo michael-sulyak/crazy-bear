@@ -1,16 +1,13 @@
 import json
 import logging
 import typing
-from collections import namedtuple
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import serial
-from pandas import DataFrame
 
 from . import constants
 from .models import ArduinoLog
-from ..common.storage import file_storage
 from ..db import db_session
 from ... import config
 
@@ -54,7 +51,6 @@ class ArduinoConnector:
     _serial: serial.Serial
     _buffer: bytes = b''
     _settings: dict
-    _last_clear_at: datetime
 
     def __init__(self, ser: typing.Optional[serial.Serial] = None) -> None:
         if ser is None:
@@ -62,7 +58,6 @@ class ArduinoConnector:
 
         self._serial = ser
         self._settings = {}
-        self._last_clear_at = datetime.now()
 
     def start(self) -> None:
         self.is_active = True
@@ -75,51 +70,6 @@ class ArduinoConnector:
         except Exception:
             self.finish()
             raise
-
-    # def process_updates(self) -> typing.List[Signal]:
-    #     if not self.is_active:
-    #         return []
-    #
-    #     new_signals = []
-    #
-    #     for response in self._read_serial():
-    #         logging.debug(response)
-    #
-    #         if response.type == ArduinoResponseTypes.SENSORS:
-    #             arduino_sensors_data = ArduinoSensorsData(**response.payload)
-    #
-    #             new_signals.extend((
-    #                 Signal(
-    #                     type=ArduinoSensorTypes.PIR_SENSOR,
-    #                     value=arduino_sensors_data.pir_sensor,
-    #                     received_at=response.received_at,
-    #                 ),
-    #                 Signal(
-    #                     type=ArduinoSensorTypes.HUMIDITY,
-    #                     value=arduino_sensors_data.humidity,
-    #                     received_at=response.received_at,
-    #                 ),
-    #                 Signal(
-    #                     type=ArduinoSensorTypes.TEMPERATURE,
-    #                     value=arduino_sensors_data.temperature,
-    #                     received_at=response.received_at,
-    #                 ),
-    #             ))
-    #         elif response.type == ArduinoResponseTypes.SETTINGS:
-    #             self._settings = response.payload
-    #         else:
-    #             raise Exception(f'Data type {response.type} is not support.')
-    #
-    #     if new_signals:
-    #         db_session.add_all(new_signals)
-    #         db_session.commit()
-    #         now = datetime.now()
-    #
-    #         if now - self._last_clear_at >= timedelta(hours=1):
-    #             self._last_clear_at = now
-    #             self._backup()
-    #
-    #     return new_signals
 
     def process_updates(self) -> typing.List[ArduinoLog]:
         if not self.is_active:
@@ -139,11 +89,6 @@ class ArduinoConnector:
         if new_arduino_logs:
             db_session.add_all(new_arduino_logs)
             db_session.commit()
-            now = datetime.now()
-
-            if now - self._last_clear_at >= timedelta(hours=1):
-                self._last_clear_at = now
-                self._backup()
 
         return new_arduino_logs
 
@@ -171,28 +116,3 @@ class ArduinoConnector:
                 continue
 
             yield ArduinoResponse(**line)
-
-    @staticmethod
-    def _backup():
-        all_logs = db_session.query(
-            ArduinoLog.pir_sensor,
-            ArduinoLog.humidity,
-            ArduinoLog.temperature,
-            ArduinoLog.received_at,
-        ).order_by(
-            ArduinoLog.received_at,
-        ).all()
-
-        if all_logs:
-            # df = DataFrame(all_logs, columns=('id', 'pir_sensor', 'humidity', 'temperature', 'received_at',))
-            # df.set_index('id', inplace=True)
-            df = DataFrame(all_logs, columns=('pir_sensor', 'humidity', 'temperature', 'received_at',))
-            file_storage.upload_df_as_xlsx(
-                file_name=f'arduino_logs/{df.iloc[0].received_at.strftime("%Y-%m-%d, %H:%M:%S")}'
-                          f'-{df.iloc[-1].received_at.strftime("%Y-%m-%d, %H:%M:%S")}.xlsx',
-                data_frame=df,
-            )
-
-        day_ago = datetime.today() - timedelta(days=1)
-        db_session.query(ArduinoLog).filter(ArduinoLog.received_at <= day_ago).delete()
-        db_session.commit()

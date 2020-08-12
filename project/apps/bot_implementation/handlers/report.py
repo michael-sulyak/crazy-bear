@@ -4,7 +4,7 @@ from emoji import emojize
 
 from .. import constants
 from ..utils import get_weather
-from ...messengers.base import BaseBotCommandHandler, Command
+from ...messengers.base import BaseCommandHandler, Command
 
 
 __all__ = (
@@ -12,7 +12,7 @@ __all__ = (
 )
 
 
-class Report(BaseBotCommandHandler):
+class Report(BaseCommandHandler):
     support_commands = {
         constants.BotCommands.REPORT,
     }

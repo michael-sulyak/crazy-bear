@@ -1,5 +1,0 @@
-USE_CAMERA = 'use_camera'
-SECURITY_IS_ENABLED = 'security_is_enabled'
-VIDEO_STREAM = 'video_stream'
-VIDEO_GUARD = 'video_guard'
-CURRENT_FPS = 'current_fps'

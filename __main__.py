@@ -13,13 +13,13 @@ from project.apps import db
 from project.apps.bot_implementation import handlers
 from project.apps.bot_implementation.constants import BotCommands
 from project.apps.bot_implementation.utils import TelegramMenu
-from project.apps.common.constants import ON
+from project.apps.common.constants import AUTO, ON
 from project.apps.common.state import State
 from project.apps.common.storage import file_storage
 from project.apps.common.threads import ThreadPool
 from project.apps.messengers.base import Command, Message
 from project.apps.messengers.commander import Commander
-from project.apps.messengers.constants import INITED_AT, MESSAGE_QUEUE, THREAD_POOL
+from project.apps.messengers.constants import INITED_AT, THREAD_POOL
 from project.apps.messengers.telegram import TelegramMessenger
 
 
@@ -50,10 +50,10 @@ def main():
     message_queue = queue.Queue()
     message_queue.put(Message(command=Command(name=BotCommands.STATUS)))
     message_queue.put(Message(command=Command(name=BotCommands.ARDUINO, args=(ON,))))
+    message_queue.put(Message(command=Command(name=BotCommands.SECURITY, args=(AUTO, ON,))))
 
     state = State({
         INITED_AT: datetime.now(),
-        MESSAGE_QUEUE: message_queue,
         THREAD_POOL: ThreadPool(),
     })
 
@@ -78,24 +78,23 @@ def main():
 
     scheduler = schedule.Scheduler()
     scheduler.every().day.at('01:00').do(file_storage.remove_old_folders)
-    # scheduler.every().day.at('07:00').do(scheduled_task(state, BotCommands.REPORT))
-    # scheduler.every().day.at('21:30').do(scheduled_task(state, BotCommands.GOOD_NIGHT))
-    # scheduler.every().day.at('23:55').do(scheduled_task(state, BotCommands.STATS))
 
     logging.info('Starting bot...')
 
     commander = Commander(
         messenger=messenger,
-        commands=(
+        command_handler_classes=(
             handlers.Report,
             handlers.Camera,
             handlers.Arduino,
             handlers.Menu,
             handlers.Other,
             handlers.AutoSecurity,
+            handlers.Router,
         ),
         state=state,
         scheduler=scheduler,
+        message_queue=message_queue,
     )
 
     commander.run()
