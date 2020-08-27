@@ -7,7 +7,7 @@ services:
       context: .
       dockerfile: ./Dockerfile
     env_file:
-      - envs/local.env
+      - envs/prod.env
     privileged: true
     volumes:
       - .:/app
