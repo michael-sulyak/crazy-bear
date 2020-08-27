@@ -6,7 +6,6 @@ import typing
 import schedule
 
 from .base import BaseCommandHandler, BaseMessenger, Command, Message
-from .constants import INITED_AT, THREAD_POOL
 from ..common.state import State
 from ..common.threads import ThreadPool
 
@@ -17,28 +16,28 @@ class Commander:
     command_handlers: typing.Tuple[BaseCommandHandler, ...]
     scheduler: typing.Optional[schedule.Scheduler]
     message_queue: queue
+    thread_pool: ThreadPool
 
     def __init__(self, *,
                  messenger: BaseMessenger,
                  command_handler_classes: typing.Iterable[typing.Type[BaseCommandHandler]],
                  state: State,
-                 scheduler: schedule.Scheduler,
-                 message_queue: queue) -> None:
-        assert all(state.has_many(INITED_AT, THREAD_POOL))
-
+                 scheduler: schedule.Scheduler) -> None:
+        self.message_queue = queue.Queue()
+        self.thread_pool = ThreadPool()
         self.messenger = messenger
         self.state = state
         self.command_handlers = tuple(map(
             lambda command: command(
                 messenger=messenger,
                 state=state,
-                message_queue=message_queue,
+                message_queue=self.message_queue,
                 scheduler=scheduler,
+                thread_pool=self.thread_pool,
             ),
             command_handler_classes,
         ))
         self.scheduler = scheduler
-        self.message_queue = message_queue
 
     def run(self) -> typing.NoReturn:
         while True:
@@ -79,8 +78,7 @@ class Commander:
                 self.messenger.exception(e)
                 logging.exception(e)
 
-        thread_pool: ThreadPool = self.state[THREAD_POOL]
-        thread_pool.part_sync()
+        self.thread_pool.part_sync()
 
         time.sleep(1)
 
@@ -122,7 +120,6 @@ class Commander:
         for command_handler in self.command_handlers:
             command_handler.clear()
 
-        thread_pool: ThreadPool = self.state[THREAD_POOL]
-        thread_pool.sync()
+        self.thread_pool.sync()
 
         self.messenger.send_message('Goodbye!')

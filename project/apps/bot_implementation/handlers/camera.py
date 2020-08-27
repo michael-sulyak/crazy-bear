@@ -9,7 +9,6 @@ from .. import events
 from ..constants import CURRENT_FPS, SECURITY_IS_ENABLED, USE_CAMERA, VIDEO_SECURITY
 from ...common.constants import OFF, ON
 from ...common.storage import file_storage
-from ...common.threads import ThreadPool
 from ...guard.video_guard import VideoGuard
 from ...messengers.base import BaseCommandHandler, Command
 
@@ -17,8 +16,6 @@ from ...messengers.base import BaseCommandHandler, Command
 __all__ = (
     'Camera',
 )
-
-from ...messengers.constants import THREAD_POOL
 
 
 class Camera(BaseCommandHandler):
@@ -101,7 +98,6 @@ class Camera(BaseCommandHandler):
             return
 
         video_guard: VideoGuard = self.state[VIDEO_SECURITY]
-        thread_pool: ThreadPool = self.state[THREAD_POOL]
 
         # if not self._can_use_camera():
         #     return
@@ -117,7 +113,7 @@ class Camera(BaseCommandHandler):
             video_guard = VideoGuard(
                 messenger=self.messenger,
                 video_stream=self._video_stream,
-                thread_pool=thread_pool,
+                thread_pool=self.thread_pool,
                 motion_detected_callback=events.motion_detected,
             )
             self.state[VIDEO_SECURITY] = video_guard
@@ -130,14 +126,12 @@ class Camera(BaseCommandHandler):
 
         if video_guard:
             video_guard.stop()
-            self.state.clear(VIDEO_SECURITY)
+            self.state[VIDEO_SECURITY] = None
             self.messenger.send_message('Video security is stopped')
         elif self.state[USE_CAMERA]:
             self.messenger.send_message('Video security is already disabled')
 
     def _take_picture(self) -> None:
-        thread_pool: ThreadPool = self.state[THREAD_POOL]
-
         if not self._can_use_camera():
             return
 
@@ -146,7 +140,7 @@ class Camera(BaseCommandHandler):
 
         if frame is not None:
             self.messenger.send_frame(frame, caption=f'Captured at {now.strftime("%d.%m.%Y, %H:%M:%S")}')
-            thread_pool.run(file_storage.upload_frame, kwargs={
+            self.thread_pool.run(file_storage.upload_frame, kwargs={
                 'file_name': f'saved_photos/{now.strftime("%Y-%m-%d %H:%M:%S.png")}',
                 'frame': self._video_stream.read(),
             })
@@ -164,10 +158,9 @@ class Camera(BaseCommandHandler):
         if not self.state[USE_CAMERA]:
             return
 
-        thread_pool: ThreadPool = self.state[THREAD_POOL]
         now = datetime.datetime.now()
 
-        thread_pool.run(file_storage.upload_frame, kwargs={
+        self.thread_pool.run(file_storage.upload_frame, kwargs={
             'file_name': f'photos/{now.strftime("%Y-%m-%d %H:%M:%S.png")}',
             'frame': self._video_stream.read(),
         })

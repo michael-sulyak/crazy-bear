@@ -7,6 +7,7 @@ import schedule
 
 from . import mixins
 from ..common.state import State
+from ..common.threads import ThreadPool
 
 
 class BaseMessenger(mixins.BaseCVMixin, abc.ABC):
@@ -41,16 +42,19 @@ class BaseCommandHandler(abc.ABC):
     support_commands: typing.Set
     message_queue: queue
     scheduler: schedule.Scheduler
+    thread_pool: ThreadPool
 
     def __init__(self, *,
                  messenger: BaseMessenger,
                  state: State,
                  message_queue: queue,
-                 scheduler: schedule.Scheduler) -> None:
+                 scheduler: schedule.Scheduler,
+                 thread_pool: ThreadPool) -> None:
         self.messenger = messenger
         self.state = state
         self.message_queue = message_queue
         self.scheduler = scheduler
+        self.thread_pool = thread_pool
 
         self.init_state()
         self.init_schedule()
