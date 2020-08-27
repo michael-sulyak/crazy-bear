@@ -1,3 +1,4 @@
+import threading
 import typing
 
 
@@ -7,11 +8,13 @@ class StateException(Exception):
 
 class State:
     _state: dict
+    lock: threading.RLock
 
     def __init__(self, init_state: typing.Optional[dict] = None) -> None:
         if init_state is None:
             init_state = {}
 
+        self.lock = threading.RLock()
         self._state = init_state
 
     def __getitem__(self, name: str) -> typing.Any:
@@ -24,49 +27,45 @@ class State:
         self.remove(name)
 
     def create(self, name: str, value: typing.Any = None) -> None:
-        if self.has(name):
-            raise StateException(f'The state already has key "{name}".')
+        with self.lock:
+            if self.has(name):
+                raise StateException(f'The state already has key "{name}".')
 
-        self.set(name, value, _check_key=False)
+            self.set(name, value, _check_key=False)
 
     def create_many(self, **kwargs) -> None:
-        for name, value in kwargs.items():
-            self.create(name, value)
+        with self.lock:
+            for name, value in kwargs.items():
+                self.create(name, value)
 
     def get(self, name: str) -> typing.Any:
-        return self._state[name]
+        with self.lock:
+            return self._state[name]
 
-    # def get_many(self, *names) -> typing.Iterator:
-    #     return (self.get(name) for name in names)
+    def get_many(self, *names) -> tuple:
+        with self.lock:
+            return tuple(self.get(name) for name in names)
 
     def set(self, name: str, value: typing.Any, *, _check_key: bool = True) -> None:
-        if _check_key and not self.has(name):
-            raise StateException(f'The state has not key "{name}".')
+        with self.lock:
+            if _check_key and not self.has(name):
+                raise StateException(f'The state has not key "{name}".')
 
-        self._state[name] = value
+            self._state[name] = value
 
-    # def set_default(self, name: str, value: typing.Any) -> None:
-    #     if not self.has(name):
-    #         self.create(name, value)
-
-    def clear(self, name: str) -> None:
-        self.set(name, None)
-
-    # def set_true(self, name: str) -> None:
-    #     self.set(name, True)
-
-    # def set_false(self, name: str) -> None:
-    #     self.set(name, False)
-
-    # def set_many(self, **kwargs) -> None:
-    #     for name, value in kwargs.items():
-    #         self.set(name, value)
+    def set_many(self, **kwargs) -> None:
+        with self.lock:
+            for name, value in kwargs.items():
+                self.set(name, value)
 
     def has(self, name: str) -> bool:
-        return name in self._state
+        with self.lock:
+            return name in self._state
 
-    def has_many(self, *names) -> typing.Iterator:
-        return (self.has(name) for name in names)
+    def has_many(self, *names) -> tuple:
+        with self.lock:
+            return tuple(self.has(name) for name in names)
 
     def remove(self, name: str) -> None:
-        self._state.pop(name)
+        with self.lock:
+            self._state.pop(name)
