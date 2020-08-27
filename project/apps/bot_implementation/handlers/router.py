@@ -1,10 +1,11 @@
 import datetime
-import typing
 
+from project import config
 from .. import constants
 from .. import events
 from ..constants import USER_IS_CONNECTED_TO_ROUTER
 from ...common.models import Signal
+from ...common.tplink import TpLinkClient
 from ...common.utils import check_user_connection_to_router
 from ...common.utils import send_plot
 from ...messengers.base import BaseCommandHandler, Command
@@ -18,6 +19,7 @@ __all__ = (
 class Router(BaseCommandHandler):
     support_commands = {
         constants.BotCommands.STATS,
+        constants.BotCommands.CONNECTED_DEVICES,
     }
     _last_connected_at: datetime.datetime
     _need_initialization: bool = True
@@ -39,6 +41,8 @@ class Router(BaseCommandHandler):
     def process_command(self, command: Command) -> None:
         if command.name == constants.BotCommands.STATS:
             self._show_stats(command)
+        elif command.name == constants.BotCommands.CONNECTED_DEVICES:
+            self._show_connected_devices()
 
     def update(self) -> None:
         now = datetime.datetime.now()
@@ -58,7 +62,7 @@ class Router(BaseCommandHandler):
                 self.state[USER_IS_CONNECTED_TO_ROUTER] = True
                 self._last_connected_at = now
                 events.user_is_connected_to_router.send()
-        elif now - self._last_connected_at >= datetime.timedelta(seconds=20):
+        elif now - self._last_connected_at >= datetime.timedelta(seconds=30):
             if self.state[USER_IS_CONNECTED_TO_ROUTER]:
                 self.state[USER_IS_CONNECTED_TO_ROUTER] = False
                 events.user_is_disconnected_to_router.send()
@@ -72,3 +76,22 @@ class Router(BaseCommandHandler):
 
         if stats:
             send_plot(messenger=self.messenger, stats=stats, title='User is connected to router', attr='value')
+
+    def _show_connected_devices(self) -> None:
+        tplink_client = TpLinkClient(
+            username=config.ROUTER_USERNAME,
+            password=config.ROUTER_PASSWORD,
+            url=config.ROUTER_URL,
+        )
+
+        connected_devices = tplink_client.get_connected_devices()
+
+        message = ''
+
+        for connected_device in connected_devices:
+            for key, value in connected_device.items():
+                message += f'*{key}:* {value}\n'
+
+            message += '\n'
+
+        self.messenger.send_message(message)

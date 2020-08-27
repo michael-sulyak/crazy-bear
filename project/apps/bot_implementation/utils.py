@@ -62,6 +62,6 @@ class TelegramMenu:
     @staticmethod
     def _get_other_menu() -> ReplyKeyboardMarkup:
         return ReplyKeyboardMarkup((
-            (BotCommands.REPORT,),
+            (BotCommands.REPORT, BotCommands.CONNECTED_DEVICES,),
             (BotCommands.RETURN,),
         ))

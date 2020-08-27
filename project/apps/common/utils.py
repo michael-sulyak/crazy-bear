@@ -57,10 +57,14 @@ def send_plot(messenger: BaseMessenger, title: str, attr: str, stats: list) -> N
 
 
 def check_user_connection_to_router() -> bool:
-    client = TpLinkClient(username=config.ROUTER_USERNAME, password=config.ROUTER_PASSWORD, url=config.ROUTER_URL)
+    tplink_client = TpLinkClient(
+        username=config.ROUTER_USERNAME,
+        password=config.ROUTER_PASSWORD,
+        url=config.ROUTER_URL,
+    )
 
     try:
-        connected_devices = client.get_connected_devices()
+        connected_devices = tplink_client.get_connected_devices()
     except Exception as e:
         logging.exception(e)
         return False

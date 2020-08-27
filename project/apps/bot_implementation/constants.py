@@ -12,7 +12,7 @@ class BotCommands:
     STATS = '/stats'
 
     OTHER = '/other'
-    STOP = '/stop'
+    CONNECTED_DEVICES = '/connected_devices'
     RETURN = '/return'
 
 
