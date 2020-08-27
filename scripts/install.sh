@@ -3,6 +3,7 @@ sudo apt update && sudo apt upgrade
 
 echo "Install dependencies..."
 sudo apt install -y \
+    fail2ban \
     python3-pip \
     python3-pigpio \
     python3-matplotlib \
@@ -13,6 +14,8 @@ sudo apt install -y \
     sudo pip3 install \
     gpiozero \
     RPi.GPIO
+
+sudo ufw allow 22 && sudo ufw enable
 
 echo "Install OpenCV..."
 sudo apt install python3-opencv
