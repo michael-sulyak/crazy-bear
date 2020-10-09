@@ -2,19 +2,21 @@ import datetime
 import typing
 from datetime import datetime, timedelta
 
+import schedule
 import serial
 from pandas import DataFrame
 
-from .. import events
-from ..constants import BotCommands, PHOTO, SECURITY_IS_ENABLED, USE_CAMERA
+from ..base import BaseCommandHandler, Command
 from ...arduino.base import ArduinoConnector
 from ...arduino.constants import ARDUINO_IS_ENABLED
 from ...arduino.models import ArduinoLog
 from ...common.constants import OFF, ON
 from ...common.storage import file_storage
 from ...common.utils import send_plot
+from ...core import events
+from ...core.constants import PHOTO, SECURITY_IS_ENABLED, USE_CAMERA
 from ...db import db_session
-from ...messengers.base import BaseCommandHandler, Command
+from ...messengers.constants import BotCommands
 
 
 __all__ = (
@@ -23,28 +25,30 @@ __all__ = (
 
 
 class Arduino(BaseCommandHandler):
-    support_commands = {
-        BotCommands.ARDUINO,
-        BotCommands.STATS,
+    initial_state = {
+        ARDUINO_IS_ENABLED: False,
     }
     _arduino_connector: typing.Optional[ArduinoConnector] = None
 
-    def init_state(self) -> None:
-        self.state.create_many(**{
-            ARDUINO_IS_ENABLED: False,
-        })
+    def init_schedule(self, scheduler: schedule.Scheduler) -> typing.Any:
+        scheduler.every(1).hour.do(self._backup)
 
-    def init_schedule(self) -> None:
-        self.scheduler.every(1).hour.do(self._backup)
-
-    def process_command(self, command: Command) -> None:
+    def process_command(self, command: Command) -> typing.Any:
         if command.name == BotCommands.ARDUINO:
             if command.first_arg == ON:
                 self._enable_arduino()
             elif command.first_arg == OFF:
                 self._disable_arduino()
-        elif command.name == BotCommands.STATS:
+            else:
+                return False
+
+            return True
+
+        if command.name == BotCommands.STATS:
             self._show_stats(command)
+            return True
+
+        return False
 
     def update(self) -> None:
         if not self._arduino_connector:
@@ -135,7 +139,7 @@ class Arduino(BaseCommandHandler):
             use_camera: bool = self.state[USE_CAMERA]
 
             if use_camera:
-                self._put_command(BotCommands.CAMERA, PHOTO)
+                self._run_command(BotCommands.CAMERA, PHOTO)
 
     def _backup(self):
         if not self.state[ARDUINO_IS_ENABLED]:

@@ -1,10 +1,11 @@
+import typing
 from datetime import datetime
 
 from emoji import emojize
 
-from .. import constants
-from ..utils import get_weather
-from ...messengers.base import BaseCommandHandler, Command
+from ..base import BaseCommandHandler, Command
+from ...common.utils import get_weather
+from ...messengers.constants import BotCommands
 
 
 __all__ = (
@@ -13,17 +14,14 @@ __all__ = (
 
 
 class Report(BaseCommandHandler):
-    support_commands = {
-        constants.BotCommands.REPORT,
-    }
+    def process_command(self, command: Command) -> typing.Any:
+        if command.name == BotCommands.REPORT:
+            self._send_report()
+            return True
 
-    def process_command(self, command: Command) -> None:
-        if command.name == constants.BotCommands.REPORT:
-            report = self._create_report()
-            self.messenger.send_message(report)
+        return False
 
-    @staticmethod
-    def _create_report() -> str:
+    def _send_report(self) -> None:
         now = datetime.now()
         hour = now.hour
 
@@ -44,7 +42,7 @@ class Report(BaseCommandHandler):
         )
         weather += f'{weather_data["weather"][0]["description"]}.'
 
-        return (
+        self.messenger.send_message(
             f'{greeting}\n\n'
             f'{weather}'
         )

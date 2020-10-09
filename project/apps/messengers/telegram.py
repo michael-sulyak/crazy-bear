@@ -1,13 +1,15 @@
 import logging
 import traceback
 import typing
-from datetime import datetime, timedelta
+import datetime
 
 import telegram
 from emoji import emojize
 from telegram.utils.request import Request as TelegramRequest
 
-from .base import BaseMessenger, Command, Message
+from telegram import Update as TelegramUpdate
+from .base import BaseMessenger
+from ..core.base import Command, Message
 from .mixins import CVMixin
 from ... import config
 
@@ -62,8 +64,8 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         except telegram.error.TimedOut as e:
             logging.warning(e, exc_info=True)
 
-    def get_updates(self) -> typing.Iterator:
-        now = datetime.now()
+    def get_updates(self) -> typing.Iterator[Message]:
+        now = datetime.datetime.now()
 
         try:
             updates = self._bot.get_updates(offset=self._updates_offset, timeout=5)
@@ -82,30 +84,41 @@ class TelegramMessenger(CVMixin, BaseMessenger):
             if update.message.from_user.username != config.TELEGRAM_USERNAME:
                 text = update.message.text.replace("`", "\\`")
                 self.error(
-                    f'User *{update.message.from_user.name}* sent:\n'
+                    f'User "{update.effective_user.name}" (@{update.effective_user.username}) sent '
+                    f'in chat #{update.effective_chat.id}:\n'
                     f'```\n{text}\n```'
                 )
                 continue
 
             sent_at = update.message.date.astimezone(config.PY_TIME_ZONE).replace(tzinfo=None)
 
-            if now - sent_at < timedelta(seconds=30):
+            if now - sent_at < datetime.timedelta(seconds=30):
                 yield self._parse_update(update)
             else:
                 logging.debug(f'Skip telegram message: {update.message.text}')
 
-    def _parse_update(self, update) -> Message:
+    @staticmethod
+    def _parse_update(update: TelegramUpdate) -> Message:
         text: str = update.message.text
 
         params = text.split(' ')
         command_name = params[0]
         command_params = tuple(param.strip() for param in params[1:] if param)
+        command_args = []
+        command_kwargs = {}
+
+        for i, command_param in enumerate(command_params):
+            if '=' in command_param:
+                name, value = command_param.split('=', 1)
+                command_kwargs[name] = value
+            else:
+                command_args.append(command_param)
 
         return Message(
             text=text,
             command=Command(
                 name=command_name,
-                args=command_params,
-                kwargs={},  # TODO: Implement
+                args=command_args,
+                kwargs=command_kwargs,
             ),
         )

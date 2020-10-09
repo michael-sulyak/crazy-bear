@@ -1,16 +1,18 @@
 import datetime
 import typing
 
+import schedule
 from imutils.video import VideoStream
 
-from project import config
-from .. import constants
-from .. import events
-from ..constants import CURRENT_FPS, SECURITY_IS_ENABLED, USE_CAMERA, VIDEO_SECURITY
+from ..base import BaseCommandHandler, Command
 from ...common.constants import OFF, ON
 from ...common.storage import file_storage
+from ...common.utils import camera_is_available
+from ...core import events
+from ...core.constants import CURRENT_FPS, SECURITY_IS_ENABLED, USE_CAMERA, VIDEO_SECURITY
 from ...guard.video_guard import VideoGuard
-from ...messengers.base import BaseCommandHandler, Command
+from ...messengers.constants import BotCommands
+from .... import config
 
 
 __all__ = (
@@ -19,36 +21,44 @@ __all__ = (
 
 
 class Camera(BaseCommandHandler):
-    support_commands = {
-        constants.BotCommands.CAMERA,
-        constants.BotCommands.SECURITY,
+    initial_state = {
+        VIDEO_SECURITY: None,
+        USE_CAMERA: False,
+        SECURITY_IS_ENABLED: False,
+        CURRENT_FPS: None,
     }
     _video_stream: typing.Optional[VideoStream] = None
+    _camera_is_available: bool = True
 
-    def init_state(self) -> None:
-        self.state.create_many(**{
-            VIDEO_SECURITY: None,
-            USE_CAMERA: False,
-            SECURITY_IS_ENABLED: False,
-            CURRENT_FPS: None,
-        })
+    def init_schedule(self, scheduler: schedule.Scheduler) -> None:
+        scheduler.every(10).seconds.do(self._save_photo)
+        scheduler.every(1).minutes.do(self._check_video_stream)
 
-    def init_schedule(self) -> None:
-        self.scheduler.every(10).seconds.do(self._save_photo)
-
-    def process_command(self, command: Command) -> None:
-        if command.name == constants.BotCommands.CAMERA:
+    def process_command(self, command: Command) -> typing.Any:
+        if command.name == BotCommands.CAMERA:
             if command.first_arg == ON:
+                self._camera_is_available = True
                 self._enable_camera()
             elif command.first_arg == OFF:
                 self._disable_camera()
             elif command.first_arg == 'photo':
                 self._take_picture()
-        elif command.name == constants.BotCommands.SECURITY:
+            else:
+                return False
+
+            return True
+
+        if command.name == BotCommands.SECURITY:
             if command.first_arg == ON:
                 self._enable_security()
             elif command.first_arg == OFF:
                 self._disable_security()
+            else:
+                return False
+
+            return True
+
+        return False
 
     def update(self) -> None:
         video_guard: typing.Optional[VideoGuard] = self.state[VIDEO_SECURITY]
@@ -59,7 +69,7 @@ class Camera(BaseCommandHandler):
             self._disable_security()
             video_guard = None
 
-        if not video_guard and use_camera and security_is_enabled:
+        if not video_guard and use_camera and security_is_enabled and self._camera_is_available:
             self._enable_security()
             video_guard = self.state[VIDEO_SECURITY]
 
@@ -72,6 +82,11 @@ class Camera(BaseCommandHandler):
         self._disable_camera()
 
     def _enable_camera(self) -> None:
+        if not camera_is_available(config.VIDEO_SRC):
+            self._camera_is_available = True
+            self.messenger.send_message('Camera is not available')
+            return
+
         self.state[USE_CAMERA] = True
 
         if not self._video_stream:
@@ -98,9 +113,6 @@ class Camera(BaseCommandHandler):
             return
 
         video_guard: VideoGuard = self.state[VIDEO_SECURITY]
-
-        # if not self._can_use_camera():
-        #     return
 
         if video_guard:
             self.messenger.send_message('Video security is already enabled')
@@ -164,3 +176,14 @@ class Camera(BaseCommandHandler):
             'file_name': f'photos/{now.strftime("%Y-%m-%d %H:%M:%S.png")}',
             'frame': self._video_stream.read(),
         })
+
+    def _check_video_stream(self):
+        if not self._video_stream or not self._camera_is_available:
+            return
+
+        frame = self._video_stream.read()
+
+        if frame is None:
+            self._camera_is_available = False
+            self.messenger.send_message('Camera is not available')
+            self._run_command(BotCommands.CAMERA, OFF)

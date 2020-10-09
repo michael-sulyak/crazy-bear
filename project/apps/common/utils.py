@@ -2,13 +2,15 @@ import logging
 import os
 import tempfile
 
+import cv2
 import matplotlib.pyplot as plt
-from project import config
+import requests
 import seaborn as sns
 from matplotlib.ticker import AutoLocator, IndexFormatter
 
 from .tplink import TpLinkClient
 from ..messengers.base import BaseMessenger
+from ... import config
 
 
 def get_cpu_temp() -> float:
@@ -75,3 +77,15 @@ def check_user_connection_to_router() -> bool:
     )
 
     return bool(connected_mac_addresses & config.ROUTER_USER_MAC_ADDRESSES)
+
+
+def camera_is_available(src: int) -> bool:
+    cap = cv2.VideoCapture(src)
+    is_available = cap.isOpened()
+    cap.release()
+
+    return is_available
+
+
+def get_weather() -> dict:
+    return requests.get(config.OPENWEATHERMAP_URL).json()

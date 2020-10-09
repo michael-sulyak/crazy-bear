@@ -5,9 +5,12 @@ import typing
 
 import schedule
 
-from .base import BaseCommandHandler, BaseMessenger, Command, Message
+from . import events
+from .base import BaseMessenger
 from ..common.state import State
 from ..common.threads import ThreadPool
+from ..core import events as core_events
+from ..core.base import BaseCommandHandler, CommandHandlerContext, Message
 
 
 class Commander:
@@ -27,14 +30,17 @@ class Commander:
         self.thread_pool = ThreadPool()
         self.messenger = messenger
         self.state = state
+
+        command_handler_context = CommandHandlerContext(
+            messenger=messenger,
+            state=state,
+            message_queue=self.message_queue,
+            scheduler=scheduler,
+            thread_pool=self.thread_pool,
+        )
+
         self.command_handlers = tuple(map(
-            lambda command: command(
-                messenger=messenger,
-                state=state,
-                message_queue=self.message_queue,
-                scheduler=scheduler,
-                thread_pool=self.thread_pool,
-            ),
+            lambda command: command(context=command_handler_context),
             command_handler_classes,
         ))
         self.scheduler = scheduler
@@ -66,8 +72,9 @@ class Commander:
             raise e
         except Exception as e:
             logging.exception(e)
-            time.sleep(1)
             return
+
+        core_events.tick.send()
 
         for command_handler in self.command_handlers:
             try:
@@ -83,42 +90,33 @@ class Commander:
         time.sleep(1)
 
     def process_updates(self) -> None:
-        for messenger_update in self.messenger.get_updates():
-            self.message_queue.put(messenger_update)
+        for message in self.messenger.get_updates():
+            if message.command:
+                logging.info(
+                    f'Command: {message.command.name} args={message.command.args} kwargs={message.command.kwargs}',
+                )
+
+            self.message_queue.put(message)
 
         while not self.message_queue.empty():
             self.messenger.start_typing()
             update: Message = self.message_queue.get()
 
             if update.command:
-                self.process_command(update.command)
+                results, exceptions = events.input_command.process(command=update.command)
+                is_processed = exceptions or any(map(lambda x: x is True, results))
 
-    def process_command(self, command: Command) -> None:
-        is_processed = False
+                for exception in exceptions:
+                    self.messenger.exception(exception)
 
-        for handler in self.command_handlers:
-            if command.name not in handler.support_commands:
-                continue
-
-            try:
-                handler.process_command(command)
-            except KeyboardInterrupt as e:
-                raise e
-            except Exception as e:
-                logging.exception(e)
-                self.messenger.exception(e)
-
-            is_processed = True
-
-        if not is_processed:
-            self.messenger.send_message('Unknown command')
+                if not is_processed:
+                    self.messenger.send_message('Unknown command')
 
     def _close(self) -> None:
         logging.info('Home assistant is stopping...')
         schedule.clear()
 
-        for command_handler in self.command_handlers:
-            command_handler.clear()
+        core_events.shutdown.send()
 
         self.thread_pool.sync()
 

@@ -1,14 +1,16 @@
 import datetime
+import typing
 
-from project import config
-from .. import constants
-from .. import events
-from ..constants import USER_IS_CONNECTED_TO_ROUTER
+import schedule
+
+from ..base import BaseCommandHandler, Command
 from ...common.models import Signal
 from ...common.tplink import TpLinkClient
-from ...common.utils import check_user_connection_to_router
-from ...common.utils import send_plot
-from ...messengers.base import BaseCommandHandler, Command
+from ...common.utils import check_user_connection_to_router, send_plot
+from ...core import events
+from ...core.constants import USER_IS_CONNECTED_TO_ROUTER
+from ...messengers.constants import BotCommands
+from .... import config
 
 
 __all__ = (
@@ -17,10 +19,6 @@ __all__ = (
 
 
 class Router(BaseCommandHandler):
-    support_commands = {
-        constants.BotCommands.STATS,
-        constants.BotCommands.CONNECTED_DEVICES,
-    }
     _last_connected_at: datetime.datetime
     _need_initialization: bool = True
 
@@ -30,19 +28,25 @@ class Router(BaseCommandHandler):
         now = datetime.datetime.now()
         self._last_connected_at = now
 
-    def init_state(self) -> None:
-        self.state.create_many(**{
+    @property
+    def initial_state(self) -> typing.Dict[str, typing.Any]:
+        return {
             USER_IS_CONNECTED_TO_ROUTER: check_user_connection_to_router(),
-        })
+        }
 
-    def init_schedule(self) -> None:
-        self.scheduler.every(1).hours.do(lambda: Signal.clear(signal_type=USER_IS_CONNECTED_TO_ROUTER))
+    def init_schedule(self, scheduler: schedule.Scheduler) -> None:
+        scheduler.every(1).hours.do(lambda: Signal.clear(signal_type=USER_IS_CONNECTED_TO_ROUTER))
 
-    def process_command(self, command: Command) -> None:
-        if command.name == constants.BotCommands.STATS:
-            self._show_stats(command)
-        elif command.name == constants.BotCommands.CONNECTED_DEVICES:
-            self._show_connected_devices()
+    def process_command(self, command: Command) -> typing.Any:
+        if command.name == BotCommands.STATS:
+            self._send_stats(command)
+            return True
+
+        if command.name == BotCommands.CONNECTED_DEVICES:
+            self._send_connected_devices()
+            return True
+
+        return False
 
     def update(self) -> None:
         now = datetime.datetime.now()
@@ -67,7 +71,7 @@ class Router(BaseCommandHandler):
                 self.state[USER_IS_CONNECTED_TO_ROUTER] = False
                 events.user_is_disconnected_to_router.send()
 
-    def _show_stats(self, command: Command) -> None:
+    def _send_stats(self, command: Command) -> None:
         stats = Signal.get_avg(
             signal_type=USER_IS_CONNECTED_TO_ROUTER,
             delta_type=command.get_second_arg('hours'),
@@ -77,7 +81,7 @@ class Router(BaseCommandHandler):
         if stats:
             send_plot(messenger=self.messenger, stats=stats, title='User is connected to router', attr='value')
 
-    def _show_connected_devices(self) -> None:
+    def _send_connected_devices(self) -> None:
         tplink_client = TpLinkClient(
             username=config.ROUTER_USERNAME,
             password=config.ROUTER_PASSWORD,

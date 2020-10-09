@@ -9,15 +9,14 @@ from telegram.utils.request import Request as TelegramRequest
 
 from project import config
 from project.apps import db
-from project.apps.bot_implementation import handlers
-from project.apps.bot_implementation.constants import BotCommands
-from project.apps.bot_implementation.utils import TelegramMenu
+from project.apps.core import handlers
+from project.apps.messengers.utils import TelegramMenu
 from project.apps.common.constants import AUTO, ON
 from project.apps.common.state import State
 from project.apps.common.storage import file_storage
-from project.apps.messengers.base import Command, Message
+from project.apps.core.base import Command, Message
 from project.apps.messengers.commander import Commander
-from project.apps.messengers.constants import INITED_AT
+from project.apps.messengers.constants import BotCommands, INITED_AT
 from project.apps.messengers.telegram import TelegramMessenger
 
 
