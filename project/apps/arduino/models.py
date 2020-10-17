@@ -51,15 +51,16 @@ class ArduinoLog(db.Base):
         diff = last_time[0] - first_time[0]
 
         if diff < datetime.timedelta(minutes=2):
-            time_tpl = '%m.%d %H:%M:%S'
+            time_tpl = '%y.%m.%d %H:%M:%S'
         else:
-            time_tpl = '%m.%d %H:%M'
+            time_tpl = '%y.%m.%d %H:%M'
 
         signal = db.db_session().query(
             func.avg(cls.humidity).label('humidity'),
             func.avg(cls.pir_sensor).label('pir_sensor'),
             func.avg(cls.temperature).label('temperature'),
-            func.strftime(time_tpl, cls.received_at).label('time'),
+            cls.received_at.label('time'),
+            func.strftime(time_tpl, cls.received_at).label('avg_time'),
         ).filter(
             cls.received_at >= start_time,
             cls.humidity.isnot(None),

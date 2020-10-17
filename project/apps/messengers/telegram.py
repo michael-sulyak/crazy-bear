@@ -58,6 +58,9 @@ class TelegramMessenger(CVMixin, BaseMessenger):
 
     @synchronized
     def send_images(self, images: typing.Any, *, caption: typing.Optional[str] = None) -> None:
+        if not images:
+            return
+
         self._bot.send_media_group(
             self.chat_id,
             media=list(telegram.InputMediaPhoto(image) for image in images),

@@ -69,7 +69,11 @@ class Report(BaseModule):
                 else:
                     plots.append(result)
 
-            self.messenger.send_images(images=plots)
+            if plots:
+                self.messenger.send_images(images=plots)
+            else:
+                self.messenger.send_message('There is still little data')
+
             return True
 
         if command.name == BotCommands.REPORT:

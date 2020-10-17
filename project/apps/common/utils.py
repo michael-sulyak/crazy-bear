@@ -52,10 +52,14 @@ def create_plot(*, title: str, x_attr: str, y_attr: str, stats: list) -> io.Byte
     ax.plot(x, y, marker=marker)
 
     if isinstance(x[0], (datetime.date, datetime.datetime,)):
-        diff = abs(x[0] - x[-1])
-        postfix = f'({x[0].strftime("%H:%M:%S %d.%m.%y")} - {x[1].strftime("%H:%M:%S %d.%m.%y")})'
+        if len(x) > 1:
+            diff = abs(x[0] - x[-1])
+            postfix = f'({x[0].strftime("%H:%M:%S %d.%m.%y")} - {x[-1].strftime("%H:%M:%S %d.%m.%y")})'
+        else:
+            diff = datetime.timedelta(seconds=1)
+            postfix = ''
 
-        if diff < datetime.timedelta(seconds=20):
+        if diff < datetime.timedelta(seconds=10):
             ax.xaxis.set_major_formatter(DateFormatter('%H:%M:%S'))
             ax.xaxis.set_major_locator(mdates.SecondLocator(interval=1))
             plt.xlabel(f'Time {postfix}')
