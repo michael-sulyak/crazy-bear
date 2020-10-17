@@ -12,17 +12,6 @@ from ..db import db_session
 from ... import config
 
 
-# ArduinoSensorsData = namedtuple(
-#     typename='ArduinoSensorsData',
-#     field_names=(
-#         'pir_sensor',
-#         'humidity',
-#         'temperature',
-#         'received_at',
-#     ),
-# )
-
-
 @dataclass
 class ArduinoResponse:
     type: str
@@ -87,8 +76,8 @@ class ArduinoConnector:
                 self._settings = response.payload
 
         if new_arduino_logs:
-            db_session.add_all(new_arduino_logs)
-            db_session.commit()
+            db_session().add_all(new_arduino_logs)
+            db_session().commit()
 
         return new_arduino_logs
 

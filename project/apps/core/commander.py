@@ -5,29 +5,30 @@ import typing
 
 import schedule
 
-from . import events
-from .base import BaseMessenger
+from . import events as core_events
+from .base import BaseModule, CommandHandlerContext, Message
 from ..common.state import State
-from ..common.threads import ThreadPool
-from ..core import events as core_events
-from ..core.base import BaseCommandHandler, CommandHandlerContext, Message
+from ..common.threads import TaskQueue
+from ..db import close_db_session
+from ..messengers import events
+from ..messengers.base import BaseMessenger
 
 
 class Commander:
     messenger: BaseMessenger
     state: State
-    command_handlers: typing.Tuple[BaseCommandHandler, ...]
+    command_handlers: typing.Tuple[BaseModule, ...]
     scheduler: typing.Optional[schedule.Scheduler]
     message_queue: queue
-    thread_pool: ThreadPool
+    task_queue: TaskQueue
 
     def __init__(self, *,
                  messenger: BaseMessenger,
-                 command_handler_classes: typing.Iterable[typing.Type[BaseCommandHandler]],
+                 module_classes: typing.Iterable[typing.Type[BaseModule]],
                  state: State,
                  scheduler: schedule.Scheduler) -> None:
         self.message_queue = queue.Queue()
-        self.thread_pool = ThreadPool()
+        self.task_queue = TaskQueue(on_close=close_db_session)
         self.messenger = messenger
         self.state = state
 
@@ -36,12 +37,12 @@ class Commander:
             state=state,
             message_queue=self.message_queue,
             scheduler=scheduler,
-            thread_pool=self.thread_pool,
+            task_queue=self.task_queue,
         )
 
         self.command_handlers = tuple(map(
             lambda command: command(context=command_handler_context),
-            command_handler_classes,
+            module_classes,
         ))
         self.scheduler = scheduler
 
@@ -76,17 +77,6 @@ class Commander:
 
         core_events.tick.send()
 
-        for command_handler in self.command_handlers:
-            try:
-                command_handler.update()
-            except KeyboardInterrupt as e:
-                raise e
-            except Exception as e:
-                self.messenger.exception(e)
-                logging.exception(e)
-
-        self.thread_pool.part_sync()
-
         time.sleep(1)
 
     def process_updates(self) -> None:
@@ -114,10 +104,9 @@ class Commander:
 
     def _close(self) -> None:
         logging.info('Home assistant is stopping...')
-        schedule.clear()
 
         core_events.shutdown.send()
-
-        self.thread_pool.sync()
+        schedule.clear()
+        self.task_queue.close()
 
         self.messenger.send_message('Goodbye!')

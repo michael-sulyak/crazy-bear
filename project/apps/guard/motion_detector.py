@@ -23,7 +23,7 @@ class MotionDetector:
     last_change_timestamp = None
     imshow: bool
 
-    def __init__(self, video_stream: imutils.video.VideoStream, max_fps: int, imshow: bool) -> None:
+    def __init__(self, *, video_stream: imutils.video.VideoStream, max_fps: int, imshow: bool) -> None:
         self.fps_tracker = FPSTracker()
         self.video_stream = video_stream
         self.max_fps = max_fps
@@ -96,7 +96,7 @@ class MotionDetector:
 
         self._draw_result(thresh=thresh, frame_delta=frame_delta)
 
-    def realese(self):
+    def realese(self) -> None:
         if self.imshow:
             cv2.destroyAllWindows()
 

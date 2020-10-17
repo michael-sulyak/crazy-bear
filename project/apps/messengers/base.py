@@ -10,7 +10,15 @@ class BaseMessenger(mixins.BaseCVMixin, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def send_image(self, photo: typing.Any, *, caption: typing.Optional[str] = None) -> None:
+    def send_image(self, image: typing.Any, *, caption: typing.Optional[str] = None) -> None:
+        pass
+
+    @abc.abstractmethod
+    def send_images(self, images: typing.Any, *, caption: typing.Optional[str] = None) -> None:
+        pass
+
+    @abc.abstractmethod
+    def send_file(self, file: typing.Any, *, caption: typing.Optional[str] = None) -> None:
         pass
 
     @abc.abstractmethod

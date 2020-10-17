@@ -4,10 +4,10 @@ import typing
 import schedule
 from imutils.video import VideoStream
 
-from ..base import BaseCommandHandler, Command
+from ..base import BaseModule, Command
 from ...common.constants import OFF, ON
 from ...common.storage import file_storage
-from ...common.utils import camera_is_available
+from ...common.utils import camera_is_available, synchronized
 from ...core import events
 from ...core.constants import CURRENT_FPS, SECURITY_IS_ENABLED, USE_CAMERA, VIDEO_SECURITY
 from ...guard.video_guard import VideoGuard
@@ -20,7 +20,7 @@ __all__ = (
 )
 
 
-class Camera(BaseCommandHandler):
+class Camera(BaseModule):
     initial_state = {
         VIDEO_SECURITY: None,
         USE_CAMERA: False,
@@ -30,9 +30,11 @@ class Camera(BaseCommandHandler):
     _video_stream: typing.Optional[VideoStream] = None
     _camera_is_available: bool = True
 
-    def init_schedule(self, scheduler: schedule.Scheduler) -> None:
-        scheduler.every(10).seconds.do(self._save_photo)
-        scheduler.every(1).minutes.do(self._check_video_stream)
+    def init_schedule(self, scheduler: schedule.Scheduler) -> tuple:
+        return (
+            scheduler.every(10).seconds.do(self.task_queue.push, self._save_photo),
+            scheduler.every(30).seconds.do(self.task_queue.push, self._check_video_stream),
+        )
 
     def process_command(self, command: Command) -> typing.Any:
         if command.name == BotCommands.CAMERA:
@@ -42,7 +44,7 @@ class Camera(BaseCommandHandler):
             elif command.first_arg == OFF:
                 self._disable_camera()
             elif command.first_arg == 'photo':
-                self._take_picture()
+                self._take_photo()
             else:
                 return False
 
@@ -60,7 +62,8 @@ class Camera(BaseCommandHandler):
 
         return False
 
-    def update(self) -> None:
+    @synchronized
+    def tick(self) -> None:
         video_guard: typing.Optional[VideoGuard] = self.state[VIDEO_SECURITY]
         use_camera: bool = self.state[USE_CAMERA]
         security_is_enabled: bool = self.state[SECURITY_IS_ENABLED]
@@ -78,12 +81,15 @@ class Camera(BaseCommandHandler):
             if video_guard else None
         )
 
-    def clear(self) -> None:
+    @synchronized
+    def disconnect(self) -> None:
+        super().disconnect()
         self._disable_camera()
 
+    @synchronized
     def _enable_camera(self) -> None:
         if not camera_is_available(config.VIDEO_SRC):
-            self._camera_is_available = True
+            self._camera_is_available = False
             self.messenger.send_message('Camera is not available')
             return
 
@@ -95,6 +101,7 @@ class Camera(BaseCommandHandler):
 
         self.messenger.send_message('The camera is on')
 
+    @synchronized
     def _disable_camera(self) -> None:
         security_is_enabled: bool = self.state[SECURITY_IS_ENABLED]
         self.state[USE_CAMERA] = False
@@ -108,6 +115,7 @@ class Camera(BaseCommandHandler):
 
         self.messenger.send_message('The camera is off')
 
+    @synchronized
     def _enable_security(self) -> None:
         if not self.state[USE_CAMERA]:
             return
@@ -125,7 +133,7 @@ class Camera(BaseCommandHandler):
             video_guard = VideoGuard(
                 messenger=self.messenger,
                 video_stream=self._video_stream,
-                thread_pool=self.thread_pool,
+                task_queue=self.task_queue,
                 motion_detected_callback=events.motion_detected,
             )
             self.state[VIDEO_SECURITY] = video_guard
@@ -133,6 +141,7 @@ class Camera(BaseCommandHandler):
 
         self.messenger.send_message('Video security is enabled')
 
+    @synchronized
     def _disable_security(self) -> None:
         video_guard: VideoGuard = self.state[VIDEO_SECURITY]
 
@@ -143,7 +152,8 @@ class Camera(BaseCommandHandler):
         elif self.state[USE_CAMERA]:
             self.messenger.send_message('Video security is already disabled')
 
-    def _take_picture(self) -> None:
+    @synchronized
+    def _take_photo(self) -> None:
         if not self._can_use_camera():
             return
 
@@ -152,9 +162,9 @@ class Camera(BaseCommandHandler):
 
         if frame is not None:
             self.messenger.send_frame(frame, caption=f'Captured at {now.strftime("%d.%m.%Y, %H:%M:%S")}')
-            self.thread_pool.run(file_storage.upload_frame, kwargs={
+            self.task_queue.push(file_storage.upload_frame, kwargs={
                 'file_name': f'saved_photos/{now.strftime("%Y-%m-%d %H:%M:%S.png")}',
-                'frame': self._video_stream.read(),
+                'frame': frame,
             })
 
     def _can_use_camera(self) -> bool:
@@ -166,19 +176,21 @@ class Camera(BaseCommandHandler):
         self.messenger.send_message('Camera is not enabled')
         return False
 
+    @synchronized
     def _save_photo(self) -> None:
-        if not self.state[USE_CAMERA]:
+        if not self.state[USE_CAMERA] or not self._video_stream:
             return
 
         now = datetime.datetime.now()
 
-        self.thread_pool.run(file_storage.upload_frame, kwargs={
-            'file_name': f'photos/{now.strftime("%Y-%m-%d %H:%M:%S.png")}',
-            'frame': self._video_stream.read(),
-        })
+        file_storage.upload_frame(
+            file_name=f'photos/{now.strftime("%Y-%m-%d %H:%M:%S.png")}',
+            frame=self._video_stream.read(),
+        )
 
-    def _check_video_stream(self):
-        if not self._video_stream or not self._camera_is_available:
+    @synchronized
+    def _check_video_stream(self) -> None:
+        if not self._video_stream:
             return
 
         frame = self._video_stream.read()

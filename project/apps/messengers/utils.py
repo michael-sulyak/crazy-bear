@@ -4,8 +4,7 @@ import typing
 from telegram import ReplyKeyboardMarkup
 
 from ..core.base import Command, Message
-from ..arduino.constants import ARDUINO_IS_ENABLED
-from ..core.constants import AUTO_SECURITY_IS_ENABLED, SECURITY_IS_ENABLED, USE_CAMERA
+from ..core.constants import ARDUINO_IS_ENABLED, AUTO_SECURITY_IS_ENABLED, SECURITY_IS_ENABLED, USE_CAMERA
 from .constants import BotCommands
 from ..common.constants import AUTO, OFF, ON
 from ..common.state import State

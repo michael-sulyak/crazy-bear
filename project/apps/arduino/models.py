@@ -21,7 +21,7 @@ class ArduinoLog(db.Base):
     def last_avg(cls) -> typing.Any:
         now = datetime.datetime.now()
 
-        return db.db_session.query(
+        return db.db_session().query(
             func.avg(cls.humidity).label('humidity'),
             func.avg(cls.pir_sensor).label('pir_sensor'),
             func.avg(cls.temperature).label('temperature'),
@@ -36,7 +36,7 @@ class ArduinoLog(db.Base):
     def get_avg(cls, delta_type: str = 'hours', delta_value: int = 24) -> typing.List['ArduinoLog']:
         start_time = datetime.datetime.now() - datetime.timedelta(**{delta_type: delta_value})
 
-        time_filter = db.db_session.query(cls.received_at).filter(
+        time_filter = db.db_session().query(cls.received_at).filter(
             cls.received_at >= start_time,
             cls.humidity.isnot(None),
             cls.pir_sensor.isnot(None),
@@ -51,11 +51,11 @@ class ArduinoLog(db.Base):
         diff = last_time[0] - first_time[0]
 
         if diff < datetime.timedelta(minutes=2):
-            time_tpl = '%H:%M:%S'
+            time_tpl = '%m.%d %H:%M:%S'
         else:
-            time_tpl = '%H:%M'
+            time_tpl = '%m.%d %H:%M'
 
-        signal = db.db_session.query(
+        signal = db.db_session().query(
             func.avg(cls.humidity).label('humidity'),
             func.avg(cls.pir_sensor).label('pir_sensor'),
             func.avg(cls.temperature).label('temperature'),

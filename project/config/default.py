@@ -1,3 +1,4 @@
+import datetime
 import time
 from os.path import dirname
 from pathlib import Path
@@ -17,7 +18,7 @@ version_manager = VersionConfig()
 VERSION = version_manager.version
 
 # Env
-ENV = env('ENV')
+PROJECT_ENV = env('PROJECT_ENV')
 DEBUG = env.bool('DEBUG')
 
 # Telegram
@@ -45,6 +46,7 @@ ARDUINO_TTY = env('ARDUINO_TTY')
 # Databases
 DATABASE_URL = env('DATABASE_URL')
 DATABASE_DEBUG = DEBUG
+STORAGE_TIME = datetime.timedelta(hours=env.int('STORAGE_TIME'))
 
 # Time
 TZ = env('TZ')

@@ -8,13 +8,14 @@ import dropbox
 import numpy as np
 from pandas import DataFrame
 
-from project import config
+from .utils import single_synchronized
+from ... import config
 
 
 class FileStorage:
     _dbx: dropbox.Dropbox
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._dbx = dropbox.Dropbox(config.DROPBOX_TOKEN)
 
     def upload(self, file_name: str, content: bytes) -> None:
@@ -58,11 +59,11 @@ class FileStorage:
             with open(filename, 'rb') as file:
                 self.upload(file_name=file_name, content=file.read())
 
+    @single_synchronized
     def remove_old_folders(self):
         space_usage = self._dbx.users_get_space_usage()
         allocated = space_usage.allocation.get_individual().allocated
         used = space_usage.used / allocated
-        saved_days = 14
 
         if used > 0.9:
             saved_days = 2
@@ -72,6 +73,10 @@ class FileStorage:
             saved_days = 7
         elif used > 0.6:
             saved_days = 10
+        elif used > 0.4:
+            saved_days = 14
+        else:
+            saved_days = 30
 
         entries = self._dbx.files_list_folder(path='').entries
         entries = sorted(entries, key=lambda x: x.name, reverse=True)[saved_days:]

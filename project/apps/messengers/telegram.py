@@ -1,16 +1,18 @@
+import datetime
 import logging
+import threading
 import traceback
 import typing
-import datetime
 
 import telegram
 from emoji import emojize
+from telegram import Update as TelegramUpdate
 from telegram.utils.request import Request as TelegramRequest
 
-from telegram import Update as TelegramUpdate
 from .base import BaseMessenger
-from ..core.base import Command, Message
 from .mixins import CVMixin
+from ..common.utils import synchronized
+from ..core.base import Command, Message
 from ... import config
 
 
@@ -19,6 +21,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
     default_reply_markup: typing.Optional
     _bot: telegram.Bot
     _updates_offset: typing.Optional[int] = None
+    _lock: threading.RLock
 
     def __init__(self,
                  request: typing.Optional[TelegramRequest] = None,
@@ -27,9 +30,10 @@ class TelegramMessenger(CVMixin, BaseMessenger):
             token=config.TELEGRAM_TOKEN,
             request=request,
         )
-
+        self._lock = threading.RLock()
         self.default_reply_markup = default_reply_markup
 
+    @synchronized
     def send_message(self, text: str, *, parse_mode: str = 'markdown', reply_markup=None) -> None:
         if not reply_markup and self.default_reply_markup:
             if callable(self.default_reply_markup):
@@ -44,26 +48,47 @@ class TelegramMessenger(CVMixin, BaseMessenger):
             reply_markup=reply_markup,
         )
 
-    def send_image(self, photo: typing.Any, *, caption: typing.Optional[str] = None) -> None:
+    @synchronized
+    def send_image(self, image: typing.Any, *, caption: typing.Optional[str] = None) -> None:
         self._bot.send_photo(
             self.chat_id,
-            photo=photo,
+            photo=image,
             caption=caption,
         )
 
+    @synchronized
+    def send_images(self, images: typing.Any, *, caption: typing.Optional[str] = None) -> None:
+        self._bot.send_media_group(
+            self.chat_id,
+            media=list(telegram.InputMediaPhoto(image) for image in images),
+            caption=caption,
+        )
+
+    @synchronized
+    def send_file(self, file: typing.Any, *, caption: typing.Optional[str] = None) -> None:
+        self._bot.send_document(
+            self.chat_id,
+            document=file,
+            caption=caption,
+        )
+
+    @synchronized
     def error(self, text: str, *, _title: str = 'Error') -> None:
         logging.warning(text)
         self.send_message(f'{emojize(":pager:")} ️*{_title}* ```\n{text}\n```')
 
+    @synchronized
     def exception(self, exp: Exception) -> None:
         self.error(f'{repr(exp)}\n{"".join(traceback.format_tb(exp.__traceback__))}', _title='Exception')
 
+    @synchronized
     def start_typing(self):
         try:
             self._bot.send_chat_action(chat_id=self.chat_id, action=telegram.ChatAction.TYPING)
         except telegram.error.TimedOut as e:
             logging.warning(e, exc_info=True)
 
+    @synchronized
     def get_updates(self) -> typing.Iterator[Message]:
         now = datetime.datetime.now()
 
@@ -76,8 +101,6 @@ class TelegramMessenger(CVMixin, BaseMessenger):
             self._updates_offset = updates[-1].update_id + 1
 
         for update in updates:
-            # TODO: Add logging
-
             if not update.message:
                 continue
 

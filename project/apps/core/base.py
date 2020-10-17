@@ -1,5 +1,6 @@
 import abc
 import queue
+import threading
 import typing
 from dataclasses import dataclass, field
 
@@ -7,7 +8,7 @@ import schedule
 
 from . import events
 from ..common.state import State
-from ..common.threads import ThreadPool
+from ..common.threads import TaskQueue
 from ..messengers import events as messenger_events
 from ..messengers.base import BaseMessenger
 
@@ -18,41 +19,51 @@ class CommandHandlerContext:
     state: State
     message_queue: queue
     scheduler: schedule.Scheduler
-    thread_pool: ThreadPool
+    task_queue: TaskQueue
 
 
-class BaseCommandHandler(abc.ABC):
+class BaseModule(abc.ABC):
     initial_state = {}
     context: CommandHandlerContext
     messenger: BaseMessenger
     state: State
-    thread_pool: ThreadPool
+    task_queue: TaskQueue
+    _schedule_jobs: tuple
+    _lock: typing.Union[threading.Lock, threading.RLock]
 
     def __init__(self, *, context: CommandHandlerContext) -> None:
+        self._lock = threading.RLock()
         self.context = context
 
         self.messenger = self.context.messenger
         self.state = self.context.state
-        self.thread_pool = self.context.thread_pool
-
-        events.tick.connect(self.update)
-        events.shutdown.connect(self.clear)
-        messenger_events.input_command.connect(self.process_command)
+        self.task_queue = self.context.task_queue
 
         self.state.create_many(**self.initial_state)
-        self.init_schedule(self.context.scheduler)
+        self._schedule_jobs = self.init_schedule(self.context.scheduler)
+        self.connect_to_events()
 
-    def init_schedule(self, scheduler: schedule.Scheduler) -> None:
-        pass
+    def init_schedule(self, scheduler: schedule.Scheduler) -> tuple:
+        return ()
+
+    def connect_to_events(self) -> None:
+        events.tick.connect(self.tick)
+        events.shutdown.connect(self.disconnect)
+        messenger_events.input_command.connect(self.process_command)
 
     def process_command(self, command: 'Command') -> typing.Any:
         pass
 
-    def update(self) -> None:
+    def tick(self) -> None:
         pass
 
-    def clear(self) -> None:
-        pass
+    def disconnect(self) -> None:
+        for job in self._schedule_jobs:
+            self.context.scheduler.cancel_job(job)
+
+        events.tick.disconnect(self.tick)
+        events.shutdown.disconnect(self.disconnect)
+        messenger_events.input_command.disconnect(self.process_command)
 
     @staticmethod
     def _run_command(name: str, *args, **kwargs) -> None:
@@ -91,6 +102,9 @@ class Command:
             return default
 
         return self.args[index]
+
+    def is_same(self, name, *args, **kwargs) -> bool:
+        return self.name == name and self.args == args and self.kwargs == kwargs
 
 
 @dataclass

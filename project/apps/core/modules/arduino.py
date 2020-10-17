@@ -1,22 +1,23 @@
 import datetime
+import io
 import typing
-from datetime import datetime, timedelta
 
 import schedule
 import serial
 from pandas import DataFrame
 
-from ..base import BaseCommandHandler, Command
+from ..base import BaseModule, Command
+from ..constants import ARDUINO_IS_ENABLED
 from ...arduino.base import ArduinoConnector
-from ...arduino.constants import ARDUINO_IS_ENABLED
 from ...arduino.models import ArduinoLog
 from ...common.constants import OFF, ON
 from ...common.storage import file_storage
-from ...common.utils import send_plot
+from ...common.utils import create_plot, single_synchronized, synchronized
 from ...core import events
 from ...core.constants import PHOTO, SECURITY_IS_ENABLED, USE_CAMERA
 from ...db import db_session
 from ...messengers.constants import BotCommands
+from .... import config
 
 
 __all__ = (
@@ -24,14 +25,21 @@ __all__ = (
 )
 
 
-class Arduino(BaseCommandHandler):
+class Arduino(BaseModule):
     initial_state = {
         ARDUINO_IS_ENABLED: False,
     }
     _arduino_connector: typing.Optional[ArduinoConnector] = None
 
-    def init_schedule(self, scheduler: schedule.Scheduler) -> typing.Any:
-        scheduler.every(1).hour.do(self._backup)
+    def init_schedule(self, scheduler: schedule.Scheduler) -> tuple:
+        return (
+            scheduler.every(1).hour.do(self.task_queue.push, self._backup),
+        )
+
+    def connect_to_events(self) -> None:
+        super().connect_to_events()
+
+        events.request_for_statistics.connect(self._create_arduino_sensor_stats)
 
     def process_command(self, command: Command) -> typing.Any:
         if command.name == BotCommands.ARDUINO:
@@ -44,25 +52,23 @@ class Arduino(BaseCommandHandler):
 
             return True
 
-        if command.name == BotCommands.STATS:
-            self._show_stats(command)
-            return True
-
         return False
 
-    def update(self) -> None:
-        if not self._arduino_connector:
-            return
-
+    @synchronized
+    def tick(self) -> None:
         if self._arduino_connector and not self._arduino_connector.is_active:
             self._disable_arduino()
             return
 
-        self._process_arduino_updates()
+        if self._arduino_connector and self._arduino_connector.is_active:
+            self.task_queue.push(self._process_arduino_updates)
 
-    def clear(self) -> None:
+    @synchronized
+    def disconnect(self) -> None:
+        super().disconnect()
         self._disable_arduino()
 
+    @synchronized
     def _enable_arduino(self) -> None:
         if self._arduino_connector:
             self.messenger.send_message('Arduino is already on')
@@ -80,11 +86,9 @@ class Arduino(BaseCommandHandler):
             self.state[ARDUINO_IS_ENABLED] = True
             self.messenger.send_message('Arduino is on')
 
+    @synchronized
     def _disable_arduino(self) -> None:
         self.state[ARDUINO_IS_ENABLED] = False
-
-        db_session.query(ArduinoLog).delete()
-        db_session.commit()
 
         if self._arduino_connector:
             self._arduino_connector.finish()
@@ -93,7 +97,11 @@ class Arduino(BaseCommandHandler):
         else:
             self.messenger.send_message('Arduino is already off')
 
-    def _show_stats(self, command: Command) -> None:
+        self._backup()
+        db_session().query(ArduinoLog).delete()
+        db_session().commit()
+
+    def _create_arduino_sensor_stats(self, command: Command) -> typing.Optional[typing.List[io.BytesIO]]:
         if not self.state[ARDUINO_IS_ENABLED]:
             return
 
@@ -103,14 +111,17 @@ class Arduino(BaseCommandHandler):
         )
 
         if not stats:
-            return
+            return None
 
-        send_plot(messenger=self.messenger, stats=stats, title='PIR Sensor', attr='pir_sensor')
-        send_plot(messenger=self.messenger, stats=stats, title='Humidity', attr='humidity')
-        send_plot(messenger=self.messenger, stats=stats, title='Temperature', attr='temperature')
+        return [
+            create_plot(title='PIR Sensor', x_attr='time', y_attr='pir_sensor', stats=stats),
+            create_plot(title='Humidity', x_attr='time', y_attr='humidity', stats=stats),
+            create_plot(title='Temperature', x_attr='time', y_attr='temperature', stats=stats),
+        ]
 
+    @single_synchronized
     def _process_arduino_updates(self) -> None:
-        if not self._arduino_connector:
+        if not self._arduino_connector or not self._arduino_connector.is_active:
             return
 
         security_is_enabled: bool = self.state[SECURITY_IS_ENABLED]
@@ -141,11 +152,12 @@ class Arduino(BaseCommandHandler):
             if use_camera:
                 self._run_command(BotCommands.CAMERA, PHOTO)
 
+    @single_synchronized
     def _backup(self):
         if not self.state[ARDUINO_IS_ENABLED]:
             return
 
-        all_logs = db_session.query(
+        all_logs = db_session().query(
             ArduinoLog.pir_sensor,
             ArduinoLog.humidity,
             ArduinoLog.temperature,
@@ -162,6 +174,6 @@ class Arduino(BaseCommandHandler):
                 data_frame=df,
             )
 
-        day_ago = datetime.today() - timedelta(days=1)
-        db_session.query(ArduinoLog).filter(ArduinoLog.received_at <= day_ago).delete()
-        db_session.commit()
+        timestamp = datetime.datetime.now() - config.STORAGE_TIME
+        db_session().query(ArduinoLog).filter(ArduinoLog.received_at <= timestamp).delete()
+        db_session().commit()

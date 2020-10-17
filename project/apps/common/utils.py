@@ -1,15 +1,21 @@
+import datetime
+import functools
+import io
 import logging
 import os
 import tempfile
+import threading
+import typing
 
 import cv2
+import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import requests
 import seaborn as sns
-from matplotlib.ticker import AutoLocator, IndexFormatter
+from matplotlib.dates import DateFormatter
+from matplotlib.ticker import AutoLocator, MaxNLocator
 
 from .tplink import TpLinkClient
-from ..messengers.base import BaseMessenger
 from ... import config
 
 
@@ -31,7 +37,7 @@ def get_cpu_temp() -> float:
         raise RuntimeError('Could not parse temperature output.') from e
 
 
-def send_plot(messenger: BaseMessenger, title: str, attr: str, stats: list) -> None:
+def create_plot(*, title: str, x_attr: str, y_attr: str, stats: list) -> io.BytesIO:
     sns.set()
 
     if len(stats) <= 2:
@@ -39,23 +45,54 @@ def send_plot(messenger: BaseMessenger, title: str, attr: str, stats: list) -> N
     else:
         marker = None
 
-    x = [i for i in range(len(stats))]
-    x_labels = [item.time for item in stats]
-    y = [round(getattr(item, attr), 1) for item in stats]
+    x = tuple(getattr(item, x_attr) for item in stats)
+    y = tuple(round(getattr(item, y_attr), 1) for item in stats)
 
-    fig, ax = plt.subplots()
-    ax.xaxis.set_major_locator(AutoLocator())
-    ax.yaxis.set_major_locator(AutoLocator())
-    ax.xaxis.set_major_formatter(IndexFormatter(x_labels))
+    fig, ax = plt.subplots(figsize=(12, 8,))
     ax.plot(x, y, marker=marker)
+
+    if isinstance(x[0], (datetime.date, datetime.datetime,)):
+        diff = abs(x[0] - x[-1])
+        postfix = f'({x[0].strftime("%H:%M:%S %d.%m.%y")} - {x[1].strftime("%H:%M:%S %d.%m.%y")})'
+
+        if diff < datetime.timedelta(seconds=20):
+            ax.xaxis.set_major_formatter(DateFormatter('%H:%M:%S'))
+            ax.xaxis.set_major_locator(mdates.SecondLocator(interval=1))
+            plt.xlabel(f'Time {postfix}')
+        elif diff < datetime.timedelta(minutes=20):
+            ax.xaxis.set_major_formatter(DateFormatter('%H:%M'))
+            ax.xaxis.set_major_locator(mdates.MinuteLocator(interval=1))
+            plt.xlabel(f'Time {postfix}')
+        elif diff <= datetime.timedelta(hours=24):
+            ax.xaxis.set_major_formatter(DateFormatter('%H'))
+            ax.xaxis.set_major_locator(mdates.HourLocator(interval=1))
+            plt.xlabel(f'Hours {postfix}')
+        elif diff < datetime.timedelta(days=30):
+            ax.xaxis.set_major_formatter(DateFormatter('%d'))
+            ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+            plt.xlabel(f'Days {postfix}')
+        elif diff < datetime.timedelta(days=30 * 15):
+            ax.xaxis.set_major_formatter(DateFormatter('%m'))
+            ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+            plt.xlabel(f'Months {postfix}')
+        else:
+            ax.xaxis.set_major_formatter(DateFormatter('%y'))
+            ax.xaxis.set_major_locator(mdates.YearLocator())
+            plt.xlabel(f'Years {postfix}')
+    else:
+        ax.xaxis.set_major_locator(AutoLocator())
+
+    if all(isinstance(i, int) or isinstance(i, float) and i.is_integer() for i in y):
+        ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+
     ax.set_title(title)
 
     with tempfile.TemporaryDirectory() as temp_dir_name:
-        image_name = os.path.join(temp_dir_name, 'plot.png')
+        image_name = os.path.join(temp_dir_name, f'{title}.png')
         fig.savefig(image_name)
 
         with open(image_name, 'rb') as image:
-            messenger.send_image(image)
+            return io.BytesIO(image.read())
 
 
 def check_user_connection_to_router() -> bool:
@@ -71,12 +108,12 @@ def check_user_connection_to_router() -> bool:
         logging.exception(e)
         return False
 
-    connected_mac_addresses = set(
-        device.get('MACAddress')
+    user_connection_to_router = any(
+        device.get('MACAddress') in config.ROUTER_USER_MAC_ADDRESSES
         for device in connected_devices
     )
 
-    return bool(connected_mac_addresses & config.ROUTER_USER_MAC_ADDRESSES)
+    return user_connection_to_router
 
 
 def camera_is_available(src: int) -> bool:
@@ -89,3 +126,28 @@ def camera_is_available(src: int) -> bool:
 
 def get_weather() -> dict:
     return requests.get(config.OPENWEATHERMAP_URL).json()
+
+
+def synchronized(func: typing.Callable) -> typing.Callable:
+    @functools.wraps(func)
+    def _wrapper(self, *args, **kwargs):
+        try:
+            lock = self._lock
+        except AttributeError as e:
+            raise Exception(f'"{func.__name__}" does not contain "_lock"') from e
+
+        with lock:
+            return func(self, *args, **kwargs)
+
+    return _wrapper
+
+
+def single_synchronized(func: typing.Callable) -> typing.Callable:
+    lock = threading.RLock()
+
+    @functools.wraps(func)
+    def _wrapper(*args, **kwargs):
+        with lock:
+            return func(*args, **kwargs)
+
+    return _wrapper

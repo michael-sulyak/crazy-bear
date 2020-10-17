@@ -1,6 +1,3 @@
-ARDUINO_IS_ENABLED = 'arduino_is_enabled'
-
-
 class ArduinoResponseTypes:
     SETTINGS = 'settings'
     SENSORS = 'sensors'

@@ -5,6 +5,7 @@ import sqlalchemy
 from sqlalchemy import func
 
 from .. import db
+from ... import config
 
 
 class Signal(db.Base):
@@ -18,21 +19,78 @@ class Signal(db.Base):
     @classmethod
     def add(cls, signal_type: str, value: float) -> 'Signal':
         item = cls(type=signal_type, value=value, received_at=datetime.datetime.now())
-        db.db_session.add(item)
-        db.db_session.commit()
+        db.db_session().add(item)
+        db.db_session().commit()
         return item
 
     @classmethod
     def clear(cls, signal_type: str) -> None:
-        day_ago = datetime.datetime.today() - datetime.timedelta(days=1)
-        db.db_session.query(cls).filter(cls.type == signal_type, cls.received_at <= day_ago).delete()
-        db.db_session.commit()
+        timestamp = datetime.datetime.now() - config.STORAGE_TIME
+        db.db_session().query(cls).filter(cls.type == signal_type, cls.received_at <= timestamp).delete()
+        db.db_session().commit()
+
+    @classmethod
+    def get(cls, signal_type: str, *, delta_type: str = 'hours', delta_value: int = 24) -> typing.List['Signal']:
+        query_data = cls._get_query_data(
+            signal_type=signal_type,
+            delta_type=delta_type,
+            delta_value=delta_value,
+        )
+
+        if not query_data:
+            return []
+
+        signal = db.db_session().query(
+            cls.value,
+            cls.received_at.label('time'),
+        ).filter(
+            cls.received_at >= query_data['start_time'],
+            cls.type == signal_type,
+            cls.value.isnot(None),
+        ).group_by(
+            'time',
+        ).order_by(
+            cls.received_at,
+        ).all()
+
+        return signal
 
     @classmethod
     def get_avg(cls, signal_type: str, *, delta_type: str = 'hours', delta_value: int = 24) -> typing.List['Signal']:
+        query_data = cls._get_query_data(
+            signal_type=signal_type,
+            delta_type=delta_type,
+            delta_value=delta_value,
+        )
+
+        if not query_data:
+            return []
+
+        signal = db.db_session().query(
+            func.avg(cls.value).label('value'),
+            func.avg(cls.value).label('value'),
+            cls.received_at.label('time'),
+            func.strftime(query_data['time_tpl'], cls.received_at).label('avg_time'),
+        ).filter(
+            cls.received_at >= query_data['start_time'],
+            cls.type == signal_type,
+            cls.value.isnot(None),
+        ).group_by(
+            'avg_time',
+        ).order_by(
+            cls.received_at,
+        ).all()
+
+        return signal
+
+    @classmethod
+    def _get_query_data(cls,
+                        signal_type: str, *,
+                        delta_type: str = 'hours',
+                        delta_value: int = 24) -> typing.Optional[typing.Dict[str, typing.Any]]:
         start_time = datetime.datetime.now() - datetime.timedelta(**{delta_type: delta_value})
 
-        time_filter = db.db_session.query(cls.received_at).filter(
+        time_filter = db.db_session().query(cls.received_at).filter(
             cls.received_at >= start_time,
             cls.type == signal_type,
             cls.value.isnot(None),
@@ -41,26 +99,16 @@ class Signal(db.Base):
         last_time = time_filter.order_by(cls.received_at.desc()).first()
 
         if not first_time or not last_time:
-            return []
+            return None
 
         diff = last_time[0] - first_time[0]
 
         if diff < datetime.timedelta(minutes=2):
-            time_tpl = '%H:%M:%S'
+            time_tpl = '%m.%d %H:%M:%S'
         else:
-            time_tpl = '%H:%M'
+            time_tpl = '%m.%d %H:%M'
 
-        signal = db.db_session.query(
-            func.avg(cls.value).label('value'),
-            func.strftime(time_tpl, cls.received_at).label('time'),
-            cls.value.isnot(None),
-        ).filter(
-            cls.received_at >= start_time,
-            cls.type == signal_type,
-        ).group_by(
-            'time',
-        ).order_by(
-            cls.received_at,
-        ).all()
-
-        return signal
+        return {
+            'time_tpl': time_tpl,
+            'start_time': start_time,
+        }

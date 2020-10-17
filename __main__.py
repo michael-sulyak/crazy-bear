@@ -9,22 +9,25 @@ from telegram.utils.request import Request as TelegramRequest
 
 from project import config
 from project.apps import db
-from project.apps.core import handlers
+from project.apps.core import modules
 from project.apps.messengers.utils import TelegramMenu
 from project.apps.common.constants import AUTO, ON
 from project.apps.common.state import State
 from project.apps.common.storage import file_storage
 from project.apps.core.base import Command, Message
-from project.apps.messengers.commander import Commander
+from project.apps.core.commander import Commander
 from project.apps.messengers.constants import BotCommands, INITED_AT
 from project.apps.messengers.telegram import TelegramMessenger
+
+
+logging.basicConfig(level='DEBUG' if config.DEBUG else 'INFO')
 
 
 sentry_sdk.init(
     dsn=config.SENTRY_DSN,
     release=config.VERSION,
-    environment=config.ENV,
-    debug=True,
+    environment=config.PROJECT_ENV,
+    debug=config.DEBUG,
 )
 
 
@@ -74,14 +77,13 @@ def main():
 
     commander = Commander(
         messenger=messenger,
-        command_handler_classes=(
-            handlers.Report,
-            handlers.Camera,
-            handlers.Arduino,
-            handlers.Menu,
-            handlers.Other,
-            handlers.AutoSecurity,
-            handlers.Router,
+        module_classes=(
+            modules.Camera,
+            modules.Arduino,
+            modules.Menu,
+            modules.Report,
+            modules.AutoSecurity,
+            modules.Router,
         ),
         state=state,
         scheduler=scheduler,
@@ -91,7 +93,10 @@ def main():
     commander.message_queue.put(Message(command=Command(name=BotCommands.ARDUINO, args=(ON,))))
     commander.message_queue.put(Message(command=Command(name=BotCommands.SECURITY, args=(AUTO, ON,))))
 
-    commander.run()
+    try:
+        commander.run()
+    finally:
+        db.close_db_session()
 
 
 if __name__ == '__main__':
