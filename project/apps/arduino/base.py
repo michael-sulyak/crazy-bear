@@ -30,8 +30,10 @@ class ArduinoRequest:
         return cls(type=constants.ArduinoRequestTypes.REQUEST_SETTINGS)
 
     @classmethod
-    def update_ttl(cls, ttl: int) -> 'ArduinoRequest':
-        return cls(type=constants.ArduinoRequestTypes.UPDATE_SETTINGS, payload={'ttl': ttl})
+    def update_data_delay(cls, data_delay: int) -> 'ArduinoRequest':
+        assert data_delay >= 0
+
+        return cls(type=constants.ArduinoRequestTypes.UPDATE_SETTINGS, payload={'data_delay': data_delay})
 
 
 class ArduinoConnector:
@@ -71,13 +73,16 @@ class ArduinoConnector:
 
             if response.type == constants.ArduinoResponseTypes.SENSORS:
                 arduino_log = ArduinoLog(**response.payload, received_at=response.received_at)
-                new_arduino_logs.append(arduino_log)
+                if not new_arduino_logs:
+                    new_arduino_logs.append(arduino_log)
+                elif new_arduino_logs[-1].pir_sensor < arduino_log.pir_sensor:
+                    new_arduino_logs[-1] = arduino_log
             elif response.type == constants.ArduinoResponseTypes.SETTINGS:
                 self._settings = response.payload
 
         if new_arduino_logs:
-            db_session().add_all(new_arduino_logs)
-            db_session().commit()
+            with db_session().transaction:
+                db_session().add_all(new_arduino_logs)
 
         return new_arduino_logs
 
@@ -102,6 +107,9 @@ class ArduinoConnector:
                 line = json.loads(line)
             except (json.decoder.JSONDecodeError, UnicodeDecodeError,) as e:
                 logging.warning(e)
+                continue
+
+            if not isinstance(line, dict):
                 continue
 
             yield ArduinoResponse(**line)

@@ -98,8 +98,9 @@ class Arduino(BaseModule):
             self.messenger.send_message('Arduino is already off')
 
         self._backup()
-        db_session().query(ArduinoLog).delete()
-        db_session().commit()
+
+        with db_session().transaction:
+            db_session().query(ArduinoLog).delete()
 
     def _create_arduino_sensor_stats(self, command: Command) -> typing.Optional[typing.List[io.BytesIO]]:
         if not self.state[ARDUINO_IS_ENABLED]:
@@ -127,30 +128,33 @@ class Arduino(BaseModule):
         security_is_enabled: bool = self.state[SECURITY_IS_ENABLED]
         new_arduino_logs = self._arduino_connector.process_updates()
 
-        if not security_is_enabled or not new_arduino_logs:
+        if not new_arduino_logs:
             return
 
-        last_movement = None
+        if security_is_enabled:
+            last_movement = None
 
-        for arduino_log in reversed(new_arduino_logs):
-            if arduino_log.pir_sensor <= 1:
-                continue
+            for arduino_log in reversed(new_arduino_logs):
+                if arduino_log.pir_sensor <= 1:
+                    continue
 
-            if not last_movement or last_movement.pir_sensor < arduino_log.pir_sensor:
-                last_movement = arduino_log
+                if not last_movement or last_movement.pir_sensor < arduino_log.pir_sensor:
+                    last_movement = arduino_log
 
-        if last_movement:
-            events.motion_detected.send()
+            if last_movement:
+                events.motion_detected.send()
 
-            self.messenger.send_message(
-                f'*Detected movement*\n'
-                f'Current pir sensor: `{last_movement.pir_sensor}`\n'
-                f'Timestamp: `{last_movement.received_at.strftime("%Y-%m-%d, %H:%M:%S")}`'
-            )
-            use_camera: bool = self.state[USE_CAMERA]
+                self.messenger.send_message(
+                    f'*Detected movement*\n'
+                    f'Current pir sensor: `{last_movement.pir_sensor}`\n'
+                    f'Timestamp: `{last_movement.received_at.strftime("%Y-%m-%d, %H:%M:%S")}`'
+                )
+                use_camera: bool = self.state[USE_CAMERA]
 
-            if use_camera:
-                self._run_command(BotCommands.CAMERA, PHOTO)
+                if use_camera:
+                    self._run_command(BotCommands.CAMERA, PHOTO)
+
+        events.new_arduino_logs.send(new_arduino_logs=new_arduino_logs)
 
     @single_synchronized
     def _backup(self):
@@ -175,5 +179,6 @@ class Arduino(BaseModule):
             )
 
         timestamp = datetime.datetime.now() - config.STORAGE_TIME
-        db_session().query(ArduinoLog).filter(ArduinoLog.received_at <= timestamp).delete()
-        db_session().commit()
+
+        with db_session().transaction:
+            db_session().query(ArduinoLog).filter(ArduinoLog.received_at <= timestamp).delete()

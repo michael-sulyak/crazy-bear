@@ -15,4 +15,5 @@ class BotCommands:
 
     OTHER = '/other'
     CONNECTED_DEVICES = '/connected_devices'
+    RECOMMENDATION_SYSTEM = '/recommendation_system'
     RETURN = '/return'

@@ -84,6 +84,7 @@ def main():
             modules.Report,
             modules.AutoSecurity,
             modules.Router,
+            modules.RecommendationSystem,
         ),
         state=state,
         scheduler=scheduler,
@@ -92,6 +93,7 @@ def main():
     commander.message_queue.put(Message(command=Command(name=BotCommands.STATUS)))
     commander.message_queue.put(Message(command=Command(name=BotCommands.ARDUINO, args=(ON,))))
     commander.message_queue.put(Message(command=Command(name=BotCommands.SECURITY, args=(AUTO, ON,))))
+    commander.message_queue.put(Message(command=Command(name=BotCommands.RECOMMENDATION_SYSTEM, args=(ON,))))
 
     try:
         commander.run()

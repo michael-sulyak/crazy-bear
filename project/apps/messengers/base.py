@@ -14,7 +14,7 @@ class BaseMessenger(mixins.BaseCVMixin, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def send_images(self, images: typing.Any, *, caption: typing.Optional[str] = None) -> None:
+    def send_images(self, images: typing.Any) -> None:
         pass
 
     @abc.abstractmethod

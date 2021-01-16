@@ -155,3 +155,7 @@ def single_synchronized(func: typing.Callable) -> typing.Callable:
             return func(*args, **kwargs)
 
     return _wrapper
+
+
+def is_sleep_hours(timestamp: datetime.datetime) -> bool:
+    return timestamp.hour >= 23 or timestamp.hour <= 7

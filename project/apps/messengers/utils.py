@@ -3,11 +3,14 @@ import typing
 
 from telegram import ReplyKeyboardMarkup
 
-from ..core.base import Command, Message
-from ..core.constants import ARDUINO_IS_ENABLED, AUTO_SECURITY_IS_ENABLED, SECURITY_IS_ENABLED, USE_CAMERA
 from .constants import BotCommands
 from ..common.constants import AUTO, OFF, ON
 from ..common.state import State
+from ..core.base import Command, Message
+from ..core.constants import (
+    ARDUINO_IS_ENABLED, AUTO_SECURITY_IS_ENABLED, RECOMMENDATION_SYSTEM_IS_ENABLED,
+    SECURITY_IS_ENABLED, USE_CAMERA,
+)
 
 
 def scheduled_task(message_queue: queue, command_name: str) -> typing.Callable:
@@ -58,15 +61,15 @@ class TelegramMenu:
             BotCommands.OTHER,
         ]
 
-        return ReplyKeyboardMarkup((
+        return ReplyKeyboardMarkup([
             first_line,
             second_line,
             third_line,
-        ))
+        ])
 
-    @staticmethod
-    def _get_other_menu() -> ReplyKeyboardMarkup:
-        return ReplyKeyboardMarkup((
-            (BotCommands.REPORT, BotCommands.CONNECTED_DEVICES,),
-            (BotCommands.RETURN,),
-        ))
+    def _get_other_menu(self) -> ReplyKeyboardMarkup:
+        return ReplyKeyboardMarkup([
+            [BotCommands.REPORT, BotCommands.CONNECTED_DEVICES],
+            [f'{BotCommands.RECOMMENDATION_SYSTEM} {OFF if self.state[RECOMMENDATION_SYSTEM_IS_ENABLED] else ON}'],
+            [BotCommands.RETURN],
+        ])

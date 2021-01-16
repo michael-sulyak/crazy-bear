@@ -19,15 +19,18 @@ class Signal(db.Base):
     @classmethod
     def add(cls, signal_type: str, value: float) -> 'Signal':
         item = cls(type=signal_type, value=value, received_at=datetime.datetime.now())
-        db.db_session().add(item)
-        db.db_session().commit()
+
+        with db.db_session().transaction:
+            db.db_session().add(item)
+
         return item
 
     @classmethod
     def clear(cls, signal_type: str) -> None:
         timestamp = datetime.datetime.now() - config.STORAGE_TIME
-        db.db_session().query(cls).filter(cls.type == signal_type, cls.received_at <= timestamp).delete()
-        db.db_session().commit()
+
+        with db.db_session().transaction:
+            db.db_session().query(cls).filter(cls.type == signal_type, cls.received_at <= timestamp).delete()
 
     @classmethod
     def get(cls, signal_type: str, *, delta_type: str = 'hours', delta_value: int = 24) -> typing.List['Signal']:

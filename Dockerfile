@@ -41,7 +41,7 @@ RUN apt-get install -y \
     python3-opencv=4.2.0+dfsg-6build3
 
 # Requirements
-RUN pip3 install poetry==1.0.5
+RUN pip3 install poetry==1.1.3
 COPY ./pyproject.toml /app
 COPY ./poetry.lock /app
 RUN poetry config virtualenvs.create false && \
