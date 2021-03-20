@@ -1,11 +1,21 @@
 import collections
 import datetime
 import logging
+import queue
 import threading
 import typing
+from dataclasses import dataclass, field
 from time import sleep
 
+from .models import Signal
 from .utils import synchronized
+from ..core.constants import TASK_QUEUE_PUSH
+
+
+__all__ = (
+    'TaskQueue',
+    'TaskQueueWithStats',
+)
 
 
 class ThreadPool:
@@ -57,22 +67,35 @@ class ThreadPool:
                 break
 
 
+@dataclass(order=True)
+class _Task:
+    priority: int
+
+    target: typing.Callable = field(compare=False)
+    args: tuple = field(compare=False)
+    kwargs: typing.Dict[str, typing.Any] = field(compare=False)
+
+    def __call__(self, *args, **kwargs) -> typing.Any:
+        return self.target(*self.args, **self.kwargs)
+
+
 class TaskQueue:
-    _tasks: typing.Deque[typing.Tuple[typing.Callable, tuple, typing.Dict[str, typing.Any]]]
+    _tasks: queue.PriorityQueue
     _lock: threading.Lock
     _thread: threading.Thread
     _on_close: typing.Optional[typing.Callable]
     _is_stopped: bool = False
 
     def __init__(self, *, on_close: typing.Optional[typing.Callable] = None) -> None:
-        self._tasks = collections.deque()
+        self._tasks = queue.PriorityQueue()
         self._lock = threading.Lock()
         self._thread = threading.Thread(target=self._process_tasks)
         self._thread.start()
         self._on_close = on_close
 
-    def __len__(self) -> int:
-        return len(self._tasks)
+    @property
+    def approximate_size(self) -> int:
+        return self._tasks.qsize()
 
     def push(self,
              target: typing.Callable,
@@ -88,10 +111,14 @@ class TaskQueue:
         if kwargs is None:
             kwargs = {}
 
-        if is_high:
-            self._tasks.appendleft((target, args, kwargs,))
-        else:
-            self._tasks.append((target, args, kwargs,))
+        task = _Task(
+            priority=1 if is_high else 2,
+            target=target,
+            args=args,
+            kwargs=kwargs,
+        )
+
+        self._tasks.put(task)
 
     @synchronized
     def close(self) -> None:
@@ -101,7 +128,7 @@ class TaskQueue:
     def _process_tasks(self) -> typing.NoReturn:
         while not self._is_stopped:
             try:
-                task = self._tasks.popleft()
+                _, task = self._tasks.get()
             except IndexError:
                 task = None
 
@@ -109,9 +136,47 @@ class TaskQueue:
                 sleep(1)
             else:
                 try:
-                    task[0](*task[1], **task[2])
+                    task()
                 except Exception as e:
                     logging.exception(e)
 
         if self._on_close:
             self._on_close()
+
+
+class TaskQueueWithStats(TaskQueue):
+    _history: typing.Deque[Signal]
+    _max_history = 100
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
+        self._history = collections.deque()
+
+    def push(self, *args, **kwargs) -> None:
+        if self._is_stopped:
+            return
+
+        super().push(*args, **kwargs)
+
+        self._history.append(Signal(
+            type=TASK_QUEUE_PUSH,
+            value=1,
+            received_at=datetime.datetime.now(),
+        ))
+
+        if len(self._history) > self._max_history:
+            self.save_history()
+
+    @synchronized
+    def save_history(self) -> None:
+        history = []
+
+        for _ in range(self._max_history):
+            try:
+                history.append(self._history.popleft())
+            except IndexError:
+                break
+
+        if history:
+            Signal.bulk_add(history)

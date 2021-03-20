@@ -26,6 +26,11 @@ class Signal(db.Base):
         return item
 
     @classmethod
+    def bulk_add(cls, signals: typing.Iterable['Signal']) -> None:
+        with db.db_session().transaction:
+            db.db_session().add_all(signals)
+
+    @classmethod
     def clear(cls, signal_type: str) -> None:
         timestamp = datetime.datetime.now() - config.STORAGE_TIME
 
@@ -59,7 +64,11 @@ class Signal(db.Base):
         return signal
 
     @classmethod
-    def get_avg(cls, signal_type: str, *, delta_type: str = 'hours', delta_value: int = 24) -> typing.List['Signal']:
+    def get_aggregated(cls,
+                       signal_type: str, *,
+                       aggregate_function: typing.Callable,
+                       delta_type: str = 'hours',
+                       delta_value: int = 24) -> typing.List['Signal']:
         query_data = cls._get_query_data(
             signal_type=signal_type,
             delta_type=delta_type,
@@ -70,16 +79,15 @@ class Signal(db.Base):
             return []
 
         signal = db.db_session().query(
-            func.avg(cls.value).label('value'),
-            func.avg(cls.value).label('value'),
+            aggregate_function(cls.value).label('value'),
             cls.received_at.label('time'),
-            func.strftime(query_data['time_tpl'], cls.received_at).label('avg_time'),
+            func.strftime(query_data['time_tpl'], cls.received_at).label('aggregated_time'),
         ).filter(
             cls.received_at >= query_data['start_time'],
             cls.type == signal_type,
             cls.value.isnot(None),
         ).group_by(
-            'avg_time',
+            'aggregated_time',
         ).order_by(
             cls.received_at,
         ).all()

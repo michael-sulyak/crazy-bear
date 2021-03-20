@@ -8,7 +8,7 @@ import schedule
 from . import events as core_events
 from .base import BaseModule, CommandHandlerContext, Message
 from ..common.state import State
-from ..common.threads import TaskQueue
+from ..common.threads import TaskQueue, TaskQueueWithStats
 from ..db import close_db_session
 from ..messengers import events
 from ..messengers.base import BaseMessenger
@@ -28,7 +28,7 @@ class Commander:
                  state: State,
                  scheduler: schedule.Scheduler) -> None:
         self.message_queue = queue.Queue()
-        self.task_queue = TaskQueue(on_close=close_db_session)
+        self.task_queue = TaskQueueWithStats(on_close=close_db_session)
         self.messenger = messenger
         self.state = state
 

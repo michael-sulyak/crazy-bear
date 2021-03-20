@@ -1,4 +1,4 @@
-# Crazy bear - Home Assistant
+# CrazyBear - Home Assistant
 
 ## Setup
 

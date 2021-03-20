@@ -2,12 +2,12 @@ version: '3'
 
 services:
   core:
-    restart: unless-stopped
+    restart: always
     build:
       context: .
       dockerfile: ./Dockerfile
     env_file:
-      - envs/local.env
+      - envs/prod.env
     privileged: true
     volumes:
       - .:/app

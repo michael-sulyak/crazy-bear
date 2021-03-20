@@ -10,6 +10,7 @@ import typing
 import cv2
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
+import pandas as pd
 import requests
 import seaborn as sns
 from matplotlib.dates import DateFormatter
@@ -39,6 +40,7 @@ def get_cpu_temp() -> float:
 
 def create_plot(*, title: str, x_attr: str, y_attr: str, stats: list) -> io.BytesIO:
     sns.set()
+    pd.plotting.register_matplotlib_converters()
 
     if len(stats) <= 2:
         marker = 'o'
@@ -158,4 +160,11 @@ def single_synchronized(func: typing.Callable) -> typing.Callable:
 
 
 def is_sleep_hours(timestamp: datetime.datetime) -> bool:
-    return timestamp.hour >= 23 or timestamp.hour <= 7
+    assert 0 <= config.SLEEP_HOURS[0] <= 24
+    assert 0 <= config.SLEEP_HOURS[1] <= 24
+    assert config.SLEEP_HOURS[0] != config.SLEEP_HOURS[1]
+
+    if config.SLEEP_HOURS[0] > config.SLEEP_HOURS[1]:
+        return timestamp.hour >= config.SLEEP_HOURS[0] or timestamp.hour <= config.SLEEP_HOURS[1]
+    else:
+        return config.SLEEP_HOURS[0] <= timestamp.hour <= config.SLEEP_HOURS[1]

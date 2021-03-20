@@ -135,7 +135,7 @@ class Arduino(BaseModule):
             last_movement = None
 
             for arduino_log in reversed(new_arduino_logs):
-                if arduino_log.pir_sensor <= 1:
+                if arduino_log.pir_sensor <= 50:
                     continue
 
                 if not last_movement or last_movement.pir_sensor < arduino_log.pir_sensor:

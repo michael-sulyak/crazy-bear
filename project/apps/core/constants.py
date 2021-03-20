@@ -1,7 +1,9 @@
 CPU_TEMPERATURE = 'cpu_temperature'
-TASK_QUEUE_SIZE = 'task_queue_size'
-AUTO_SECURITY_IS_ENABLED = 'auto_security_is_enabled'
+RAM_USAGE = 'ram_usage'
+TASK_QUEUE_PUSH = 'task_queue_push'
 USER_IS_CONNECTED_TO_ROUTER = 'user_is_connected_to_router'
+
+AUTO_SECURITY_IS_ENABLED = 'auto_security_is_enabled'
 USE_CAMERA = 'use_camera'
 SECURITY_IS_ENABLED = 'security_is_enabled'
 VIDEO_SECURITY = 'video_security'
