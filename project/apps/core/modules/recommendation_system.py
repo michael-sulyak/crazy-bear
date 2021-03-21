@@ -23,10 +23,11 @@ class RecommendationSystem(BaseModule):
 
         self._last_sent_at_map = defaultdict(lambda: datetime.datetime.now() - self._timedelta_for_sending)
 
-    def connect_to_events(self) -> None:
-        super().connect_to_events()
-
-        events.new_arduino_logs.connect(self._process_new_arduino_logs)
+    def subscribe_to_events(self) -> tuple:
+        return (
+            *super().subscribe_to_events(),
+            events.new_arduino_logs.connect(self._process_new_arduino_logs),
+        )
 
     @synchronized
     def process_command(self, command: Command) -> typing.Any:

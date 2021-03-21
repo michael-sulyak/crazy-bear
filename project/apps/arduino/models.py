@@ -1,11 +1,11 @@
 import datetime
-
-import sqlalchemy
 import typing
 
+import sqlalchemy
 from sqlalchemy import func
 
 from .. import db
+from ... import config
 
 
 class ArduinoLog(db.Base):
@@ -73,3 +73,10 @@ class ArduinoLog(db.Base):
         ).all()
 
         return signal
+
+    @classmethod
+    def clear(cls) -> None:
+        timestamp = datetime.datetime.now() - config.STORAGE_TIME
+
+        with db.db_session().transaction:
+            db.db_session().query(cls).filter(cls.received_at <= timestamp).delete()

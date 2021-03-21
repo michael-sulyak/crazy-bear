@@ -6,10 +6,10 @@ import schedule
 
 from ..base import BaseModule, Command
 from ...common.models import Signal
+from ...common.threads import TaskPriorities
 from ...common.tplink import TpLinkClient
 from ...common.utils import check_user_connection_to_router, create_plot, synchronized
-from ...core import events
-from ...core.constants import USER_IS_CONNECTED_TO_ROUTER
+from ...core import constants, events
 from ...messengers.constants import BotCommands
 from .... import config
 
@@ -20,33 +20,54 @@ __all__ = (
 
 
 class Router(BaseModule):
+    _tplink_client: TpLinkClient
     _last_connected_at: datetime.datetime
-    _need_initialization: bool = True
     _timedelta_for_connection: datetime.timedelta = datetime.timedelta(seconds=30)
+    _prev_is_connected: typing.Optional[bool] = None
+    _last_saving: datetime.datetime
+    _timedelta_for_saving: datetime.timedelta = datetime.timedelta(minutes=1)
+
+    _last_checking: datetime.datetime
+    _timedelta_for_checking: datetime.timedelta = datetime.timedelta(seconds=10)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
+        self.tplink_client = TpLinkClient(
+            username=config.ROUTER_USERNAME,
+            password=config.ROUTER_PASSWORD,
+            url=config.ROUTER_URL,
+        )
+
         now = datetime.datetime.now()
         self._last_connected_at = now
+        self._last_saving = now
+        self._last_checking = now
 
     @property
     def initial_state(self) -> typing.Dict[str, typing.Any]:
         return {
-            USER_IS_CONNECTED_TO_ROUTER: check_user_connection_to_router(),
+            constants.USER_IS_CONNECTED_TO_ROUTER: check_user_connection_to_router(),
         }
 
-    def connect_to_events(self) -> None:
-        super().connect_to_events()
-
-        events.request_for_statistics.connect(self._create_router_stats)
+    def subscribe_to_events(self) -> tuple:
+        return (
+            *super().subscribe_to_events(),
+            events.request_for_statistics.connect(self._create_router_stats),
+        )
 
     def init_schedule(self, scheduler: schedule.Scheduler) -> tuple:
         return (
             scheduler.every(1).hours.do(
-                self.task_queue.push,
-                lambda: Signal.clear(signal_type=USER_IS_CONNECTED_TO_ROUTER),
+                self.unique_task_queue.push,
+                lambda: Signal.clear(signal_types=(constants.USER_IS_CONNECTED_TO_ROUTER,)),
+                priority=TaskPriorities.LOW,
             ),
+            # scheduler.every(1).seconds.do(
+            #     self.unique_task_queue.push,
+            #     self._check_user_status,
+            #     priority=TaskPriorities.HIGH,
+            # ),
         )
 
     def process_command(self, command: Command) -> typing.Any:
@@ -58,26 +79,42 @@ class Router(BaseModule):
 
     @synchronized
     def tick(self) -> None:
-        is_connected = check_user_connection_to_router()
-        Signal.add(signal_type=USER_IS_CONNECTED_TO_ROUTER, value=int(is_connected))
+        self._check_user_status()
+
+    @synchronized
+    def _check_user_status(self) -> None:
         now = datetime.datetime.now()
 
-        if self._need_initialization:
-            self.state[USER_IS_CONNECTED_TO_ROUTER] = is_connected
-            self._need_initialization = False
-        elif is_connected:
-            self._last_connected_at = now
+        need_to_recheck = (
+            self._prev_is_connected is not True
+            or now - self._last_checking >= self._timedelta_for_checking
+        )
 
-            if not self.state[USER_IS_CONNECTED_TO_ROUTER]:
-                self.state[USER_IS_CONNECTED_TO_ROUTER] = True
-        elif now - self._last_connected_at >= self._timedelta_for_connection:
-            if self.state[USER_IS_CONNECTED_TO_ROUTER]:
-                self.state[USER_IS_CONNECTED_TO_ROUTER] = False
+        if not need_to_recheck:
+            return
+
+        is_connected = check_user_connection_to_router()
+
+        need_to_save = self._prev_is_connected != is_connected or now - self._last_saving >= self._timedelta_for_saving
+
+        if need_to_save:
+            Signal.add(signal_type=constants.USER_IS_CONNECTED_TO_ROUTER, value=int(is_connected))
+            self._prev_is_connected = is_connected
+            self._last_saving = now
+
+        if is_connected:
+            self._last_connected_at = now
+            self.state[constants.USER_IS_CONNECTED_TO_ROUTER] = True
+
+        can_reset_connection = now - self._last_connected_at >= self._timedelta_for_connection
+
+        if not is_connected and can_reset_connection:
+            self.state[constants.USER_IS_CONNECTED_TO_ROUTER] = False
 
     @staticmethod
     def _create_router_stats(command: Command) -> typing.Optional[io.BytesIO]:
         stats = Signal.get(
-            signal_type=USER_IS_CONNECTED_TO_ROUTER,
+            signal_type=constants.USER_IS_CONNECTED_TO_ROUTER,
             delta_type=command.get_second_arg('hours'),
             delta_value=int(command.get_first_arg(24)),
         )
@@ -88,13 +125,7 @@ class Router(BaseModule):
         return create_plot(title='User is connected to router', x_attr='time', y_attr='value', stats=stats)
 
     def _send_connected_devices(self) -> None:
-        tplink_client = TpLinkClient(
-            username=config.ROUTER_USERNAME,
-            password=config.ROUTER_PASSWORD,
-            url=config.ROUTER_URL,
-        )
-
-        connected_devices = tplink_client.get_connected_devices()
+        connected_devices = self.tplink_client.get_connected_devices()
 
         message = ''
 

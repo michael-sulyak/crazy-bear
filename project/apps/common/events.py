@@ -1,6 +1,15 @@
 import logging
 import threading
 import typing
+from dataclasses import dataclass
+
+from .utils import synchronized
+
+
+__all__ = (
+    'Event',
+    'Receiver',
+)
 
 
 class Event:
@@ -8,26 +17,28 @@ class Event:
     providing_kwargs: typing.Tuple[str]
     _lock: threading.Lock
 
-    def __init__(self, providing_kwargs: typing.Optional[typing.Iterable[str]] = ()) -> None:
+    def __init__(self, *, providing_kwargs: typing.Optional[typing.Iterable[str]] = ()) -> None:
         self.receivers = []
         self._lock = threading.Lock()
         self.providing_kwargs = tuple(providing_kwargs)
 
-    def connect(self, receiver: typing.Callable) -> None:
-        assert callable(receiver)
+    @synchronized
+    def connect(self, func: typing.Callable) -> 'Receiver':
+        assert callable(func)
 
-        with self._lock:
-            self.receivers.append(receiver)
+        self.receivers.append(func)
 
+        return Receiver(func=func, event=self)
+
+    @synchronized
     def disconnect(self, receiver: typing.Callable) -> None:
         assert callable(receiver)
 
-        with self._lock:
-            try:
-                index = self.receivers.index(receiver)
-                del self.receivers[index]
-            except ValueError:
-                pass
+        try:
+            index = self.receivers.index(receiver)
+            del self.receivers[index]
+        except ValueError:
+            pass
 
     def send(self, **kwargs) -> None:
         for receiver in self.receivers:
@@ -53,3 +64,12 @@ class Event:
                 exceptions.append(e)
 
         return results, exceptions
+
+
+@dataclass
+class Receiver:
+    event: Event
+    func: typing.Callable
+
+    def disconnect(self) -> None:
+        self.event.disconnect(self.func)

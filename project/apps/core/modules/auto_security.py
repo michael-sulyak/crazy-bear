@@ -6,6 +6,7 @@ from .. import events
 from ..base import BaseModule, Command
 from ..constants import AUTO_SECURITY_IS_ENABLED, SECURITY_IS_ENABLED, USER_IS_CONNECTED_TO_ROUTER, USE_CAMERA
 from ...common.constants import AUTO, OFF, ON
+from ...common.threads import TaskPriorities
 from ...common.utils import single_synchronized, synchronized
 from ...messengers.constants import BotCommands
 
@@ -29,9 +30,11 @@ class AutoSecurity(BaseModule):
 
         self._lock_for_last_movement_at = threading.RLock()
 
-    def connect_to_events(self) -> None:
-        super().connect_to_events()
-        events.motion_detected.connect(self._motion_detected)
+    def subscribe_to_events(self) -> tuple:
+        return (
+            *super().subscribe_to_events(),
+            events.motion_detected.connect(self._update_last_movement_at),
+        )
 
     def process_command(self, command: Command) -> typing.Any:
         if command.name == BotCommands.SECURITY:
@@ -57,13 +60,12 @@ class AutoSecurity(BaseModule):
 
     def tick(self) -> None:
         if self.state[AUTO_SECURITY_IS_ENABLED]:
-            self.task_queue.push(self._check_auto_security_status)
+            self.unique_task_queue.push(self._check_auto_security_status, priority=TaskPriorities.HIGH)
 
     @synchronized
-    def disconnect(self) -> None:
-        super().disconnect()
+    def disable(self) -> None:
+        super().disable()
         self._disable_auto_security()
-        events.motion_detected.disconnect(self._motion_detected)
 
     @synchronized
     def _enable_security(self) -> None:
@@ -93,7 +95,8 @@ class AutoSecurity(BaseModule):
 
         self.messenger.send_message('Auto security is disabled')
 
-    def _motion_detected(self) -> None:
+    @synchronized
+    def _update_last_movement_at(self) -> None:
         with self._lock_for_last_movement_at:
             self._last_movement_at = datetime.datetime.now()
 

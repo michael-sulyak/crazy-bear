@@ -12,7 +12,8 @@ from ...arduino.base import ArduinoConnector
 from ...arduino.models import ArduinoLog
 from ...common.constants import OFF, ON
 from ...common.storage import file_storage
-from ...common.utils import create_plot, single_synchronized, synchronized
+from ...common.threads import TaskPriorities
+from ...common.utils import create_plot, synchronized
 from ...core import events
 from ...core.constants import PHOTO, SECURITY_IS_ENABLED, USE_CAMERA
 from ...db import db_session
@@ -31,15 +32,28 @@ class Arduino(BaseModule):
     }
     _arduino_connector: typing.Optional[ArduinoConnector] = None
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
     def init_schedule(self, scheduler: schedule.Scheduler) -> tuple:
         return (
-            scheduler.every(1).hour.do(self.task_queue.push, self._backup),
+            scheduler.every(1).hour.do(
+                self.unique_task_queue.push,
+                self._backup,
+                priority=TaskPriorities.LOW,
+            ),
+            scheduler.every(1).hour.do(
+                self.unique_task_queue.push,
+                lambda: ArduinoLog.clear(),
+                priority=TaskPriorities.LOW,
+            ),
         )
 
-    def connect_to_events(self) -> None:
-        super().connect_to_events()
-
-        events.request_for_statistics.connect(self._create_arduino_sensor_stats)
+    def subscribe_to_events(self) -> tuple:
+        return (
+            *super().subscribe_to_events(),
+            events.request_for_statistics.connect(self._create_arduino_sensor_stats),
+        )
 
     def process_command(self, command: Command) -> typing.Any:
         if command.name == BotCommands.ARDUINO:
@@ -56,16 +70,20 @@ class Arduino(BaseModule):
 
     @synchronized
     def tick(self) -> None:
-        if self._arduino_connector and not self._arduino_connector.is_active:
+        arduino_connector_is_not_active = self._arduino_connector and not self._arduino_connector.is_active
+
+        if arduino_connector_is_not_active:
             self._disable_arduino()
             return
 
-        if self._arduino_connector and self._arduino_connector.is_active:
-            self.task_queue.push(self._process_arduino_updates)
+        arduino_connector_is_active = self._arduino_connector and self._arduino_connector.is_active
+
+        if arduino_connector_is_active:
+            self.unique_task_queue.push(self._process_arduino_updates, priority=TaskPriorities.HIGH)
 
     @synchronized
-    def disconnect(self) -> None:
-        super().disconnect()
+    def disable(self) -> None:
+        super().disable()
         self._disable_arduino()
 
     @synchronized
@@ -120,7 +138,7 @@ class Arduino(BaseModule):
             create_plot(title='Temperature', x_attr='time', y_attr='temperature', stats=stats),
         ]
 
-    @single_synchronized
+    @synchronized
     def _process_arduino_updates(self) -> None:
         if not self._arduino_connector or not self._arduino_connector.is_active:
             return
@@ -156,7 +174,7 @@ class Arduino(BaseModule):
 
         events.new_arduino_logs.send(new_arduino_logs=new_arduino_logs)
 
-    @single_synchronized
+    @synchronized
     def _backup(self):
         if not self.state[ARDUINO_IS_ENABLED]:
             return

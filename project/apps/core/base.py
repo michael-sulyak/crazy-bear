@@ -7,8 +7,9 @@ from dataclasses import dataclass, field
 import schedule
 
 from . import events
+from ..common.events import Receiver
 from ..common.state import State
-from ..common.threads import TaskQueue
+from ..common.threads import TaskQueue, UniqueTaskQueue
 from ..messengers import events as messenger_events
 from ..messengers.base import BaseMessenger
 
@@ -28,7 +29,9 @@ class BaseModule(abc.ABC):
     messenger: BaseMessenger
     state: State
     task_queue: TaskQueue
+    unique_task_queue: UniqueTaskQueue
     _schedule_jobs: tuple
+    _subscribers_to_events: typing.Tuple[Receiver, ...]
     _lock: typing.Union[threading.Lock, threading.RLock]
 
     def __init__(self, *, context: CommandHandlerContext) -> None:
@@ -38,18 +41,21 @@ class BaseModule(abc.ABC):
         self.messenger = self.context.messenger
         self.state = self.context.state
         self.task_queue = self.context.task_queue
+        self.unique_task_queue = UniqueTaskQueue(task_queue=self.context.task_queue)
 
         self.state.create_many(**self.initial_state)
         self._schedule_jobs = self.init_schedule(self.context.scheduler)
-        self.connect_to_events()
+        self._subscribers_to_events = self.subscribe_to_events()
 
     def init_schedule(self, scheduler: schedule.Scheduler) -> tuple:
         return ()
 
-    def connect_to_events(self) -> None:
-        events.tick.connect(self.tick)
-        events.shutdown.connect(self.disconnect)
-        messenger_events.input_command.connect(self.process_command)
+    def subscribe_to_events(self) -> typing.Tuple[Receiver, ...]:
+        return (
+            events.tick.connect(self.tick),
+            events.shutdown.connect(self.disable),
+            messenger_events.input_command.connect(self.process_command),
+        )
 
     def process_command(self, command: 'Command') -> typing.Any:
         pass
@@ -57,13 +63,12 @@ class BaseModule(abc.ABC):
     def tick(self) -> None:
         pass
 
-    def disconnect(self) -> None:
+    def disable(self) -> None:
         for job in self._schedule_jobs:
             self.context.scheduler.cancel_job(job)
 
-        events.tick.disconnect(self.tick)
-        events.shutdown.disconnect(self.disconnect)
-        messenger_events.input_command.disconnect(self.process_command)
+        for subscriber in self._subscribers_to_events:
+            subscriber.disconnect()
 
     @staticmethod
     def _run_command(name: str, *args, **kwargs) -> None:

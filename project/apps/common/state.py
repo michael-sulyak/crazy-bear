@@ -90,14 +90,14 @@ class State:
         self._subscribers_map[name].append(subscriber)
 
     @synchronized
-    def _notify(self, *, name: str, old_value: typing.Any, new_value: typing.Any) -> None:
-        for subscriber in self._subscribers_map[name]:
-            subscriber(name=name, old_value=old_value, new_value=new_value)
-
-    @synchronized
     def unsubscribe(self, name: str, subscriber: typing.Callable) -> None:
         try:
             index = self._subscribers_map[name].index(subscriber)
             del self._subscribers_map[name][index]
         except ValueError:
             pass
+
+    @synchronized
+    def _notify(self, *, name: str, old_value: typing.Any, new_value: typing.Any) -> None:
+        for subscriber in self._subscribers_map[name]:
+            subscriber(name=name, old_value=old_value, new_value=new_value)

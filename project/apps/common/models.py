@@ -31,11 +31,11 @@ class Signal(db.Base):
             db.db_session().add_all(signals)
 
     @classmethod
-    def clear(cls, signal_type: str) -> None:
+    def clear(cls, signal_types: typing.Iterable[str]) -> None:
         timestamp = datetime.datetime.now() - config.STORAGE_TIME
 
         with db.db_session().transaction:
-            db.db_session().query(cls).filter(cls.type == signal_type, cls.received_at <= timestamp).delete()
+            db.db_session().query(cls).filter(cls.type in signal_types, cls.received_at <= timestamp).delete()
 
     @classmethod
     def get(cls, signal_type: str, *, delta_type: str = 'hours', delta_value: int = 24) -> typing.List['Signal']:
@@ -55,8 +55,8 @@ class Signal(db.Base):
             cls.received_at >= query_data['start_time'],
             cls.type == signal_type,
             cls.value.isnot(None),
-        ).group_by(
-            'time',
+        # ).group_by(
+        #     'time',
         ).order_by(
             cls.received_at,
         ).all()

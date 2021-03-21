@@ -8,7 +8,7 @@ from imutils.video import VideoStream
 
 from .motion_detector import MotionDetector
 from ..common.storage import file_storage
-from ..common.threads import TaskQueue
+from ..common.threads import TaskPriorities, TaskQueue
 from ..messengers.base import BaseMessenger
 from ... import config
 
@@ -116,7 +116,7 @@ class VideoGuard:
             self.messenger.send_frame,
             args=(frame,),
             kwargs={'caption': caption},
-            is_high=True,
+            priority=TaskPriorities.HIGH,
         )
 
     def _send_video_to_messenger(self, frames: typing.List[np.array], caption: str) -> None:
@@ -127,7 +127,7 @@ class VideoGuard:
                 'fps': config.FPS,
                 'caption': caption,
             },
-            is_high=True,
+            priority=TaskPriorities.HIGH,
         )
 
     def _save_image(self, frame: np.array) -> None:
@@ -139,6 +139,7 @@ class VideoGuard:
                 'file_name': f'marked_images/{now.strftime("%Y-%m-%d %H:%M:%S.png")}',
                 'frame': frame,
             },
+            priority=TaskPriorities.MEDIUM,
         )
 
     def _save_video(self, frames: np.array) -> None:
@@ -151,4 +152,5 @@ class VideoGuard:
                 'frames': frames,
                 'fps': config.FPS,
             },
+            priority=TaskPriorities.MEDIUM,
         )

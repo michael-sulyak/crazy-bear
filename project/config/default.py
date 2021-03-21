@@ -14,8 +14,8 @@ APPS_DIR = PROJECT_DIR / 'apps'
 
 
 # Version
-version_manager = VersionConfig()
-VERSION = version_manager.version
+version_config = VersionConfig()
+VERSION = version_config.version
 
 # Env
 PROJECT_ENV = env('PROJECT_ENV')

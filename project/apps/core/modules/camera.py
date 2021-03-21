@@ -7,6 +7,7 @@ from imutils.video import VideoStream
 from ..base import BaseModule, Command
 from ...common.constants import OFF, ON
 from ...common.storage import file_storage
+from ...common.threads import TaskPriorities
 from ...common.utils import camera_is_available, synchronized
 from ...core import events
 from ...core.constants import CURRENT_FPS, SECURITY_IS_ENABLED, USE_CAMERA, VIDEO_SECURITY
@@ -32,8 +33,16 @@ class Camera(BaseModule):
 
     def init_schedule(self, scheduler: schedule.Scheduler) -> tuple:
         return (
-            scheduler.every(10).seconds.do(self.task_queue.push, self._save_photo),
-            scheduler.every(30).seconds.do(self.task_queue.push, self._check_video_stream),
+            scheduler.every(10).seconds.do(
+                self.unique_task_queue.push,
+                self._save_photo,
+                priority=TaskPriorities.MEDIUM,
+            ),
+            scheduler.every(30).seconds.do(
+                self.unique_task_queue.push,
+                self._check_video_stream,
+                priority=TaskPriorities.LOW,
+            ),
         )
 
     def process_command(self, command: Command) -> typing.Any:
@@ -76,14 +85,14 @@ class Camera(BaseModule):
             self._enable_security()
             video_guard = self.state[VIDEO_SECURITY]
 
-        self.state[CURRENT_FPS] = (
-            video_guard.motion_detector.fps_tracker.fps()
-            if video_guard else None
-        )
+        if video_guard:
+            self.state[CURRENT_FPS] = video_guard.motion_detector.fps_tracker.fps()
+        else:
+            self.state[CURRENT_FPS] = None
 
     @synchronized
-    def disconnect(self) -> None:
-        super().disconnect()
+    def disable(self) -> None:
+        super().disable()
         self._disable_camera()
 
     @synchronized
@@ -162,10 +171,14 @@ class Camera(BaseModule):
 
         if frame is not None:
             self.messenger.send_frame(frame, caption=f'Captured at {now.strftime("%d.%m.%Y, %H:%M:%S")}')
-            self.task_queue.push(file_storage.upload_frame, kwargs={
-                'file_name': f'saved_photos/{now.strftime("%Y-%m-%d %H:%M:%S.png")}',
-                'frame': frame,
-            })
+            self.task_queue.push(
+                file_storage.upload_frame,
+                kwargs={
+                    'file_name': f'saved_photos/{now.strftime("%Y-%m-%d %H:%M:%S.png")}',
+                    'frame': frame,
+                },
+                priority=TaskPriorities.MEDIUM,
+            )
 
     def _can_use_camera(self) -> bool:
         use_camera: bool = self.state[USE_CAMERA]

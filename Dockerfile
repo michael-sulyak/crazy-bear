@@ -32,17 +32,18 @@ RUN apt-get update && apt-get install -y \
     libtbb-dev \
     libdc1394-22-dev
 
-RUN apt-get install -y \
-    python3-pigpio=1.68-4 \
+RUN apt-get update && apt-get install -y \
     python3-numpy=1:1.18.4-1ubuntu1 \
-    python3-scipy=1.4.1-2 \
-    python3-matplotlib=3.2.2-1 \
-    python3-pandas=0.25.3+dfsg2-3 \
-    python3-opencv=4.2.0+dfsg-6build3
+    python3-scipy=1.5.2-2 \
+    python3-matplotlib=3.3.0-3 \
+    python3-pandas=1.0.5+dfsg-3 \
+    python3-opencv=4.2.0+dfsg-6build6
 
 # Requirements
-RUN pip3 install poetry==1.1.5
-COPY ./pyproject.toml /app
-COPY ./poetry.lock /app
-RUN poetry config virtualenvs.create false && \
-    poetry install
+COPY ./requirements.txt  /app
+RUN pip3 install -r requirements.txt
+#RUN pip3 install poetry==1.1.5
+#COPY ./pyproject.toml /app
+#COPY ./poetry.lock /app
+#RUN poetry config virtualenvs.create false && \
+#    poetry install

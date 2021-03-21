@@ -1,6 +1,6 @@
 CPU_TEMPERATURE = 'cpu_temperature'
 RAM_USAGE = 'ram_usage'
-TASK_QUEUE_PUSH = 'task_queue_push'
+TASK_QUEUE_DELAY = 'task_queue_delay'
 USER_IS_CONNECTED_TO_ROUTER = 'user_is_connected_to_router'
 
 AUTO_SECURITY_IS_ENABLED = 'auto_security_is_enabled'

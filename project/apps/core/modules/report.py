@@ -14,7 +14,8 @@ from ..constants import ARDUINO_IS_ENABLED
 from ... import db
 from ...arduino.models import ArduinoLog
 from ...common.models import Signal
-from ...common.utils import check_user_connection_to_router, create_plot, get_cpu_temp, get_weather
+from ...common.threads import TaskPriorities
+from ...common.utils import check_user_connection_to_router, create_plot, get_cpu_temp, get_weather, synchronized
 from ...core import constants
 from ...core.constants import (
     AUTO_SECURITY_IS_ENABLED, CURRENT_FPS, SECURITY_IS_ENABLED, USE_CAMERA,
@@ -26,41 +27,57 @@ from .... import config
 
 class Report(BaseModule):
     _empty_value = '-'
+    _signals_for_clearing = (
+        constants.CPU_TEMPERATURE,
+        constants.TASK_QUEUE_DELAY,
+        # constants.TASK_QUEUE_SIZE,
+        constants.RAM_USAGE,
+    )
+    _last_ping_task_queue_at: datetime.datetime
+    _timedelta_for_ping: datetime.timedelta = datetime.timedelta(seconds=30)
+    # _timedelta_for_ping_checking: datetime.timedelta = datetime.timedelta(seconds=10)
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
+        self._last_ping_task_queue_at = datetime.datetime.now()
 
     def init_schedule(self, scheduler: schedule.Scheduler) -> tuple:
         return (
             scheduler.every(1).hours.do(
-                self.task_queue.push,
-                lambda: Signal.clear(signal_type=constants.CPU_TEMPERATURE),
-            ),
-            scheduler.every(1).hours.do(
-                self.task_queue.push,
-                lambda: Signal.clear(signal_type=constants.TASK_QUEUE_PUSH),
-            ),
-            scheduler.every(1).hours.do(
-                self.task_queue.push,
-                lambda: Signal.clear(signal_type=constants.RAM_USAGE),
+                self.unique_task_queue.push,
+                lambda: Signal.clear(signal_types=self._signals_for_clearing),
+                priority=TaskPriorities.LOW,
             ),
             scheduler.every(10).seconds.do(
-                self.task_queue.push,
+                self.unique_task_queue.push,
                 self._save_cpu_temperature,
+                priority=TaskPriorities.LOW,
             ),
             scheduler.every(10).minutes.do(
-                self.task_queue.push,
+                self.unique_task_queue.push,
                 self._save_ram_usage,
+                priority=TaskPriorities.LOW,
+            ),
+            scheduler.every(self._timedelta_for_ping.seconds).seconds.do(
+                self.unique_task_queue.push,
+                self._ping_task_queue,
+                priority=TaskPriorities.LOW,
             ),
             # scheduler.every(5).seconds.do(
             #     self.task_queue.push,
-            #     lambda: Signal.add(signal_type=constants.TASK_QUEUE_SIZE, value=len(self.task_queue)),
+            #     lambda: Signal.add(signal_type=constants.TASK_QUEUE_SIZE, value=self.task_queue.approximate_size),
             # ),
         )
 
-    def connect_to_events(self) -> None:
-        super().connect_to_events()
-
-        events.request_for_statistics.connect(self._create_cpu_temp_stats)
-        events.request_for_statistics.connect(self._create_task_queue_size_stats)
-        events.request_for_statistics.connect(self._create_ram_stats)
+    def subscribe_to_events(self) -> tuple:
+        return (
+            *super().subscribe_to_events(),
+            events.request_for_statistics.connect(self._create_cpu_temp_stats),
+            # events.request_for_statistics.connect(self._create_tasks_stats),
+            events.request_for_statistics.connect(self._create_task_queue_stats),
+            events.request_for_statistics.connect(self._create_ram_stats),
+        )
 
     def process_command(self, command: Command) -> typing.Any:
         if command.name == BotCommands.STATUS:
@@ -102,6 +119,18 @@ class Report(BaseModule):
 
         return False
 
+    @synchronized
+    def _ping_task_queue(self):
+        now = datetime.datetime.now()
+        diff = now - self._last_ping_task_queue_at - self._timedelta_for_ping
+
+        # if diff > self._timedelta_for_ping_checking:
+        #     self.messenger.send_message(f'Task queue is full! Delay: {diff.seconds} sec.')
+
+        Signal.add(signal_type=constants.TASK_QUEUE_DELAY, value=diff.seconds)
+
+        self._last_ping_task_queue_at = datetime.datetime.now()
+
     def _send_status(self) -> None:
         humidity = self._empty_value
         temperature = self._empty_value
@@ -135,7 +164,7 @@ class Report(BaseModule):
             f'Temperature: `{temperature}`\n'
             f'CPU Temperature: `{cpu_temperature}`\n\n'
             f'User is connected to router: `{"True" if check_user_connection_to_router() else "False"}`\n'
-            f'Task queue size: `{self.context.task_queue.approximate_size}`\n'
+            f'Task queue size: `{len(self.context.task_queue)}`\n'
             f'FPS: `{current_fps}`\n\n'
             f'Now: `{datetime.datetime.now().strftime("%d.%m.%Y, %H:%M:%S")}`\n'
             f'Started at: `{self.state[INITED_AT].strftime("%d.%m.%Y, %H:%M:%S")}`'
@@ -169,14 +198,12 @@ class Report(BaseModule):
         if not ram_stats:
             return None
 
-        return create_plot(title='RAM usage', x_attr='time', y_attr='value', stats=ram_stats)
+        return create_plot(title='RAM usage (%)', x_attr='time', y_attr='value', stats=ram_stats)
 
-    def _create_task_queue_size_stats(self, command: Command) -> typing.Optional[io.BytesIO]:
-        self.task_queue.save_history()
-
-        task_queue_size_stats = Signal.get_aggregated(
-            signal_type=constants.TASK_QUEUE_PUSH,
-            aggregate_function=sa_func.sum,
+    @staticmethod
+    def _create_task_queue_stats(command: Command) -> typing.Optional[io.BytesIO]:
+        task_queue_size_stats = Signal.get(
+            signal_type=constants.TASK_QUEUE_DELAY,
             delta_type=command.get_second_arg('hours'),
             delta_value=int(command.get_first_arg(24)),
         )
@@ -184,7 +211,12 @@ class Report(BaseModule):
         if not task_queue_size_stats:
             return None
 
-        return create_plot(title='Task stats', x_attr='time', y_attr='value', stats=task_queue_size_stats)
+        return create_plot(
+            title='Task queue delay stats (sec.)',
+            x_attr='time',
+            y_attr='value',
+            stats=task_queue_size_stats,
+        )
 
     def _save_cpu_temperature(self):
         try:

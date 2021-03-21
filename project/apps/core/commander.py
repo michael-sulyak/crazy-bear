@@ -8,7 +8,7 @@ import schedule
 from . import events as core_events
 from .base import BaseModule, CommandHandlerContext, Message
 from ..common.state import State
-from ..common.threads import TaskQueue, TaskQueueWithStats
+from ..common.threads import TaskQueue
 from ..db import close_db_session
 from ..messengers import events
 from ..messengers.base import BaseMessenger
@@ -28,23 +28,23 @@ class Commander:
                  state: State,
                  scheduler: schedule.Scheduler) -> None:
         self.message_queue = queue.Queue()
-        self.task_queue = TaskQueueWithStats(on_close=close_db_session)
+        self.task_queue = TaskQueue(on_close=close_db_session)
         self.messenger = messenger
         self.state = state
+        self.scheduler = scheduler
 
         command_handler_context = CommandHandlerContext(
-            messenger=messenger,
-            state=state,
+            messenger=self.messenger,
+            state=self.state,
             message_queue=self.message_queue,
-            scheduler=scheduler,
+            scheduler=self.scheduler,
             task_queue=self.task_queue,
         )
 
-        self.command_handlers = tuple(map(
-            lambda command: command(context=command_handler_context),
-            module_classes,
-        ))
-        self.scheduler = scheduler
+        self.command_handlers = tuple(
+            module_class(context=command_handler_context)
+            for module_class in module_classes
+        )
 
     def run(self) -> typing.NoReturn:
         while True:
@@ -105,8 +105,13 @@ class Commander:
     def _close(self) -> None:
         logging.info('Home assistant is stopping...')
 
+        logging.info('[shutdown] Sending "shutdown" signal...')
         core_events.shutdown.send()
+
+        logging.info('[shutdown] Clearing schedule...')
         schedule.clear()
+
+        logging.info('[shutdown] Closing task queue...')
         self.task_queue.close()
 
         self.messenger.send_message('Goodbye!')

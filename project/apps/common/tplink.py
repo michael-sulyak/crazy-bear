@@ -10,7 +10,7 @@ class TpLinkClient:
     password: str
     url: str
 
-    def __init__(self, username: typing.Optional[str], password: str, url: str) -> None:
+    def __init__(self, *, username: typing.Optional[str], password: str, url: str) -> None:
         self.url = url
         self.password = password
         self.username = username
