@@ -1,85 +1,20 @@
+import datetime
 import logging
 import queue
 import threading
 import typing
-from dataclasses import dataclass, field
 from time import sleep
 
-from .utils import synchronized
+from .constants import TaskPriorities
+from .dto import RetryPolicy, Task, default_retry_policy
+from .exceptions import RepeatTask
+from ..common.utils import synchronized
 
 
 __all__ = (
-    'Task',
     'TaskQueue',
-    'TaskPriorities',
     'UniqueTaskQueue',
 )
-
-
-class TaskPriorities:
-    LOW = 3
-    MEDIUM = 2
-    HIGH = 1
-
-
-@dataclass(order=True)
-class Task:
-    priority: int
-    target: typing.Callable = field(
-        compare=False,
-    )
-    args: tuple = field(
-        compare=False,
-    )
-    kwargs: typing.Dict[str, typing.Any] = field(
-        compare=False,
-    )
-    result: typing.Any = field(
-        compare=False,
-        default=None,
-    )
-    error: typing.Optional[Exception] = field(
-        compare=False,
-        default=None,
-    )
-    is_pending: threading.Event = field(
-        compare=False,
-        default_factory=threading.Event,
-    )
-    is_processing: threading.Event = field(
-        compare=False,
-        default_factory=threading.Event,
-    )
-    is_finished: threading.Event = field(
-        compare=False,
-        default_factory=threading.Event,
-    )
-
-    def __call__(self, *args, **kwargs) -> typing.Any:
-        return self.target(*self.args, **self.kwargs)
-
-    @classmethod
-    def create(cls,
-               target: typing.Callable,
-               args: tuple = None,
-               kwargs: typing.Dict[str, typing.Any] = None, *,
-               priority: int = TaskPriorities.MEDIUM) -> 'Task':
-        task = cls(target=target, args=args, kwargs=kwargs, priority=priority)
-        task.is_pending.set()
-        return task
-
-    def run(self) -> None:
-        self.is_processing.set()
-        self.is_pending.clear()
-
-        try:
-            self.result = self()
-        except Exception as e:
-            self.error = e
-            logging.exception(e)
-        finally:
-            self.is_finished.set()
-            self.is_processing.clear()
 
 
 class TaskQueue:
@@ -101,28 +36,27 @@ class TaskQueue:
 
     def push(self,
              target: typing.Callable,
-             args: tuple = None,
-             kwargs: typing.Dict[str, typing.Any] = None, *,
-             priority: int = TaskPriorities.MEDIUM) -> typing.Optional[Task]:
+             args: typing.Optional[tuple] = None,
+             kwargs: typing.Optional[typing.Dict[str, typing.Any]] = None, *,
+             priority: int = TaskPriorities.MEDIUM,
+             retry_policy: RetryPolicy = default_retry_policy) -> typing.Optional[Task]:
         if self._is_stopped.is_set():
             return None
-
-        if args is None:
-            args = tuple()
-
-        if kwargs is None:
-            kwargs = {}
 
         task = Task.create(
             priority=priority,
             target=target,
             args=args,
             kwargs=kwargs,
+            retry_policy=retry_policy,
         )
 
-        self._tasks.put(task)
+        self.push_task(task)
 
         return task
+
+    def push_task(self, task: Task) -> None:
+        self._tasks.put(task)
 
     def close(self) -> None:
         self._is_stopped.set()
@@ -137,8 +71,17 @@ class TaskQueue:
 
             if task is None:
                 sleep(1)
-            else:
+                continue
+
+            if task.run_after > datetime.datetime.now():
+                sleep(1)
+                self.push_task(task)
+                continue
+
+            try:
                 task.run()
+            except RepeatTask:
+                self.push_task(task)
 
         if len(self):
             logging.warning(f'TaskQueue is stopping, but there are {len(self)} tasks in queue.')

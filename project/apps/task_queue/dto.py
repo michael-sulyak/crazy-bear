@@ -40,7 +40,7 @@ class RetryPolicyForConnectionError(RetryPolicy):
     exceptions: typing.Tuple = (ConnectionError,)
 
 
-default_retry_policy = RetryPolicy()
+default_retry_policy = RetryPolicy(max_retries=0)
 retry_policy_for_connection_error = RetryPolicy(exceptions=(ConnectionError,))
 
 
