@@ -67,3 +67,5 @@ ROUTER_USER_MAC_ADDRESSES = env.frozenset('ROUTER_USER_MAC_ADDRESSES')
 
 # Other
 SLEEP_HOURS = env.tuple('SLEEP_HOURS', value_type=int)
+NORMAL_HUMIDITY_RANGE = env.tuple('NORMAL_HUMIDITY_RANGE', value_type=int)
+NORMAL_TEMPERATURE_RANGE = env.tuple('NORMAL_TEMPERATURE_RANGE', value_type=int)

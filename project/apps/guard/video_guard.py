@@ -8,7 +8,7 @@ from imutils.video import VideoStream
 
 from .motion_detector import MotionDetector
 from ..common.storage import file_storage
-from ..common.threads import TaskPriorities, TaskQueue
+from .. import task_queue as tq
 from ..messengers.base import BaseMessenger
 from ... import config
 
@@ -17,7 +17,7 @@ class VideoGuard:
     video_stream: VideoStream
     motion_detector: MotionDetector
     messenger: BaseMessenger
-    task_queue: TaskQueue
+    task_queue: tq.TaskQueue
     is_stopped: bool = True
     motion_detected_callback: typing.Optional[typing.Callable] = None
     _main_thread: typing.Optional[threading.Thread] = None
@@ -25,7 +25,7 @@ class VideoGuard:
     def __init__(self, *,
                  messenger: BaseMessenger,
                  video_stream: VideoStream,
-                 task_queue: TaskQueue,
+                 task_queue: tq.TaskQueue,
                  motion_detected_callback: typing.Optional[typing.Callable] = None) -> None:
         self.video_stream = video_stream
         self.motion_detector = MotionDetector(video_stream=self.video_stream, max_fps=config.FPS, imshow=config.IMSHOW)
@@ -116,7 +116,7 @@ class VideoGuard:
             self.messenger.send_frame,
             args=(frame,),
             kwargs={'caption': caption},
-            priority=TaskPriorities.HIGH,
+            priority=tq.TaskPriorities.HIGH,
         )
 
     def _send_video_to_messenger(self, frames: typing.List[np.array], caption: str) -> None:
@@ -127,7 +127,7 @@ class VideoGuard:
                 'fps': config.FPS,
                 'caption': caption,
             },
-            priority=TaskPriorities.HIGH,
+            priority=tq.TaskPriorities.HIGH,
         )
 
     def _save_image(self, frame: np.array) -> None:
@@ -139,7 +139,8 @@ class VideoGuard:
                 'file_name': f'marked_images/{now.strftime("%Y-%m-%d %H:%M:%S.png")}',
                 'frame': frame,
             },
-            priority=TaskPriorities.MEDIUM,
+            priority=tq.TaskPriorities.MEDIUM,
+            retry_policy=tq.retry_policy_for_connection_error,
         )
 
     def _save_video(self, frames: np.array) -> None:
@@ -152,5 +153,6 @@ class VideoGuard:
                 'frames': frames,
                 'fps': config.FPS,
             },
-            priority=TaskPriorities.MEDIUM,
+            priority=tq.TaskPriorities.MEDIUM,
+            retry_policy=tq.retry_policy_for_connection_error,
         )

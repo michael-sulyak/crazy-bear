@@ -9,13 +9,13 @@ import schedule
 from . import events
 from ..common.events import Receiver
 from ..common.state import State
-from ..common.threads import TaskQueue, UniqueTaskQueue
+from ..task_queue import TaskQueue, UniqueTaskQueue
 from ..messengers import events as messenger_events
 from ..messengers.base import BaseMessenger
 
 
 @dataclass
-class CommandHandlerContext:
+class ModuleContext:
     messenger: BaseMessenger
     state: State
     message_queue: queue
@@ -25,7 +25,7 @@ class CommandHandlerContext:
 
 class BaseModule(abc.ABC):
     initial_state = {}
-    context: CommandHandlerContext
+    context: ModuleContext
     messenger: BaseMessenger
     state: State
     task_queue: TaskQueue
@@ -34,10 +34,9 @@ class BaseModule(abc.ABC):
     _subscribers_to_events: typing.Tuple[Receiver, ...]
     _lock: typing.Union[threading.Lock, threading.RLock]
 
-    def __init__(self, *, context: CommandHandlerContext) -> None:
+    def __init__(self, *, context: ModuleContext) -> None:
         self._lock = threading.RLock()
         self.context = context
-
         self.messenger = self.context.messenger
         self.state = self.context.state
         self.task_queue = self.context.task_queue

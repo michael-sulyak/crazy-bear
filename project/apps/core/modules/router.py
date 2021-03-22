@@ -6,7 +6,7 @@ import schedule
 
 from ..base import BaseModule, Command
 from ...common.models import Signal
-from ...common.threads import TaskPriorities
+from ...task_queue import TaskPriorities
 from ...common.tplink import TpLinkClient
 from ...common.utils import check_user_connection_to_router, create_plot, synchronized
 from ...core import constants, events

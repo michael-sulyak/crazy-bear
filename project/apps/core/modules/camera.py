@@ -7,7 +7,7 @@ from imutils.video import VideoStream
 from ..base import BaseModule, Command
 from ...common.constants import OFF, ON
 from ...common.storage import file_storage
-from ...common.threads import TaskPriorities
+from ... import task_queue
 from ...common.utils import camera_is_available, synchronized
 from ...core import events
 from ...core.constants import CURRENT_FPS, SECURITY_IS_ENABLED, USE_CAMERA, VIDEO_SECURITY
@@ -36,12 +36,12 @@ class Camera(BaseModule):
             scheduler.every(10).seconds.do(
                 self.unique_task_queue.push,
                 self._save_photo,
-                priority=TaskPriorities.MEDIUM,
+                priority=task_queue.TaskPriorities.MEDIUM,
             ),
             scheduler.every(30).seconds.do(
                 self.unique_task_queue.push,
                 self._check_video_stream,
-                priority=TaskPriorities.LOW,
+                priority=task_queue.TaskPriorities.LOW,
             ),
         )
 
@@ -177,7 +177,8 @@ class Camera(BaseModule):
                     'file_name': f'saved_photos/{now.strftime("%Y-%m-%d %H:%M:%S.png")}',
                     'frame': frame,
                 },
-                priority=TaskPriorities.MEDIUM,
+                priority=task_queue.TaskPriorities.MEDIUM,
+                retry_policy=task_queue.retry_policy_for_connection_error,
             )
 
     def _can_use_camera(self) -> bool:

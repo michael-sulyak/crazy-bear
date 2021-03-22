@@ -6,7 +6,7 @@ from .. import events
 from ..base import BaseModule, Command
 from ..constants import AUTO_SECURITY_IS_ENABLED, SECURITY_IS_ENABLED, USER_IS_CONNECTED_TO_ROUTER, USE_CAMERA
 from ...common.constants import AUTO, OFF, ON
-from ...common.threads import TaskPriorities
+from ...task_queue import TaskPriorities
 from ...common.utils import single_synchronized, synchronized
 from ...messengers.constants import BotCommands
 

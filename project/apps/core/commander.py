@@ -6,9 +6,9 @@ import typing
 import schedule
 
 from . import events as core_events
-from .base import BaseModule, CommandHandlerContext, Message
+from .base import BaseModule, ModuleContext, Message
 from ..common.state import State
-from ..common.threads import TaskQueue
+from ..task_queue import TaskQueue
 from ..db import close_db_session
 from ..messengers import events
 from ..messengers.base import BaseMessenger
@@ -33,7 +33,7 @@ class Commander:
         self.state = state
         self.scheduler = scheduler
 
-        command_handler_context = CommandHandlerContext(
+        module_context = ModuleContext(
             messenger=self.messenger,
             state=self.state,
             message_queue=self.message_queue,
@@ -42,7 +42,7 @@ class Commander:
         )
 
         self.command_handlers = tuple(
-            module_class(context=command_handler_context)
+            module_class(context=module_context)
             for module_class in module_classes
         )
 

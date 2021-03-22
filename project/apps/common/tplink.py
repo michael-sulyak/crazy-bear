@@ -57,7 +57,7 @@ class TpLinkClient:
                 'Cookie': cookie,
                 'Content-Type': 'text/plain',
             },
-            timeout=10,
+            timeout=5,
         )
 
         response.raise_for_status()

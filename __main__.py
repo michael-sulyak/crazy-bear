@@ -90,10 +90,15 @@ def main():
         scheduler=scheduler,
     )
 
-    commander.message_queue.put(Message(command=Command(name=BotCommands.STATUS)))
-    commander.message_queue.put(Message(command=Command(name=BotCommands.ARDUINO, args=(ON,))))
-    commander.message_queue.put(Message(command=Command(name=BotCommands.SECURITY, args=(AUTO, ON,))))
-    commander.message_queue.put(Message(command=Command(name=BotCommands.RECOMMENDATION_SYSTEM, args=(ON,))))
+    initial_commands = (
+        Command(name=BotCommands.STATUS),
+        Command(name=BotCommands.ARDUINO, args=(ON,)),
+        Command(name=BotCommands.SECURITY, args=(AUTO, ON,)),
+        Command(name=BotCommands.RECOMMENDATION_SYSTEM, args=(ON,)),
+    )
+
+    for command in initial_commands:
+        commander.message_queue.put(Message(command=command))
 
     try:
         commander.run()

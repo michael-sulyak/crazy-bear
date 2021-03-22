@@ -1,6 +1,7 @@
 import json
 import os
 import typing
+from types import MappingProxyType
 
 
 class NOTHING:
@@ -32,7 +33,7 @@ class Env:
 
     def bool(self, name: str, *, default: typing.Any = NOTHING) -> typing.Optional[int]:
         result = self(name, default=default)
-        return result in ('1', 'true',)
+        return result in ('1', 'true', 'True', 'yes', 'YES',)
 
     def tuple(self,
               name: str, *,
@@ -61,6 +62,14 @@ class Env:
             return None
 
         return json.loads(result)
+
+    def frozen_json(self, name: str, *, default: typing.Any = NOTHING) -> typing.Any:
+        data = self.json(name, default=default)
+
+        if data is None:
+            return None
+
+        return MappingProxyType(data)
 
 
 env = Env()

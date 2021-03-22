@@ -12,7 +12,7 @@ from ...arduino.base import ArduinoConnector
 from ...arduino.models import ArduinoLog
 from ...common.constants import OFF, ON
 from ...common.storage import file_storage
-from ...common.threads import TaskPriorities
+from ...task_queue import TaskPriorities
 from ...common.utils import create_plot, synchronized
 from ...core import events
 from ...core.constants import PHOTO, SECURITY_IS_ENABLED, USE_CAMERA

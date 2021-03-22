@@ -23,7 +23,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
     _updates_offset: typing.Optional[int] = None
     _lock: threading.RLock
 
-    def __init__(self,
+    def __init__(self, *,
                  request: typing.Optional[TelegramRequest] = None,
                  default_reply_markup: typing.Optional = None) -> None:
         self._bot = telegram.Bot(

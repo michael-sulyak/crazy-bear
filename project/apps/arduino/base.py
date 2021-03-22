@@ -20,20 +20,20 @@ class ArduinoResponse:
     received_at: datetime = field(default_factory=datetime.now)
 
 
-@dataclass
-class ArduinoRequest:
-    type: str
-    payload: typing.Optional[dict] = None
-
-    @classmethod
-    def request_settings(cls) -> 'ArduinoRequest':
-        return cls(type=constants.ArduinoRequestTypes.REQUEST_SETTINGS)
-
-    @classmethod
-    def update_data_delay(cls, data_delay: int) -> 'ArduinoRequest':
-        assert data_delay >= 0
-
-        return cls(type=constants.ArduinoRequestTypes.UPDATE_SETTINGS, payload={'data_delay': data_delay})
+# @dataclass
+# class ArduinoRequest:
+#     type: str
+#     payload: typing.Optional[dict] = None
+#
+#     @classmethod
+#     def request_settings(cls) -> 'ArduinoRequest':
+#         return cls(type=constants.ArduinoRequestTypes.REQUEST_SETTINGS)
+#
+#     @classmethod
+#     def update_data_delay(cls, data_delay: int) -> 'ArduinoRequest':
+#         assert data_delay >= 0
+#
+#         return cls(type=constants.ArduinoRequestTypes.UPDATE_SETTINGS, payload={'data_delay': data_delay})
 
 
 class ArduinoConnector:
@@ -73,11 +73,15 @@ class ArduinoConnector:
 
             if response.type == constants.ArduinoResponseTypes.SENSORS:
                 arduino_log = ArduinoLog(**response.payload, received_at=response.received_at)
+
                 if not new_arduino_logs:
                     new_arduino_logs.append(arduino_log)
                 elif new_arduino_logs[-1].pir_sensor < arduino_log.pir_sensor:
                     new_arduino_logs[-1] = arduino_log
-            elif response.type == constants.ArduinoResponseTypes.SETTINGS:
+
+                continue
+
+            if response.type == constants.ArduinoResponseTypes.SETTINGS:
                 self._settings = response.payload
 
         if new_arduino_logs:
@@ -92,6 +96,7 @@ class ArduinoConnector:
 
     def _read_serial(self) -> typing.Iterator[ArduinoResponse]:
         self._buffer += self._serial.read(self._serial.in_waiting)
+
         lines = []
 
         if self.TERMINATOR in self._buffer:

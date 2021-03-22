@@ -14,7 +14,7 @@ from ..constants import ARDUINO_IS_ENABLED
 from ... import db
 from ...arduino.models import ArduinoLog
 from ...common.models import Signal
-from ...common.threads import TaskPriorities
+from ...task_queue import TaskPriorities
 from ...common.utils import check_user_connection_to_router, create_plot, get_cpu_temp, get_weather, synchronized
 from ...core import constants
 from ...core.constants import (
@@ -30,12 +30,10 @@ class Report(BaseModule):
     _signals_for_clearing = (
         constants.CPU_TEMPERATURE,
         constants.TASK_QUEUE_DELAY,
-        # constants.TASK_QUEUE_SIZE,
         constants.RAM_USAGE,
     )
     _last_ping_task_queue_at: datetime.datetime
     _timedelta_for_ping: datetime.timedelta = datetime.timedelta(seconds=30)
-    # _timedelta_for_ping_checking: datetime.timedelta = datetime.timedelta(seconds=10)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -59,22 +57,17 @@ class Report(BaseModule):
                 self._save_ram_usage,
                 priority=TaskPriorities.LOW,
             ),
-            scheduler.every(self._timedelta_for_ping.seconds).seconds.do(
+            scheduler.every(self._timedelta_for_ping.total_seconds()).seconds.do(
                 self.unique_task_queue.push,
                 self._ping_task_queue,
                 priority=TaskPriorities.LOW,
             ),
-            # scheduler.every(5).seconds.do(
-            #     self.task_queue.push,
-            #     lambda: Signal.add(signal_type=constants.TASK_QUEUE_SIZE, value=self.task_queue.approximate_size),
-            # ),
         )
 
     def subscribe_to_events(self) -> tuple:
         return (
             *super().subscribe_to_events(),
             events.request_for_statistics.connect(self._create_cpu_temp_stats),
-            # events.request_for_statistics.connect(self._create_tasks_stats),
             events.request_for_statistics.connect(self._create_task_queue_stats),
             events.request_for_statistics.connect(self._create_ram_stats),
         )
@@ -124,10 +117,7 @@ class Report(BaseModule):
         now = datetime.datetime.now()
         diff = now - self._last_ping_task_queue_at - self._timedelta_for_ping
 
-        # if diff > self._timedelta_for_ping_checking:
-        #     self.messenger.send_message(f'Task queue is full! Delay: {diff.seconds} sec.')
-
-        Signal.add(signal_type=constants.TASK_QUEUE_DELAY, value=diff.seconds)
+        Signal.add(signal_type=constants.TASK_QUEUE_DELAY, value=diff.total_seconds())
 
         self._last_ping_task_queue_at = datetime.datetime.now()
 
