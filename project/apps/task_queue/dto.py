@@ -4,8 +4,9 @@ import threading
 import typing
 from dataclasses import dataclass, field
 
-from .constants import TaskPriorities
+from . import constants
 from .exceptions import BaseTaskQueueException, RepeatTask
+from ..common.utils import synchronized
 
 
 __all__ = (
@@ -59,9 +60,6 @@ class Task:
     run_after: datetime.datetime = field(
         default_factory=datetime.datetime.now,
     )
-    received_at: datetime.datetime = field(
-        default_factory=datetime.datetime.now,
-    )
     result: typing.Any = field(
         compare=False,
         default=None,
@@ -70,21 +68,13 @@ class Task:
         compare=False,
         default=None,
     )
-    is_pending: threading.Event = field(
-        compare=False,
-        default_factory=threading.Event,
-    )
-    is_processing: threading.Event = field(
-        compare=False,
-        default_factory=threading.Event,
-    )
-    is_finished: threading.Event = field(
-        compare=False,
-        default_factory=threading.Event,
-    )
     retry_policy: RetryPolicy = field(
         compare=False,
         default=default_retry_policy,
+    )
+    _status: str = field(
+        compare=False,
+        default=constants.TaskStatus.CREATED,
     )
     _lock: threading.Lock = field(
         compare=False,
@@ -95,49 +85,58 @@ class Task:
         default=0,
     )
 
-    def __call__(self, *args, **kwargs) -> typing.Any:
-        return self.target(*self.args, **self.kwargs)
+    @property
+    @synchronized
+    def status(self) -> str:
+        return self._status
+
+    @status.setter
+    @synchronized
+    def status(self, value: str) -> None:
+        self._status = value
 
     @classmethod
     def create(cls,
                target: typing.Callable,
                args: typing.Optional[tuple] = None,
-               kwargs: typing.Optional[typing.Dict[str, typing.Any]] = None, *,
-               priority: int = TaskPriorities.MEDIUM,
-               retry_policy: RetryPolicy = default_retry_policy) -> 'Task':
+               kwargs: typing.Optional[typing.Dict[str, typing.Any]] = None,
+               **params) -> 'Task':
         if args is None:
             args = tuple()
 
         if kwargs is None:
             kwargs = {}
 
-        task = cls(target=target, args=args, kwargs=kwargs, priority=priority, retry_policy=retry_policy)
-        task.is_pending.set()
+        task = cls(target=target, args=args, kwargs=kwargs, **params)
+
         return task
 
     def run(self) -> None:
-        self.is_processing.set()
-        self.is_pending.clear()
+        self.status = constants.TaskStatus.STARTED
 
         try:
             with self.retry_policy:
-                self.result = self()
+                self.result = self.call()
         except RepeatTask as e:
             self._retries += 1
 
             with self._lock:
                 if e.after:
                     self.run_after = datetime.datetime.now() + e.after
-                    self.priority = TaskPriorities.LOW
+                    self.priority = constants.TaskPriorities.LOW
 
                 if self.retry_policy.max_retries <= self._retries:
                     logging.info(f'Retry policy for {self}')
                     raise
-        except BaseTaskQueueException:
-            raise
+
+            self.error = e.source
+            self.status = constants.TaskStatus.FAILED
         except Exception as e:
             self.error = e
+            self.status = constants.TaskStatus.FAILED
             logging.exception(e)
-        finally:
-            self.is_finished.set()
-            self.is_processing.clear()
+        else:
+            self.status = constants.TaskStatus.FINISHED
+
+    def call(self) -> typing.Any:
+        return self.target(*self.args, **self.kwargs)

@@ -9,6 +9,8 @@ from telegram.utils.request import Request as TelegramRequest
 
 from project import config
 from project.apps import db
+from project.apps.common.exceptions import Shutdown
+from project.apps.common.utils import init_settings_for_plt
 from project.apps.core import modules
 from project.apps.messengers.utils import TelegramMenu
 from project.apps.common.constants import AUTO, ON
@@ -32,14 +34,17 @@ sentry_sdk.init(
 
 
 def handle_sigterm(*args):
-    raise KeyboardInterrupt()
+    raise Shutdown()
 
 
+signal.signal(signal.SIGINT, handle_sigterm)
 signal.signal(signal.SIGTERM, handle_sigterm)
 
 
 def main():
     logging.info('Starting app...')
+
+    init_settings_for_plt()
 
     logging.info('Creating database...')
     db.Base.metadata.create_all(db.db_engine)

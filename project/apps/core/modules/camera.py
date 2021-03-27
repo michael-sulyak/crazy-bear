@@ -171,7 +171,7 @@ class Camera(BaseModule):
 
         if frame is not None:
             self.messenger.send_frame(frame, caption=f'Captured at {now.strftime("%d.%m.%Y, %H:%M:%S")}')
-            self.task_queue.push(
+            self.task_queue.put(
                 file_storage.upload_frame,
                 kwargs={
                     'file_name': f'saved_photos/{now.strftime("%Y-%m-%d %H:%M:%S.png")}',

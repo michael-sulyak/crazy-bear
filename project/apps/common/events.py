@@ -3,6 +3,7 @@ import threading
 import typing
 from dataclasses import dataclass
 
+from .exceptions import Shutdown
 from .utils import synchronized
 
 
@@ -44,7 +45,7 @@ class Event:
         for receiver in self.receivers:
             try:
                 receiver(**kwargs)
-            except KeyboardInterrupt as e:
+            except Shutdown as e:
                 raise e
             except Exception as e:
                 logging.exception(e)
@@ -57,7 +58,7 @@ class Event:
             try:
                 result = receiver(**kwargs)
                 results.append(result)
-            except KeyboardInterrupt as e:
+            except Shutdown as e:
                 raise e
             except Exception as e:
                 logging.exception(e)

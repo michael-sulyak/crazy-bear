@@ -17,8 +17,11 @@ class Signal(db.Base):
     received_at = sqlalchemy.Column(sqlalchemy.DateTime)
 
     @classmethod
-    def add(cls, signal_type: str, value: float) -> 'Signal':
-        item = cls(type=signal_type, value=value, received_at=datetime.datetime.now())
+    def add(cls, signal_type: str, value: float, *, received_at: typing.Optional[datetime.datetime] = None) -> 'Signal':
+        if received_at is None:
+            received_at = datetime.datetime.now()
+
+        item = cls(type=signal_type, value=value, received_at=received_at)
 
         with db.db_session().transaction:
             db.db_session().add(item)

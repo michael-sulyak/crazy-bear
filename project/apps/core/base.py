@@ -9,7 +9,7 @@ import schedule
 from . import events
 from ..common.events import Receiver
 from ..common.state import State
-from ..task_queue import TaskQueue, UniqueTaskQueue
+from ..task_queue import BaseTaskQueue, UniqueTaskQueue
 from ..messengers import events as messenger_events
 from ..messengers.base import BaseMessenger
 
@@ -20,7 +20,7 @@ class ModuleContext:
     state: State
     message_queue: queue
     scheduler: schedule.Scheduler
-    task_queue: TaskQueue
+    task_queue: BaseTaskQueue
 
 
 class BaseModule(abc.ABC):
@@ -28,7 +28,7 @@ class BaseModule(abc.ABC):
     context: ModuleContext
     messenger: BaseMessenger
     state: State
-    task_queue: TaskQueue
+    task_queue: BaseTaskQueue
     unique_task_queue: UniqueTaskQueue
     _schedule_jobs: tuple
     _subscribers_to_events: typing.Tuple[Receiver, ...]

@@ -32,13 +32,19 @@ class Report(BaseModule):
         constants.TASK_QUEUE_DELAY,
         constants.RAM_USAGE,
     )
-    _last_ping_task_queue_at: datetime.datetime
     _timedelta_for_ping: datetime.timedelta = datetime.timedelta(seconds=30)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-        self._last_ping_task_queue_at = datetime.datetime.now()
+        now = datetime.datetime.now()
+
+        self.task_queue.put(
+            self._ping_task_queue,
+            kwargs={'sent_at': now},
+            priority=TaskPriorities.LOW,
+            run_after=now + self._timedelta_for_ping,
+        )
 
     def init_schedule(self, scheduler: schedule.Scheduler) -> tuple:
         return (
@@ -55,11 +61,6 @@ class Report(BaseModule):
             scheduler.every(10).minutes.do(
                 self.unique_task_queue.push,
                 self._save_ram_usage,
-                priority=TaskPriorities.LOW,
-            ),
-            scheduler.every(self._timedelta_for_ping.total_seconds()).seconds.do(
-                self.unique_task_queue.push,
-                self._ping_task_queue,
                 priority=TaskPriorities.LOW,
             ),
         )
@@ -113,13 +114,18 @@ class Report(BaseModule):
         return False
 
     @synchronized
-    def _ping_task_queue(self):
+    def _ping_task_queue(self, *, sent_at: datetime.datetime) -> None:
         now = datetime.datetime.now()
-        diff = now - self._last_ping_task_queue_at - self._timedelta_for_ping
+        diff = now - sent_at - self._timedelta_for_ping
 
-        Signal.add(signal_type=constants.TASK_QUEUE_DELAY, value=diff.total_seconds())
+        Signal.add(signal_type=constants.TASK_QUEUE_DELAY, value=diff.total_seconds(), received_at=now)
 
-        self._last_ping_task_queue_at = datetime.datetime.now()
+        self.task_queue.put(
+            self._ping_task_queue,
+            kwargs={'sent_at': now},
+            priority=TaskPriorities.LOW,
+            run_after=now + self._timedelta_for_ping,
+        )
 
     def _send_status(self) -> None:
         humidity = self._empty_value

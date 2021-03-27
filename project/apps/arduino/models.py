@@ -55,7 +55,7 @@ class ArduinoLog(db.Base):
         else:
             time_tpl = '%y.%m.%d %H:%M'
 
-        signal = db.db_session().query(
+        signals = db.db_session().query(
             func.avg(cls.humidity).label('humidity'),
             func.avg(cls.pir_sensor).label('pir_sensor'),
             func.avg(cls.temperature).label('temperature'),
@@ -72,7 +72,7 @@ class ArduinoLog(db.Base):
             cls.received_at,
         ).all()
 
-        return signal
+        return signals
 
     @classmethod
     def clear(cls) -> None:

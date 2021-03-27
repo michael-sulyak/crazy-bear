@@ -17,7 +17,7 @@ class VideoGuard:
     video_stream: VideoStream
     motion_detector: MotionDetector
     messenger: BaseMessenger
-    task_queue: tq.TaskQueue
+    task_queue: tq.BaseTaskQueue
     is_stopped: bool = True
     motion_detected_callback: typing.Optional[typing.Callable] = None
     _main_thread: typing.Optional[threading.Thread] = None
@@ -25,7 +25,7 @@ class VideoGuard:
     def __init__(self, *,
                  messenger: BaseMessenger,
                  video_stream: VideoStream,
-                 task_queue: tq.TaskQueue,
+                 task_queue: tq.BaseTaskQueue,
                  motion_detected_callback: typing.Optional[typing.Callable] = None) -> None:
         self.video_stream = video_stream
         self.motion_detector = MotionDetector(video_stream=self.video_stream, max_fps=config.FPS, imshow=config.IMSHOW)
@@ -112,7 +112,7 @@ class VideoGuard:
         self.motion_detector.realese()
 
     def _send_image_to_messenger(self, frame: np.array, caption: str) -> None:
-        self.task_queue.push(
+        self.task_queue.put(
             self.messenger.send_frame,
             args=(frame,),
             kwargs={'caption': caption},
@@ -120,7 +120,7 @@ class VideoGuard:
         )
 
     def _send_video_to_messenger(self, frames: typing.List[np.array], caption: str) -> None:
-        self.task_queue.push(
+        self.task_queue.put(
             self.messenger.send_frames_as_video,
             args=(frames,),
             kwargs={
@@ -133,7 +133,7 @@ class VideoGuard:
     def _save_image(self, frame: np.array) -> None:
         now = datetime.datetime.now()
 
-        self.task_queue.push(
+        self.task_queue.put(
             file_storage.upload_frame,
             kwargs={
                 'file_name': f'marked_images/{now.strftime("%Y-%m-%d %H:%M:%S.png")}',
@@ -146,7 +146,7 @@ class VideoGuard:
     def _save_video(self, frames: np.array) -> None:
         now = datetime.datetime.now()
 
-        self.task_queue.push(
+        self.task_queue.put(
             file_storage.upload_frames_as_video,
             kwargs={
                 'file_name': f'videos/{now.strftime("%Y-%m-%d %H:%M:%S.avi")}',

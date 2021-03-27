@@ -7,8 +7,9 @@ import schedule
 
 from . import events as core_events
 from .base import BaseModule, ModuleContext, Message
+from ..common.exceptions import Shutdown
 from ..common.state import State
-from ..task_queue import TaskQueue
+from ..task_queue import BaseTaskQueue, BaseWorker, MemTaskQueue, ThreadWorker
 from ..db import close_db_session
 from ..messengers import events
 from ..messengers.base import BaseMessenger
@@ -20,7 +21,8 @@ class Commander:
     command_handlers: typing.Tuple[BaseModule, ...]
     scheduler: typing.Optional[schedule.Scheduler]
     message_queue: queue
-    task_queue: TaskQueue
+    task_queue: BaseTaskQueue
+    task_worker: BaseWorker
 
     def __init__(self, *,
                  messenger: BaseMessenger,
@@ -28,7 +30,9 @@ class Commander:
                  state: State,
                  scheduler: schedule.Scheduler) -> None:
         self.message_queue = queue.Queue()
-        self.task_queue = TaskQueue(on_close=close_db_session)
+        self.task_queue = MemTaskQueue()
+        self.task_worker = ThreadWorker(task_queue=self.task_queue, on_close=close_db_session)
+        self.task_worker.run()
         self.messenger = messenger
         self.state = state
         self.scheduler = scheduler
@@ -50,18 +54,18 @@ class Commander:
         while True:
             try:
                 self.tick()
-            except KeyboardInterrupt:
+                time.sleep(1)
+            except Shutdown:
                 break
 
         self._close()
 
-        exit(0)
-
     def tick(self) -> None:
         if self.scheduler:
             try:
+                # All jobs have to be in async queue
                 self.scheduler.run_pending()
-            except KeyboardInterrupt as e:
+            except Shutdown as e:
                 raise e
             except Exception as e:
                 self.messenger.exception(e)
@@ -69,15 +73,13 @@ class Commander:
 
         try:
             self.process_updates()
-        except KeyboardInterrupt as e:
+        except Shutdown as e:
             raise e
         except Exception as e:
             logging.exception(e)
             return
 
         core_events.tick.send()
-
-        time.sleep(1)
 
     def process_updates(self) -> None:
         for message in self.messenger.get_updates():
@@ -112,6 +114,6 @@ class Commander:
         schedule.clear()
 
         logging.info('[shutdown] Closing task queue...')
-        self.task_queue.close()
+        self.task_worker.stop()
 
         self.messenger.send_message('Goodbye!')

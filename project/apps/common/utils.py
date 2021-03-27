@@ -38,9 +38,14 @@ def get_cpu_temp() -> float:
         raise RuntimeError('Could not parse temperature output.') from e
 
 
-def create_plot(*, title: str, x_attr: str, y_attr: str, stats: list) -> io.BytesIO:
+def init_settings_for_plt():
+    plt.ioff()
     sns.set()
     pd.plotting.register_matplotlib_converters()
+
+
+def create_plot(*, title: str, x_attr: str, y_attr: str, stats: list) -> io.BytesIO:
+    # init_settings_for_plt() is called before
 
     if len(stats) <= 2:
         marker = 'o'
@@ -96,6 +101,8 @@ def create_plot(*, title: str, x_attr: str, y_attr: str, stats: list) -> io.Byte
     with tempfile.TemporaryDirectory() as temp_dir_name:
         image_name = os.path.join(temp_dir_name, f'{title}.png')
         fig.savefig(image_name)
+        fig.clear()
+        plt.close(fig)
 
         with open(image_name, 'rb') as image:
             return io.BytesIO(image.read())
