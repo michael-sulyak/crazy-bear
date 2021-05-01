@@ -5,8 +5,8 @@ import typing
 from collections import defaultdict
 
 import schedule
-from sqlalchemy import func as sa_func
 from emoji import emojize
+from sqlalchemy import func as sa_func
 
 from .. import events
 from ..base import BaseModule, Command
@@ -14,7 +14,6 @@ from ..constants import ARDUINO_IS_ENABLED
 from ... import db
 from ...arduino.models import ArduinoLog
 from ...common.models import Signal
-from ...task_queue import TaskPriorities
 from ...common.utils import check_user_connection_to_router, create_plot, get_cpu_temp, get_weather, synchronized
 from ...core import constants
 from ...core.constants import (
@@ -22,6 +21,7 @@ from ...core.constants import (
     VIDEO_SECURITY,
 )
 from ...messengers.constants import BotCommands, INITED_AT
+from ...task_queue import TaskPriorities
 from .... import config
 
 
@@ -31,13 +31,19 @@ class Report(BaseModule):
         constants.CPU_TEMPERATURE,
         constants.TASK_QUEUE_DELAY,
         constants.RAM_USAGE,
+        constants.NETWORK_PING,
     )
     _timedelta_for_ping: datetime.timedelta = datetime.timedelta(seconds=30)
+    _last_cpu_notification: datetime.datetime
+    _last_success_ping: datetime.datetime
+    _send_warning_about_ping: bool = False
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
         now = datetime.datetime.now()
+        self._last_success_ping = now
+        self._last_cpu_notification = now
 
         self.task_queue.put(
             self._ping_task_queue,
@@ -63,6 +69,11 @@ class Report(BaseModule):
                 self._save_ram_usage,
                 priority=TaskPriorities.LOW,
             ),
+            scheduler.every(10).seconds.do(
+                self.unique_task_queue.push,
+                self._ping_network,
+                priority=TaskPriorities.MEDIUM,
+            ),
         )
 
     def subscribe_to_events(self) -> tuple:
@@ -71,6 +82,7 @@ class Report(BaseModule):
             events.request_for_statistics.connect(self._create_cpu_temp_stats),
             events.request_for_statistics.connect(self._create_task_queue_stats),
             events.request_for_statistics.connect(self._create_ram_stats),
+            events.request_for_statistics.connect(self._create_network_stats),
         )
 
     def process_command(self, command: Command) -> typing.Any:
@@ -197,6 +209,19 @@ class Report(BaseModule):
         return create_plot(title='RAM usage (%)', x_attr='time', y_attr='value', stats=ram_stats)
 
     @staticmethod
+    def _create_network_stats(command: Command) -> typing.Optional[io.BytesIO]:
+        network_stats = Signal.get(
+            signal_type=constants.NETWORK_PING,
+            delta_type=command.get_second_arg('hours'),
+            delta_value=int(command.get_first_arg(24)),
+        )
+
+        if not network_stats:
+            return None
+
+        return create_plot(title='Online', x_attr='time', y_attr='value', stats=network_stats)
+
+    @staticmethod
     def _create_task_queue_stats(command: Command) -> typing.Optional[io.BytesIO]:
         task_queue_size_stats = Signal.get(
             signal_type=constants.TASK_QUEUE_DELAY,
@@ -214,6 +239,7 @@ class Report(BaseModule):
             stats=task_queue_size_stats,
         )
 
+    @synchronized
     def _save_cpu_temperature(self):
         try:
             cpu_temperature = get_cpu_temp()
@@ -222,10 +248,16 @@ class Report(BaseModule):
         else:
             Signal.add(signal_type=constants.CPU_TEMPERATURE, value=cpu_temperature)
 
-            if cpu_temperature > 80:
-                self.messenger.send_message('CPU temperature is very high!')
-            elif cpu_temperature > 70:
-                self.messenger.send_message('CPU temperature is high!')
+            now = datetime.datetime.now()
+            minutes = 30
+
+            if now - self._last_cpu_notification > datetime.timedelta(minutes=minutes):
+                if cpu_temperature > 70:
+                    self.messenger.send_message('CPU temperature is very high!')
+                    self._last_cpu_notification = now - datetime.timedelta(minutes=minutes - 5)
+                elif cpu_temperature > 60:
+                    self.messenger.send_message('CPU temperature is high!')
+                    self._last_cpu_notification = now
 
     @staticmethod
     def _save_ram_usage():
@@ -278,3 +310,8 @@ class Report(BaseModule):
             )
 
         self.messenger.send_message(prepared_result, parse_mode=None)
+
+    @staticmethod
+    def _ping_network() -> None:
+        is_available = os.system('ping -c 1 google.com') == 0
+        Signal.add(signal_type=constants.NETWORK_PING, value=is_available)

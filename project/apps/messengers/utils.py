@@ -5,7 +5,7 @@ from ..common.constants import AUTO, OFF, ON
 from ..common.state import State
 from ..core.constants import (
     ARDUINO_IS_ENABLED, AUTO_SECURITY_IS_ENABLED, RECOMMENDATION_SYSTEM_IS_ENABLED,
-    SECURITY_IS_ENABLED, USE_CAMERA,
+    VIDEO_RECORDING_IS_ENABLED, SECURITY_IS_ENABLED, USE_CAMERA,
 )
 
 
@@ -43,6 +43,7 @@ class TelegramMenu:
 
         if use_camera:
             second_line.append(f'{BotCommands.CAMERA} photo')
+            second_line.append(f'{BotCommands.CAMERA} video {OFF if self.state[VIDEO_RECORDING_IS_ENABLED] else ON}')
 
         third_line = [
             BotCommands.STATUS,

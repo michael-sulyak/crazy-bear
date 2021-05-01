@@ -4,7 +4,10 @@ import typing
 
 from .. import events
 from ..base import BaseModule, Command
-from ..constants import AUTO_SECURITY_IS_ENABLED, SECURITY_IS_ENABLED, USER_IS_CONNECTED_TO_ROUTER, USE_CAMERA
+from ..constants import (
+    AUTO_SECURITY_IS_ENABLED, CAMERA_IS_AVAILABLE, SECURITY_IS_ENABLED, USER_IS_CONNECTED_TO_ROUTER,
+    USE_CAMERA,
+)
 from ...common.constants import AUTO, OFF, ON
 from ...task_queue import TaskPriorities
 from ...common.utils import single_synchronized, synchronized
@@ -65,7 +68,9 @@ class AutoSecurity(BaseModule):
     @synchronized
     def disable(self) -> None:
         super().disable()
-        self._disable_auto_security()
+
+        if self.state[AUTO_SECURITY_IS_ENABLED]:
+            self._disable_auto_security()
 
     @synchronized
     def _enable_security(self) -> None:
@@ -125,7 +130,7 @@ class AutoSecurity(BaseModule):
         use_camera: bool = self.state[USE_CAMERA]
 
         if not user_is_connected and has_movement:
-            if not use_camera:
+            if not use_camera and self.state[CAMERA_IS_AVAILABLE]:
                 self._camera_was_not_used = True
                 self._run_command(BotCommands.CAMERA, ON)
         elif self._camera_was_not_used and use_camera:

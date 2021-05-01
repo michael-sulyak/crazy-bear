@@ -107,13 +107,13 @@ class Commander:
     def _close(self) -> None:
         logging.info('Home assistant is stopping...')
 
-        logging.info('[shutdown] Sending "shutdown" signal...')
-        core_events.shutdown.send()
-
         logging.info('[shutdown] Clearing schedule...')
         schedule.clear()
 
         logging.info('[shutdown] Closing task queue...')
         self.task_worker.stop()
+
+        logging.info('[shutdown] Sending "shutdown" signal...')
+        core_events.shutdown.send()
 
         self.messenger.send_message('Goodbye!')

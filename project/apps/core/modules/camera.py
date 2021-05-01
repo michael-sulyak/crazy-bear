@@ -5,12 +5,15 @@ import schedule
 from imutils.video import VideoStream
 
 from ..base import BaseModule, Command
+from ... import task_queue
 from ...common.constants import OFF, ON
 from ...common.storage import file_storage
-from ... import task_queue
 from ...common.utils import camera_is_available, synchronized
 from ...core import events
-from ...core.constants import CURRENT_FPS, SECURITY_IS_ENABLED, USE_CAMERA, VIDEO_SECURITY
+from ...core.constants import (
+    CAMERA_IS_AVAILABLE, CURRENT_FPS, VIDEO_RECORDING_IS_ENABLED, SECURITY_IS_ENABLED,
+    USE_CAMERA, VIDEO_SECURITY,
+)
 from ...guard.video_guard import VideoGuard
 from ...messengers.constants import BotCommands
 from .... import config
@@ -25,8 +28,10 @@ class Camera(BaseModule):
     initial_state = {
         VIDEO_SECURITY: None,
         USE_CAMERA: False,
+        CAMERA_IS_AVAILABLE: True,
         SECURITY_IS_ENABLED: False,
         CURRENT_FPS: None,
+        VIDEO_RECORDING_IS_ENABLED: False,
     }
     _video_stream: typing.Optional[VideoStream] = None
     _camera_is_available: bool = True
@@ -43,17 +48,27 @@ class Camera(BaseModule):
                 self._check_video_stream,
                 priority=task_queue.TaskPriorities.LOW,
             ),
+            scheduler.every(10).minutes.do(
+                self._update_camera_status,
+            ),
         )
 
     def process_command(self, command: Command) -> typing.Any:
         if command.name == BotCommands.CAMERA:
             if command.first_arg == ON:
-                self._camera_is_available = True
+                self.state[CAMERA_IS_AVAILABLE] = True
                 self._enable_camera()
             elif command.first_arg == OFF:
                 self._disable_camera()
             elif command.first_arg == 'photo':
                 self._take_photo()
+            elif command.first_arg == 'video':
+                if command.second_arg == ON:
+                    self._start_video_recording()
+                elif command.second_arg == OFF:
+                    self._stop_video_recording()
+                else:
+                    return False
             else:
                 return False
 
@@ -81,7 +96,7 @@ class Camera(BaseModule):
             self._disable_security()
             video_guard = None
 
-        if not video_guard and use_camera and security_is_enabled and self._camera_is_available:
+        if not video_guard and use_camera and security_is_enabled and self.state[CAMERA_IS_AVAILABLE]:
             self._enable_security()
             video_guard = self.state[VIDEO_SECURITY]
 
@@ -93,12 +108,20 @@ class Camera(BaseModule):
     @synchronized
     def disable(self) -> None:
         super().disable()
-        self._disable_camera()
+
+        if self.state[VIDEO_SECURITY]:
+            self._disable_security()
+
+        if self.state[VIDEO_RECORDING_IS_ENABLED]:
+            self._stop_video_recording()
+
+        if self.state[USE_CAMERA]:
+            self._disable_camera()
 
     @synchronized
     def _enable_camera(self) -> None:
         if not camera_is_available(config.VIDEO_SRC):
-            self._camera_is_available = False
+            self.state[CAMERA_IS_AVAILABLE] = False
             self.messenger.send_message('Camera is not available')
             return
 
@@ -121,11 +144,14 @@ class Camera(BaseModule):
         if self._video_stream:
             self._video_stream.stop()
             self._video_stream.stream.stream.release()
+            self._video_stream = None
 
         self.messenger.send_message('The camera is off')
 
     @synchronized
     def _enable_security(self) -> None:
+        # TODO: Fix camera usage. Lack of power or overheating of the processor.
+
         if not self.state[USE_CAMERA]:
             return
 
@@ -143,7 +169,7 @@ class Camera(BaseModule):
                 messenger=self.messenger,
                 video_stream=self._video_stream,
                 task_queue=self.task_queue,
-                motion_detected_callback=events.motion_detected,
+                motion_detected_callback=events.motion_detected.send,
             )
             self.state[VIDEO_SECURITY] = video_guard
             video_guard.start()
@@ -181,6 +207,26 @@ class Camera(BaseModule):
                 retry_policy=task_queue.retry_policy_for_connection_error,
             )
 
+    @synchronized
+    def _start_video_recording(self) -> None:
+        if not self._can_use_camera():
+            return
+
+        # TODO: Implement
+
+        self.state[VIDEO_RECORDING_IS_ENABLED] = True
+        self.messenger.send_message('Not implemented')
+
+    @synchronized
+    def _stop_video_recording(self) -> None:
+        if not self._can_use_camera():
+            return
+
+        # TODO: Implement
+
+        self.state[VIDEO_RECORDING_IS_ENABLED] = False
+        self.messenger.send_message('Not implemented')
+
     def _can_use_camera(self) -> bool:
         use_camera: bool = self.state[USE_CAMERA]
 
@@ -210,6 +256,11 @@ class Camera(BaseModule):
         frame = self._video_stream.read()
 
         if frame is None:
-            self._camera_is_available = False
+            self.state[CAMERA_IS_AVAILABLE] = False
             self.messenger.send_message('Camera is not available')
             self._run_command(BotCommands.CAMERA, OFF)
+
+    def _update_camera_status(self) -> None:
+        if self.state[SECURITY_IS_ENABLED]:
+            # Set true for auto_security
+            self.state[CAMERA_IS_AVAILABLE] = True
