@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytz
 
-from .utils import VersionConfig, env
+from .utils import VersionDetails, env
 
 
 BASE_DIR = Path(dirname(__file__)) / '..' / '..'
@@ -14,8 +14,8 @@ APPS_DIR = PROJECT_DIR / 'apps'
 
 
 # Version
-version_config = VersionConfig()
-VERSION = version_config.version
+version_details = VersionDetails()
+VERSION = version_details.version
 
 # Env
 PROJECT_ENV = env('PROJECT_ENV')
@@ -46,7 +46,7 @@ ARDUINO_TTY = env('ARDUINO_TTY')
 # Databases
 DATABASE_URL = env('DATABASE_URL')
 DATABASE_DEBUG = DEBUG
-STORAGE_TIME = datetime.timedelta(hours=env.int('STORAGE_TIME'))
+STORAGE_TIME =env.timedelta('STORAGE_TIME')
 
 # Time
 TZ = env('TZ')

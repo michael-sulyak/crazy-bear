@@ -10,7 +10,7 @@ from sqlalchemy import func as sa_func
 
 from .. import events
 from ..base import BaseModule, Command
-from ..constants import ARDUINO_IS_ENABLED
+from ..constants import ARDUINO_IS_ENABLED, CAMERA_IS_AVAILABLE, VIDEO_RECORDING_IS_ENABLED
 from ... import db
 from ...arduino.models import ArduinoLog
 from ...common.models import Signal
@@ -62,6 +62,11 @@ class Report(BaseModule):
             scheduler.every(10).seconds.do(
                 self.unique_task_queue.push,
                 self._save_cpu_temperature,
+                priority=TaskPriorities.LOW,
+            ),
+            scheduler.every(1).minute.do(
+                self.unique_task_queue.push,
+                self._save_weather_temperature,
                 priority=TaskPriorities.LOW,
             ),
             scheduler.every(10).minutes.do(
@@ -163,15 +168,17 @@ class Report(BaseModule):
 
         message = (
             f'️*Crazy Bear* v{config.VERSION}\n\n'
-            f'Arduino: `{"On" if self.state[ARDUINO_IS_ENABLED] else "Off"}`\n'
-            f'Camera: `{"On" if self.state[USE_CAMERA] else "Off"}`\n\n'
+            f'Arduino: `{"On" if self.state[ARDUINO_IS_ENABLED] else "Off"}`\n\n'
+            f'Has camera: `{"Yes" if self.state[CAMERA_IS_AVAILABLE] else "No"}`\n'
+            f'Camera: `{"On" if self.state[USE_CAMERA] else "Off"}`\n'
+            f'Video recording: `{"On" if self.state[VIDEO_RECORDING_IS_ENABLED] else "Off"}`\n\n'
             f'Security: `{"On" if self.state[SECURITY_IS_ENABLED] else "Off"}`\n'
             f'Auto security: `{"On" if self.state[AUTO_SECURITY_IS_ENABLED] else "Off"}`\n'
             f'Video security: `{"On" if self.state[VIDEO_SECURITY] else "Off"}`\n\n'
             f'Humidity: `{humidity}`\n'
             f'Temperature: `{temperature}`\n'
             f'CPU Temperature: `{cpu_temperature}`\n\n'
-            f'User is connected to router: `{"True" if check_user_connection_to_router() else "False"}`\n'
+            f'User is connected to router: `{"Yes" if check_user_connection_to_router() else "No"}`\n'
             f'Task queue size: `{len(self.context.task_queue)}`\n'
             f'FPS: `{current_fps}`\n\n'
             f'Now: `{datetime.datetime.now().strftime("%d.%m.%Y, %H:%M:%S")}`\n'
@@ -240,7 +247,12 @@ class Report(BaseModule):
         )
 
     @synchronized
-    def _save_cpu_temperature(self):
+    def _save_weather_temperature(self) -> None:
+        temperature = get_weather()['main']['temp']
+        Signal.add(signal_type=constants.WEATHER_TEMPERATURE, value=temperature)
+
+    @synchronized
+    def _save_cpu_temperature(self) -> None:
         try:
             cpu_temperature = get_cpu_temp()
         except RuntimeError:
@@ -314,4 +326,4 @@ class Report(BaseModule):
     @staticmethod
     def _ping_network() -> None:
         is_available = os.system('ping -c 1 google.com') == 0
-        Signal.add(signal_type=constants.NETWORK_PING, value=is_available)
+        Signal.add(signal_type=constants.NETWORK_PING, value=int(is_available))

@@ -5,19 +5,21 @@ import typing
 import schedule
 import serial
 from pandas import DataFrame
+from sqlalchemy import func as sa_func
 
 from ..base import BaseModule, Command
-from ..constants import ARDUINO_IS_ENABLED
+from ..constants import ARDUINO_IS_ENABLED, WEATHER_TEMPERATURE
 from ...arduino.base import ArduinoConnector
 from ...arduino.models import ArduinoLog
 from ...common.constants import OFF, ON
+from ...common.models import Signal
 from ...common.storage import file_storage
-from ...task_queue import TaskPriorities
 from ...common.utils import create_plot, synchronized
 from ...core import events
 from ...core.constants import PHOTO, SECURITY_IS_ENABLED, USE_CAMERA
 from ...db import db_session
 from ...messengers.constants import BotCommands
+from ...task_queue import TaskPriorities
 from .... import config
 
 
@@ -44,7 +46,7 @@ class Arduino(BaseModule):
             ),
             scheduler.every(1).hour.do(
                 self.unique_task_queue.push,
-                lambda: ArduinoLog.clear(),
+                ArduinoLog.clear,
                 priority=TaskPriorities.LOW,
             ),
         )
@@ -132,10 +134,26 @@ class Arduino(BaseModule):
         if not stats:
             return None
 
+        weather_temperature = Signal.get_aggregated(
+            signal_type=WEATHER_TEMPERATURE,
+            aggregate_function=sa_func.avg,
+            delta_type=command.get_second_arg('hours'),
+            delta_value=int(command.get_first_arg(24)),
+        )
+
         return [
             create_plot(title='PIR Sensor', x_attr='time', y_attr='pir_sensor', stats=stats),
             create_plot(title='Humidity', x_attr='time', y_attr='humidity', stats=stats),
-            create_plot(title='Temperature', x_attr='time', y_attr='temperature', stats=stats),
+            create_plot(
+                title='Temperature',
+                x_attr='time',
+                y_attr='temperature',
+                stats=stats,
+                additional_plots=(
+                    [{'x_attr': 'time', 'y_attr': 'value', 'stats': weather_temperature}]
+                    if weather_temperature else None
+                ),
+            ),
         ]
 
     @synchronized

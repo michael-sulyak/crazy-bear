@@ -36,6 +36,11 @@ class Camera(BaseModule):
     _video_stream: typing.Optional[VideoStream] = None
     _camera_is_available: bool = True
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
+        self._update_camera_status()
+
     def init_schedule(self, scheduler: schedule.Scheduler) -> tuple:
         return (
             scheduler.every(10).seconds.do(
@@ -56,7 +61,6 @@ class Camera(BaseModule):
     def process_command(self, command: Command) -> typing.Any:
         if command.name == BotCommands.CAMERA:
             if command.first_arg == ON:
-                self.state[CAMERA_IS_AVAILABLE] = True
                 self._enable_camera()
             elif command.first_arg == OFF:
                 self._disable_camera()
@@ -120,8 +124,9 @@ class Camera(BaseModule):
 
     @synchronized
     def _enable_camera(self) -> None:
-        if not camera_is_available(config.VIDEO_SRC):
-            self.state[CAMERA_IS_AVAILABLE] = False
+        self._update_camera_status()
+
+        if not self.state[CAMERA_IS_AVAILABLE]:
             self.messenger.send_message('Camera is not available')
             return
 
@@ -261,6 +266,4 @@ class Camera(BaseModule):
             self._run_command(BotCommands.CAMERA, OFF)
 
     def _update_camera_status(self) -> None:
-        if self.state[SECURITY_IS_ENABLED]:
-            # Set true for auto_security
-            self.state[CAMERA_IS_AVAILABLE] = True
+        self.state[CAMERA_IS_AVAILABLE] = camera_is_available(config.VIDEO_SRC)

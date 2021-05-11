@@ -99,7 +99,7 @@ def main():
         Command(name=BotCommands.STATUS),
         Command(name=BotCommands.ARDUINO, args=(ON,)),
         Command(name=BotCommands.SECURITY, args=(AUTO, ON,)),
-        Command(name=BotCommands.RECOMMENDATION_SYSTEM, args=(ON,)),
+        # Command(name=BotCommands.RECOMMENDATION_SYSTEM, args=(ON,)),
     )
 
     for command in initial_commands:

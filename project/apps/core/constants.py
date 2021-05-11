@@ -1,4 +1,5 @@
 CPU_TEMPERATURE = 'cpu_temperature'
+WEATHER_TEMPERATURE = 'weather_temperature'
 NETWORK_PING = 'network_ping'
 RAM_USAGE = 'ram_usage'
 TASK_QUEUE_DELAY = 'task_queue_delay'

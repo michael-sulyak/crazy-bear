@@ -44,7 +44,12 @@ def init_settings_for_plt():
     pd.plotting.register_matplotlib_converters()
 
 
-def create_plot(*, title: str, x_attr: str, y_attr: str, stats: list) -> io.BytesIO:
+def create_plot(*,
+                title: str,
+                x_attr: str,
+                y_attr: str,
+                stats: list,
+                additional_plots: typing.Optional[typing.Sequence[dict]] = None) -> io.BytesIO:
     # init_settings_for_plt() is called before
 
     if len(stats) <= 2:
@@ -57,6 +62,13 @@ def create_plot(*, title: str, x_attr: str, y_attr: str, stats: list) -> io.Byte
 
     fig, ax = plt.subplots(figsize=(12, 8,))
     ax.plot(x, y, marker=marker)
+
+    if additional_plots is not None:
+        for additional_plot in additional_plots:
+            x_ = tuple(getattr(item, additional_plot['x_attr']) for item in additional_plot['stats'])
+            y_ = tuple(round(getattr(item, additional_plot['y_attr']), 1) for item in additional_plot['stats'])
+
+            ax.plot(x_, y_, marker=marker)
 
     if isinstance(x[0], (datetime.date, datetime.datetime,)):
         if len(x) > 1:

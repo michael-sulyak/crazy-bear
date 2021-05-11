@@ -45,7 +45,7 @@ class ArduinoConnector:
 
     def __init__(self, ser: typing.Optional[serial.Serial] = None) -> None:
         if ser is None:
-            ser = serial.Serial()
+            ser = serial.Serial(port=config.ARDUINO_TTY)
 
         self._serial = ser
         self._settings = {}
@@ -53,7 +53,6 @@ class ArduinoConnector:
     def start(self) -> None:
         self.is_active = True
         self._serial.close()
-        self._serial.port = config.ARDUINO_TTY
 
         try:
             self._serial.open()

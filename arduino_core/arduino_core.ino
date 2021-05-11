@@ -28,9 +28,7 @@ void setup() {
   dhtSensor.begin();
 }
 
-void loop() {  
-  Serial.println(analogRead(A3));
-  
+void loop() {
   if (Serial.available() > 0) {
     deserializeJson(inputData, Serial);
 
