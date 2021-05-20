@@ -47,7 +47,7 @@ class TelegramMenu:
 
         third_line = [
             BotCommands.STATUS,
-            BotCommands.STATS,
+            f'{BotCommands.STATS} -a -e -r',
             BotCommands.OTHER,
         ]
 
@@ -60,6 +60,9 @@ class TelegramMenu:
     def _get_other_menu(self) -> ReplyKeyboardMarkup:
         return ReplyKeyboardMarkup([
             [BotCommands.REPORT, BotCommands.CONNECTED_DEVICES, BotCommands.DB_STATS],
-            [f'{BotCommands.RECOMMENDATION_SYSTEM} {OFF if self.state[RECOMMENDATION_SYSTEM_IS_ENABLED] else ON}'],
-            [BotCommands.RETURN],
+            [
+                f'{BotCommands.RECOMMENDATION_SYSTEM} {OFF if self.state[RECOMMENDATION_SYSTEM_IS_ENABLED] else ON}',
+                BotCommands.HELP,
+            ],
+            [f'{BotCommands.STATS} -f', BotCommands.RETURN],
         ])

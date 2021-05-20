@@ -14,7 +14,7 @@ class Signal(db.Base):
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
     type = sqlalchemy.Column(sqlalchemy.Text)
     value = sqlalchemy.Column(sqlalchemy.Float)
-    received_at = sqlalchemy.Column(sqlalchemy.DateTime)
+    received_at = sqlalchemy.Column(sqlalchemy.DateTime, index=True)
 
     @classmethod
     def add(cls, signal_type: str, value: float, *, received_at: typing.Optional[datetime.datetime] = None) -> 'Signal':
@@ -41,11 +41,10 @@ class Signal(db.Base):
             db.db_session().query(cls).filter(cls.type.in_(signal_types), cls.received_at <= timestamp).delete()
 
     @classmethod
-    def get(cls, signal_type: str, *, delta_type: str = 'hours', delta_value: int = 24) -> typing.List['Signal']:
+    def get(cls, signal_type: str, *, date_range: typing.Tuple[datetime.datetime, datetime.datetime]) -> typing.List['Signal']:
         query_data = cls._get_query_data(
             signal_type=signal_type,
-            delta_type=delta_type,
-            delta_value=delta_value,
+            date_range=date_range,
         )
 
         if not query_data:
@@ -56,6 +55,7 @@ class Signal(db.Base):
             cls.received_at.label('time'),
         ).filter(
             cls.received_at >= query_data['start_time'],
+            cls.received_at <= query_data['end_time'],
             cls.type == signal_type,
             cls.value.isnot(None),
         ).order_by(
@@ -68,23 +68,22 @@ class Signal(db.Base):
     def get_aggregated(cls,
                        signal_type: str, *,
                        aggregate_function: typing.Callable,
-                       delta_type: str = 'hours',
-                       delta_value: int = 24) -> typing.List['Signal']:
+                       date_range: typing.Tuple[datetime.datetime, datetime.datetime]) -> typing.List['Signal']:
         query_data = cls._get_query_data(
             signal_type=signal_type,
-            delta_type=delta_type,
-            delta_value=delta_value,
+            date_range=date_range,
         )
 
         if not query_data:
             return []
 
-        signal = db.db_session().query(
+        signals = db.db_session().query(
             aggregate_function(cls.value).label('value'),
             cls.received_at.label('time'),
             func.strftime(query_data['time_tpl'], cls.received_at).label('aggregated_time'),
         ).filter(
             cls.received_at >= query_data['start_time'],
+            cls.received_at <= query_data['end_time'],
             cls.type == signal_type,
             cls.value.isnot(None),
         ).group_by(
@@ -93,17 +92,18 @@ class Signal(db.Base):
             cls.received_at,
         ).all()
 
-        return signal
+        return signals
 
     @classmethod
     def _get_query_data(cls,
                         signal_type: str, *,
-                        delta_type: str = 'hours',
-                        delta_value: int = 24) -> typing.Optional[typing.Dict[str, typing.Any]]:
-        start_time = datetime.datetime.now() - datetime.timedelta(**{delta_type: delta_value})
+                        date_range: typing.Tuple[datetime.datetime, datetime.datetime],
+                        ) -> typing.Optional[typing.Dict[str, typing.Any]]:
+        start_time, end_time = date_range
 
         time_filter = db.db_session().query(cls.received_at).filter(
             cls.received_at >= start_time,
+            cls.received_at <= end_time,
             cls.type == signal_type,
             cls.value.isnot(None),
         )
@@ -113,7 +113,9 @@ class Signal(db.Base):
         if not first_time or not last_time:
             return None
 
-        diff = last_time[0] - first_time[0]
+        first_time, last_time = first_time[0], last_time[0]
+
+        diff = last_time - first_time
 
         if diff < datetime.timedelta(minutes=2):
             time_tpl = '%m.%d %H:%M:%S'
@@ -122,5 +124,6 @@ class Signal(db.Base):
 
         return {
             'time_tpl': time_tpl,
-            'start_time': start_time,
+            'start_time': first_time,
+            'end_time': last_time,
         }

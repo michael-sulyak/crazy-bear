@@ -265,5 +265,9 @@ class Camera(BaseModule):
             self.messenger.send_message('Camera is not available')
             self._run_command(BotCommands.CAMERA, OFF)
 
+    @synchronized
     def _update_camera_status(self) -> None:
+        if self._video_stream:
+            return
+
         self.state[CAMERA_IS_AVAILABLE] = camera_is_available(config.VIDEO_SRC)

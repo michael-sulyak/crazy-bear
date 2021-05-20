@@ -58,7 +58,7 @@ class Router(BaseModule):
 
     def init_schedule(self, scheduler: schedule.Scheduler) -> tuple:
         return (
-            scheduler.every(1).hours.do(
+            scheduler.every(2).hours.do(
                 self.unique_task_queue.push,
                 lambda: Signal.clear(signal_types=(constants.USER_IS_CONNECTED_TO_ROUTER,)),
                 priority=TaskPriorities.LOW,
@@ -112,11 +112,14 @@ class Router(BaseModule):
             self.state[constants.USER_IS_CONNECTED_TO_ROUTER] = False
 
     @staticmethod
-    def _create_router_stats(command: Command) -> typing.Optional[io.BytesIO]:
+    def _create_router_stats(date_range: typing.Tuple[datetime.datetime, datetime.datetime],
+                             components: typing.Set[str]) -> typing.Optional[io.BytesIO]:
+        if 'router_usage' not in components:
+            return None
+
         stats = Signal.get(
             signal_type=constants.USER_IS_CONNECTED_TO_ROUTER,
-            delta_type=command.get_second_arg('hours'),
-            delta_value=int(command.get_first_arg(24)),
+            date_range=date_range,
         )
 
         if not stats:

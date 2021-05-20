@@ -49,7 +49,8 @@ def create_plot(*,
                 x_attr: str,
                 y_attr: str,
                 stats: list,
-                additional_plots: typing.Optional[typing.Sequence[dict]] = None) -> io.BytesIO:
+                additional_plots: typing.Optional[typing.Sequence[dict]] = None,
+                legend: typing.Optional[typing.Sequence[str]] = None) -> io.BytesIO:
     # init_settings_for_plt() is called before
 
     if len(stats) <= 2:
@@ -69,6 +70,9 @@ def create_plot(*,
             y_ = tuple(round(getattr(item, additional_plot['y_attr']), 1) for item in additional_plot['stats'])
 
             ax.plot(x_, y_, marker=marker)
+
+    if legend is not None:
+        ax.legend(legend)
 
     if isinstance(x[0], (datetime.date, datetime.datetime,)):
         if len(x) > 1:
@@ -187,3 +191,9 @@ def is_sleep_hours(timestamp: datetime.datetime) -> bool:
         return timestamp.hour >= config.SLEEP_HOURS[0] or timestamp.hour <= config.SLEEP_HOURS[1]
     else:
         return config.SLEEP_HOURS[0] <= timestamp.hour <= config.SLEEP_HOURS[1]
+
+
+def convert_params_to_date_range(delta_value: int = 24,
+                                 delta_type: str = 'hours') -> typing.Tuple[datetime.datetime, datetime.datetime]:
+    now = datetime.datetime.now()
+    return now - datetime.timedelta(**{delta_type: delta_value}), now

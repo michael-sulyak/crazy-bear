@@ -8,7 +8,7 @@ from pandas import DataFrame
 from sqlalchemy import func as sa_func
 
 from ..base import BaseModule, Command
-from ..constants import ARDUINO_IS_ENABLED, WEATHER_TEMPERATURE
+from ..constants import ARDUINO_IS_ENABLED, WEATHER_HUMIDITY, WEATHER_TEMPERATURE
 from ...arduino.base import ArduinoConnector
 from ...arduino.models import ArduinoLog
 from ...common.constants import OFF, ON
@@ -44,7 +44,7 @@ class Arduino(BaseModule):
                 self._backup,
                 priority=TaskPriorities.LOW,
             ),
-            scheduler.every(1).hour.do(
+            scheduler.every(2).hours.do(
                 self.unique_task_queue.push,
                 ArduinoLog.clear,
                 priority=TaskPriorities.LOW,
@@ -94,9 +94,8 @@ class Arduino(BaseModule):
             self.messenger.send_message('Arduino is already on')
             return
 
-        self._arduino_connector = ArduinoConnector()
-
         try:
+            self._arduino_connector = ArduinoConnector()
             self._arduino_connector.start()
         except serial.SerialException:
             self._arduino_connector = None
@@ -113,37 +112,40 @@ class Arduino(BaseModule):
         if self._arduino_connector:
             self._arduino_connector.finish()
             self._arduino_connector = None
+            self._backup()
             self.messenger.send_message('Arduino is off')
         else:
             self.messenger.send_message('Arduino is already off')
 
-        self._backup()
+    def _create_arduino_sensor_stats(self,
+                                     date_range: typing.Tuple[datetime.datetime, datetime.datetime],
+                                     components: typing.Set[str]) -> typing.Optional[typing.List[io.BytesIO]]:
+        if not self.state[ARDUINO_IS_ENABLED] or 'arduino' not in components:
+            return None
 
-        with db_session().transaction:
-            db_session().query(ArduinoLog).delete()
-
-    def _create_arduino_sensor_stats(self, command: Command) -> typing.Optional[typing.List[io.BytesIO]]:
-        if not self.state[ARDUINO_IS_ENABLED]:
-            return
-
-        stats = ArduinoLog.get_avg(
-            delta_type=command.get_second_arg('hours'),
-            delta_value=int(command.get_first_arg(24)),
-        )
+        stats = ArduinoLog.get_avg(date_range=date_range)
 
         if not stats:
             return None
 
-        weather_temperature = Signal.get_aggregated(
-            signal_type=WEATHER_TEMPERATURE,
-            aggregate_function=sa_func.avg,
-            delta_type=command.get_second_arg('hours'),
-            delta_value=int(command.get_first_arg(24)),
-        )
+        if 'extra_data' in components and len(stats) >= 2:
+            date_range = (stats[0].time, stats[-1].time)
+
+            weather_temperature = Signal.get_aggregated(
+                signal_type=WEATHER_TEMPERATURE,
+                aggregate_function=sa_func.avg,
+                date_range=date_range,
+            )
+            weather_humidity = Signal.get_aggregated(
+                signal_type=WEATHER_HUMIDITY,
+                aggregate_function=sa_func.avg,
+                date_range=date_range,
+            )
+        else:
+            weather_temperature = None
+            weather_humidity = None
 
         return [
-            create_plot(title='PIR Sensor', x_attr='time', y_attr='pir_sensor', stats=stats),
-            create_plot(title='Humidity', x_attr='time', y_attr='humidity', stats=stats),
             create_plot(
                 title='Temperature',
                 x_attr='time',
@@ -153,7 +155,26 @@ class Arduino(BaseModule):
                     [{'x_attr': 'time', 'y_attr': 'value', 'stats': weather_temperature}]
                     if weather_temperature else None
                 ),
+                legend=(
+                    ['Inside', 'Outside']
+                    if weather_temperature else None
+                ),
             ),
+            create_plot(
+                title='Humidity',
+                x_attr='time',
+                y_attr='humidity',
+                stats=stats,
+                additional_plots=(
+                    [{'x_attr': 'time', 'y_attr': 'value', 'stats': weather_humidity}]
+                    if weather_humidity else None
+                ),
+                legend=(
+                    ['Inside', 'Outside']
+                    if weather_humidity else None
+                ),
+            ),
+            create_plot(title='PIR Sensor', x_attr='time', y_attr='pir_sensor', stats=stats),
         ]
 
     @synchronized
@@ -193,7 +214,7 @@ class Arduino(BaseModule):
         events.new_arduino_logs.send(new_arduino_logs=new_arduino_logs)
 
     @synchronized
-    def _backup(self):
+    def _backup(self) -> None:
         if not self.state[ARDUINO_IS_ENABLED]:
             return
 

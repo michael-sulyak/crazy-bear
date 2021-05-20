@@ -14,7 +14,10 @@ from ..constants import ARDUINO_IS_ENABLED, CAMERA_IS_AVAILABLE, VIDEO_RECORDING
 from ... import db
 from ...arduino.models import ArduinoLog
 from ...common.models import Signal
-from ...common.utils import check_user_connection_to_router, create_plot, get_cpu_temp, get_weather, synchronized
+from ...common.utils import (
+    check_user_connection_to_router, convert_params_to_date_range, create_plot, get_cpu_temp,
+    get_weather, synchronized,
+)
 from ...core import constants
 from ...core.constants import (
     AUTO_SECURITY_IS_ENABLED, CURRENT_FPS, SECURITY_IS_ENABLED, USE_CAMERA,
@@ -32,11 +35,19 @@ class Report(BaseModule):
         constants.TASK_QUEUE_DELAY,
         constants.RAM_USAGE,
         constants.NETWORK_PING,
+        constants.WEATHER_TEMPERATURE,
+        constants.WEATHER_HUMIDITY,
     )
     _timedelta_for_ping: datetime.timedelta = datetime.timedelta(seconds=30)
     _last_cpu_notification: datetime.datetime
     _last_success_ping: datetime.datetime
     _send_warning_about_ping: bool = False
+    _stats_flags_map = {
+        'a': 'arduino',
+        'e': 'extra_data',
+        'i': 'inner_stats',
+        'r': 'router_usage',
+    }
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -54,7 +65,7 @@ class Report(BaseModule):
 
     def init_schedule(self, scheduler: schedule.Scheduler) -> tuple:
         return (
-            scheduler.every(1).hours.do(
+            scheduler.every(2).hours.do(
                 self.unique_task_queue.push,
                 lambda: Signal.clear(signal_types=self._signals_for_clearing),
                 priority=TaskPriorities.LOW,
@@ -64,9 +75,9 @@ class Report(BaseModule):
                 self._save_cpu_temperature,
                 priority=TaskPriorities.LOW,
             ),
-            scheduler.every(1).minute.do(
+            scheduler.every(5).minutes.do(
                 self.unique_task_queue.push,
-                self._save_weather_temperature,
+                self._save_weather_data,
                 priority=TaskPriorities.LOW,
             ),
             scheduler.every(10).minutes.do(
@@ -96,7 +107,21 @@ class Report(BaseModule):
             return True
 
         if command.name == BotCommands.STATS:
-            results, exceptions = events.request_for_statistics.process(command=command)
+            date_range = convert_params_to_date_range(
+                delta_type=command.get_second_arg('hours', skip_flags=True),
+                delta_value=int(command.get_first_arg(24, skip_flags=True)),
+            )
+
+            flags = command.get_cleaned_flags()
+
+            if flags == {'f'}:
+                flags = self._stats_flags_map.keys()
+
+            results, exceptions = events.request_for_statistics.process(
+                date_range=date_range,
+                components={self._stats_flags_map[flag] for flag in flags},
+            )
+
             self.messenger.start_typing()
 
             for exception in exceptions:
@@ -126,6 +151,20 @@ class Report(BaseModule):
 
         if command.name == BotCommands.DB_STATS:
             self._send_db_stats()
+            return True
+
+        if command.name == BotCommands.HELP:
+            tags_info = '\n'.join(
+                f'`-{key}` - {value.replace("_", " ").title()}'
+                for key, value in self._stats_flags_map.items()
+            )
+
+            self.messenger.send_message(
+                '**\\stats**\n'
+                '***Stats.***\n'
+                'Tags:\n'
+                f'{tags_info}'
+            )
             return True
 
         return False
@@ -168,32 +207,40 @@ class Report(BaseModule):
 
         message = (
             f'️*Crazy Bear* v{config.VERSION}\n\n'
+            
             f'Arduino: `{"On" if self.state[ARDUINO_IS_ENABLED] else "Off"}`\n\n'
+            
             f'Has camera: `{"Yes" if self.state[CAMERA_IS_AVAILABLE] else "No"}`\n'
             f'Camera: `{"On" if self.state[USE_CAMERA] else "Off"}`\n'
-            f'Video recording: `{"On" if self.state[VIDEO_RECORDING_IS_ENABLED] else "Off"}`\n\n'
+            f'Video recording: `{"On" if self.state[VIDEO_RECORDING_IS_ENABLED] else "Off"}`\n'
+            f'FPS: `{current_fps}`\n\n'
+            
             f'Security: `{"On" if self.state[SECURITY_IS_ENABLED] else "Off"}`\n'
             f'Auto security: `{"On" if self.state[AUTO_SECURITY_IS_ENABLED] else "Off"}`\n'
-            f'Video security: `{"On" if self.state[VIDEO_SECURITY] else "Off"}`\n\n'
+            f'Video security: `{"On" if self.state[VIDEO_SECURITY] else "Off"}`\n'
+            f'User is connected to router: `{"Yes" if check_user_connection_to_router() else "No"}`\n\n'
+            
             f'Humidity: `{humidity}`\n'
             f'Temperature: `{temperature}`\n'
             f'CPU Temperature: `{cpu_temperature}`\n\n'
-            f'User is connected to router: `{"Yes" if check_user_connection_to_router() else "No"}`\n'
-            f'Task queue size: `{len(self.context.task_queue)}`\n'
-            f'FPS: `{current_fps}`\n\n'
-            f'Now: `{datetime.datetime.now().strftime("%d.%m.%Y, %H:%M:%S")}`\n'
+            
+            # f'Task queue size: `{len(self.context.task_queue)}`\n'
+            # f'Now: `{datetime.datetime.now().strftime("%d.%m.%Y, %H:%M:%S")}`\n'
             f'Started at: `{self.state[INITED_AT].strftime("%d.%m.%Y, %H:%M:%S")}`'
         )
 
         self.messenger.send_message(message)
 
     @staticmethod
-    def _create_cpu_temp_stats(command: Command) -> typing.Optional[io.BytesIO]:
+    def _create_cpu_temp_stats(date_range: typing.Tuple[datetime.datetime, datetime.datetime],
+                               components: typing.Set[str]) -> typing.Optional[io.BytesIO]:
+        if 'inner_stats' not in components:
+            return None
+
         cpu_temp_stats = Signal.get_aggregated(
             signal_type=constants.CPU_TEMPERATURE,
             aggregate_function=sa_func.avg,
-            delta_type=command.get_second_arg('hours'),
-            delta_value=int(command.get_first_arg(24)),
+            date_range=date_range,
         )
 
         if not cpu_temp_stats:
@@ -202,12 +249,15 @@ class Report(BaseModule):
         return create_plot(title='CPU temperature', x_attr='time', y_attr='value', stats=cpu_temp_stats)
 
     @staticmethod
-    def _create_ram_stats(command: Command) -> typing.Optional[io.BytesIO]:
+    def _create_ram_stats(date_range: typing.Tuple[datetime.datetime, datetime.datetime],
+                          components: typing.Set[str]) -> typing.Optional[io.BytesIO]:
+        if 'inner_stats' not in components:
+            return None
+
         ram_stats = Signal.get_aggregated(
             signal_type=constants.RAM_USAGE,
             aggregate_function=sa_func.avg,
-            delta_type=command.get_second_arg('hours'),
-            delta_value=int(command.get_first_arg(24)),
+            date_range=date_range,
         )
 
         if not ram_stats:
@@ -216,11 +266,14 @@ class Report(BaseModule):
         return create_plot(title='RAM usage (%)', x_attr='time', y_attr='value', stats=ram_stats)
 
     @staticmethod
-    def _create_network_stats(command: Command) -> typing.Optional[io.BytesIO]:
+    def _create_network_stats(date_range: typing.Tuple[datetime.datetime, datetime.datetime],
+                              components: typing.Set[str]) -> typing.Optional[io.BytesIO]:
+        if 'inner_stats' not in components:
+            return None
+
         network_stats = Signal.get(
             signal_type=constants.NETWORK_PING,
-            delta_type=command.get_second_arg('hours'),
-            delta_value=int(command.get_first_arg(24)),
+            date_range=date_range,
         )
 
         if not network_stats:
@@ -229,11 +282,14 @@ class Report(BaseModule):
         return create_plot(title='Online', x_attr='time', y_attr='value', stats=network_stats)
 
     @staticmethod
-    def _create_task_queue_stats(command: Command) -> typing.Optional[io.BytesIO]:
+    def _create_task_queue_stats(date_range: typing.Tuple[datetime.datetime, datetime.datetime],
+                                 components: typing.Set[str]) -> typing.Optional[io.BytesIO]:
+        if 'inner_stats' not in components:
+            return None
+
         task_queue_size_stats = Signal.get(
             signal_type=constants.TASK_QUEUE_DELAY,
-            delta_type=command.get_second_arg('hours'),
-            delta_value=int(command.get_first_arg(24)),
+            date_range=date_range,
         )
 
         if not task_queue_size_stats:
@@ -247,9 +303,10 @@ class Report(BaseModule):
         )
 
     @synchronized
-    def _save_weather_temperature(self) -> None:
-        temperature = get_weather()['main']['temp']
-        Signal.add(signal_type=constants.WEATHER_TEMPERATURE, value=temperature)
+    def _save_weather_data(self) -> None:
+        weather = get_weather()
+        Signal.add(signal_type=constants.WEATHER_TEMPERATURE, value=weather['main']['temp'])
+        Signal.add(signal_type=constants.WEATHER_HUMIDITY, value=weather['main']['humidity'])
 
     @synchronized
     def _save_cpu_temperature(self) -> None:

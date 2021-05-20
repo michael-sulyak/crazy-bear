@@ -92,20 +92,31 @@ class Command:
     def third_arg(self) -> typing.Any:
         return self.get_arg(2)
 
-    def get_first_arg(self, default: typing.Any) -> typing.Any:
-        return self.get_arg(0, default)
+    def get_first_arg(self, default: typing.Any, *, skip_flags: bool = False) -> typing.Any:
+        return self.get_arg(0, default, skip_flags=skip_flags)
 
-    def get_second_arg(self, default: typing.Any) -> typing.Any:
-        return self.get_arg(1, default)
+    def get_second_arg(self, default: typing.Any, *, skip_flags: bool = False) -> typing.Any:
+        return self.get_arg(1, default, skip_flags=skip_flags)
 
-    def get_third_arg(self, default: typing.Any) -> typing.Any:
-        return self.get_arg(2, default)
+    def get_third_arg(self, default: typing.Any, *, skip_flags: bool = False) -> typing.Any:
+        return self.get_arg(2, default, skip_flags=skip_flags)
 
-    def get_arg(self, index: int, default: typing.Any = None) -> typing.Any:
-        if len(self.args) <= index:
+    def get_arg(self, index: int, default: typing.Any = None, *, skip_flags: bool = False) -> typing.Any:
+        args = self.args
+
+        if skip_flags:
+            args = tuple(arg for arg in self.args if not arg.startswith('-'))
+
+        if len(args) <= index:
             return default
 
-        return self.args[index]
+        return args[index]
+
+    def get_flags(self) -> typing.Set[str]:
+        return set(arg for arg in self.args if arg.startswith('-'))
+
+    def get_cleaned_flags(self) -> typing.Set[str]:
+        return set(arg[1:] for arg in self.get_flags())
 
     def is_same(self, name, *args, **kwargs) -> bool:
         return self.name == name and self.args == args and self.kwargs == kwargs

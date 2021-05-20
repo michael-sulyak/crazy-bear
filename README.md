@@ -1,4 +1,4 @@
-# CrazyBear - Home Assistant
+# CrazyBear - Home Assistant in Telegram
 
 # Used:
 1. **Raspberry Pi 4**
@@ -14,7 +14,9 @@
 2. Copy the code to a **Raspberry Pi** (or somewhere else).
 
 3. Build and run:
-```
+```bash
 docker-compose build
 docker-compose up -d
 ```
+
+4. If you want to use Arduino then you need to upload `arduino_core`.

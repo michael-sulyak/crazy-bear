@@ -15,7 +15,7 @@ class ArduinoLog(db.Base):
     pir_sensor = sqlalchemy.Column(sqlalchemy.Float)
     humidity = sqlalchemy.Column(sqlalchemy.Float)
     temperature = sqlalchemy.Column(sqlalchemy.Float)
-    received_at = sqlalchemy.Column(sqlalchemy.DateTime)
+    received_at = sqlalchemy.Column(sqlalchemy.DateTime, index=True)
 
     @classmethod
     def last_avg(cls) -> typing.Any:
@@ -33,11 +33,12 @@ class ArduinoLog(db.Base):
         ).group_by().first()
 
     @classmethod
-    def get_avg(cls, delta_type: str = 'hours', delta_value: int = 24) -> typing.List['ArduinoLog']:
-        start_time = datetime.datetime.now() - datetime.timedelta(**{delta_type: delta_value})
+    def get_avg(cls, *, date_range: typing.Tuple[datetime.datetime, datetime.datetime]) -> typing.List['ArduinoLog']:
+        start_time, end_time = date_range
 
         time_filter = db.db_session().query(cls.received_at).filter(
             cls.received_at >= start_time,
+            cls.received_at <= end_time,
             cls.humidity.isnot(None),
             cls.pir_sensor.isnot(None),
             cls.temperature.isnot(None),

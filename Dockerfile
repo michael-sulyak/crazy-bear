@@ -42,8 +42,3 @@ RUN apt-get update && apt-get install -y \
 # Requirements
 COPY ./requirements.txt  /app
 RUN pip3 install -r requirements.txt
-#RUN pip3 install poetry==1.1.5
-#COPY ./pyproject.toml /app
-#COPY ./poetry.lock /app
-#RUN poetry config virtualenvs.create false && \
-#    poetry install
