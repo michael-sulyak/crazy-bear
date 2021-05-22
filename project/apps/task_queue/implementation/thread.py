@@ -31,7 +31,7 @@ class MemTaskQueue(BaseTaskQueue):
     def put_task(self, task: Task) -> None:
         task.status = TaskStatus.PENDING
 
-        logging.info('Put %s to MemTaskQueue', task)
+        logging.debug('Put %s to MemTaskQueue', task)
 
         self._tasks.put(task)
 
@@ -89,12 +89,12 @@ class ThreadWorker(BaseWorker):
                 continue
 
             if task.run_after > datetime.datetime.now():
-                logging.info('Skip task')
+                logging.debug('Skip task')
                 sleep(self._getting_delay)
                 self.task_queue.put_task(task)
                 continue
 
-            logging.info('Get %s from MemTaskQueue', task)
+            logging.debug('Get %s from MemTaskQueue', task)
 
             try:
                 task.run()

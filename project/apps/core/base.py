@@ -51,15 +51,11 @@ class BaseModule(abc.ABC):
 
     def subscribe_to_events(self) -> typing.Tuple[Receiver, ...]:
         return (
-            events.tick.connect(self.tick),
             events.shutdown.connect(self.disable),
             messenger_events.input_command.connect(self.process_command),
         )
 
     def process_command(self, command: 'Command') -> typing.Any:
-        pass
-
-    def tick(self) -> None:
         pass
 
     def disable(self) -> None:

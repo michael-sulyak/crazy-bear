@@ -56,6 +56,11 @@ class Camera(BaseModule):
             scheduler.every(10).minutes.do(
                 self._update_camera_status,
             ),
+            scheduler.every(1).second.do(
+                self.unique_task_queue.push,
+                self.check,
+                priority=task_queue.TaskPriorities.HIGH,
+            ),
         )
 
     def process_command(self, command: Command) -> typing.Any:
@@ -91,7 +96,7 @@ class Camera(BaseModule):
         return False
 
     @synchronized
-    def tick(self) -> None:
+    def check(self) -> None:
         video_guard: typing.Optional[VideoGuard] = self.state[VIDEO_SECURITY]
         use_camera: bool = self.state[USE_CAMERA]
         security_is_enabled: bool = self.state[SECURITY_IS_ENABLED]

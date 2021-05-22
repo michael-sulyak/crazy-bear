@@ -2,6 +2,8 @@ import datetime
 import threading
 import typing
 
+import schedule
+
 from .. import events
 from ..base import BaseModule, Command
 from ..constants import (
@@ -25,13 +27,22 @@ class AutoSecurity(BaseModule):
     }
     _last_movement_at: typing.Optional[datetime.datetime] = None
     _camera_was_not_used: bool = False
-    _thirty_minutes: datetime.timedelta = datetime.timedelta(minutes=30)
+    _twenty_minutes: datetime.timedelta = datetime.timedelta(minutes=20)
     _lock_for_last_movement_at: threading.RLock
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
         self._lock_for_last_movement_at = threading.RLock()
+
+    def init_schedule(self, scheduler: schedule.Scheduler) -> tuple:
+        return (
+            scheduler.every(1).second.do(
+                self.unique_task_queue.push,
+                self._check_auto_security_status,
+                priority=TaskPriorities.HIGH,
+            ),
+        )
 
     def subscribe_to_events(self) -> tuple:
         return (
@@ -60,10 +71,6 @@ class AutoSecurity(BaseModule):
             return True
 
         return False
-
-    def tick(self) -> None:
-        if self.state[AUTO_SECURITY_IS_ENABLED]:
-            self.unique_task_queue.push(self._check_auto_security_status, priority=TaskPriorities.HIGH)
 
     @synchronized
     def disable(self) -> None:
@@ -105,6 +112,12 @@ class AutoSecurity(BaseModule):
         with self._lock_for_last_movement_at:
             self._last_movement_at = datetime.datetime.now()
 
+        if (not self.state[USER_IS_CONNECTED_TO_ROUTER]
+                and not self.state[USE_CAMERA]
+                and self.state[CAMERA_IS_AVAILABLE]):
+            self._camera_was_not_used = True
+            self._run_command(BotCommands.CAMERA, ON)
+
     @single_synchronized
     def _check_auto_security_status(self) -> None:
         if not self.state[AUTO_SECURITY_IS_ENABLED]:
@@ -125,14 +138,10 @@ class AutoSecurity(BaseModule):
 
         with self._lock_for_last_movement_at:
             now = datetime.datetime.now()
-            has_movement = self._last_movement_at and now - self._last_movement_at <= self._thirty_minutes
+            has_movement = self._last_movement_at and now - self._last_movement_at <= self._twenty_minutes
 
         use_camera: bool = self.state[USE_CAMERA]
 
-        if not user_is_connected and has_movement:
-            if not use_camera and self.state[CAMERA_IS_AVAILABLE]:
-                self._camera_was_not_used = True
-                self._run_command(BotCommands.CAMERA, ON)
-        elif self._camera_was_not_used and use_camera:
+        if (user_is_connected or not has_movement) and self._camera_was_not_used and use_camera:
             self._camera_was_not_used = False
             self._run_command(BotCommands.CAMERA, OFF)

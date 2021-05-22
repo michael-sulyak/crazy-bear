@@ -6,14 +6,12 @@ from collections import defaultdict
 
 import schedule
 from emoji import emojize
-from sqlalchemy import func as sa_func
 
 from .. import events
 from ..base import BaseModule, Command
 from ..constants import ARDUINO_IS_ENABLED, CAMERA_IS_AVAILABLE, VIDEO_RECORDING_IS_ENABLED
 from ... import db
-from ...arduino.models import ArduinoLog
-from ...common.models import Signal
+from ...arduino.constants import ArduinoSensorTypes
 from ...common.utils import (
     check_user_connection_to_router, convert_params_to_date_range, create_plot, get_cpu_temp,
     get_weather, synchronized,
@@ -24,6 +22,7 @@ from ...core.constants import (
     VIDEO_SECURITY,
 )
 from ...messengers.constants import BotCommands, INITED_AT
+from ...signals.models import Signal
 from ...task_queue import TaskPriorities
 from .... import config
 
@@ -34,14 +33,11 @@ class Report(BaseModule):
         constants.CPU_TEMPERATURE,
         constants.TASK_QUEUE_DELAY,
         constants.RAM_USAGE,
-        constants.NETWORK_PING,
         constants.WEATHER_TEMPERATURE,
         constants.WEATHER_HUMIDITY,
     )
     _timedelta_for_ping: datetime.timedelta = datetime.timedelta(seconds=30)
     _last_cpu_notification: datetime.datetime
-    _last_success_ping: datetime.datetime
-    _send_warning_about_ping: bool = False
     _stats_flags_map = {
         'a': 'arduino',
         'e': 'extra_data',
@@ -53,7 +49,6 @@ class Report(BaseModule):
         super().__init__(*args, **kwargs)
 
         now = datetime.datetime.now()
-        self._last_success_ping = now
         self._last_cpu_notification = now
 
         self.task_queue.put(
@@ -65,11 +60,6 @@ class Report(BaseModule):
 
     def init_schedule(self, scheduler: schedule.Scheduler) -> tuple:
         return (
-            scheduler.every(2).hours.do(
-                self.unique_task_queue.push,
-                lambda: Signal.clear(signal_types=self._signals_for_clearing),
-                priority=TaskPriorities.LOW,
-            ),
             scheduler.every(10).seconds.do(
                 self.unique_task_queue.push,
                 self._save_cpu_temperature,
@@ -85,11 +75,6 @@ class Report(BaseModule):
                 self._save_ram_usage,
                 priority=TaskPriorities.LOW,
             ),
-            scheduler.every(10).seconds.do(
-                self.unique_task_queue.push,
-                self._ping_network,
-                priority=TaskPriorities.MEDIUM,
-            ),
         )
 
     def subscribe_to_events(self) -> tuple:
@@ -98,7 +83,6 @@ class Report(BaseModule):
             events.request_for_statistics.connect(self._create_cpu_temp_stats),
             events.request_for_statistics.connect(self._create_task_queue_stats),
             events.request_for_statistics.connect(self._create_ram_stats),
-            events.request_for_statistics.connect(self._create_network_stats),
         )
 
     def process_command(self, command: Command) -> typing.Any:
@@ -184,16 +168,18 @@ class Report(BaseModule):
         )
 
     def _send_status(self) -> None:
-        humidity = self._empty_value
-        temperature = self._empty_value
-        arduino_data = ArduinoLog.last_avg()
+        humidity = Signal.last_aggregated(ArduinoSensorTypes.HUMIDITY)
+        temperature = Signal.last_aggregated(ArduinoSensorTypes.TEMPERATURE)
 
-        if arduino_data:
-            if arduino_data.humidity is not None:
-                humidity = f'{round(arduino_data.humidity, 2)}%'
+        if humidity is not None:
+            humidity = f'{round(humidity, 2)}%'
+        else:
+            humidity = self._empty_value
 
-            if arduino_data.temperature is not None:
-                temperature = f'{round(arduino_data.temperature, 2)}℃'
+        if temperature is not None:
+            temperature = f'{round(temperature, 2)}℃'
+        else:
+            temperature = self._empty_value
 
         if self.state[CURRENT_FPS] is None:
             current_fps = self._empty_value
@@ -239,14 +225,13 @@ class Report(BaseModule):
 
         cpu_temp_stats = Signal.get_aggregated(
             signal_type=constants.CPU_TEMPERATURE,
-            aggregate_function=sa_func.avg,
             date_range=date_range,
         )
 
         if not cpu_temp_stats:
             return None
 
-        return create_plot(title='CPU temperature', x_attr='time', y_attr='value', stats=cpu_temp_stats)
+        return create_plot(title='CPU temperature', x_attr='aggregated_time', y_attr='value', stats=cpu_temp_stats)
 
     @staticmethod
     def _create_ram_stats(date_range: typing.Tuple[datetime.datetime, datetime.datetime],
@@ -256,30 +241,13 @@ class Report(BaseModule):
 
         ram_stats = Signal.get_aggregated(
             signal_type=constants.RAM_USAGE,
-            aggregate_function=sa_func.avg,
             date_range=date_range,
         )
 
         if not ram_stats:
             return None
 
-        return create_plot(title='RAM usage (%)', x_attr='time', y_attr='value', stats=ram_stats)
-
-    @staticmethod
-    def _create_network_stats(date_range: typing.Tuple[datetime.datetime, datetime.datetime],
-                              components: typing.Set[str]) -> typing.Optional[io.BytesIO]:
-        if 'inner_stats' not in components:
-            return None
-
-        network_stats = Signal.get(
-            signal_type=constants.NETWORK_PING,
-            date_range=date_range,
-        )
-
-        if not network_stats:
-            return None
-
-        return create_plot(title='Online', x_attr='time', y_attr='value', stats=network_stats)
+        return create_plot(title='RAM usage (%)', x_attr='aggregated_time', y_attr='value', stats=ram_stats)
 
     @staticmethod
     def _create_task_queue_stats(date_range: typing.Tuple[datetime.datetime, datetime.datetime],
@@ -297,7 +265,7 @@ class Report(BaseModule):
 
         return create_plot(
             title='Task queue delay stats (sec.)',
-            x_attr='time',
+            x_attr='received_at',
             y_attr='value',
             stats=task_queue_size_stats,
         )
@@ -370,17 +338,16 @@ class Report(BaseModule):
         for item in result:
             agg_result[item['name']] += item['pgsize']
 
-        prepared_result = ''
+        prepared_result = '**Table:**\n'
 
         for name, pg_size in agg_result.items():
-            prepared_result += (
-                f'Name: {name}\n'
-                f'Size: {round(pg_size / 1024 / 1024, 2)} mb.\n\n'
-            )
+            prepared_result += f'`{name}`: {round(pg_size / 1024 / 1024, 2)} mb.\n'
 
-        self.messenger.send_message(prepared_result, parse_mode=None)
+        prepared_result += '\n**Table Signal:**\n'
 
-    @staticmethod
-    def _ping_network() -> None:
-        is_available = os.system('ping -c 1 google.com') == 0
-        Signal.add(signal_type=constants.NETWORK_PING, value=int(is_available))
+        signal_table_stats = Signal.get_table_stats()
+
+        for name, count in signal_table_stats.items():
+            prepared_result += f'`{name}`: {count}\n'
+
+        self.messenger.send_message(prepared_result)

@@ -4,11 +4,12 @@ from collections import defaultdict
 
 from .. import constants
 from ..base import BaseModule, Command
-from ...arduino.models import ArduinoLog
+from ...arduino.constants import ArduinoSensorTypes
 from ...common.constants import OFF, ON
 from ...common.utils import is_sleep_hours, synchronized
 from ...core import events
 from ...messengers.constants import BotCommands
+from ...signals.models import Signal
 from .... import config
 
 
@@ -27,7 +28,7 @@ class RecommendationSystem(BaseModule):
     def subscribe_to_events(self) -> tuple:
         return (
             *super().subscribe_to_events(),
-            events.new_arduino_logs.connect(self._process_new_arduino_logs),
+            events.new_arduino_data.connect(self._process_new_arduino_logs),
         )
 
     @synchronized
@@ -53,33 +54,48 @@ class RecommendationSystem(BaseModule):
         return False
 
     @synchronized
-    def _process_new_arduino_logs(self, new_arduino_logs: typing.List[ArduinoLog]) -> None:
+    def _process_new_arduino_logs(self, signals: typing.List[Signal]) -> None:
         if not self.state[constants.RECOMMENDATION_SYSTEM_IS_ENABLED]:
             return
 
-        last_arduino_log = new_arduino_logs[-1]
+        last_signal_data = {}
 
-        if last_arduino_log.humidity is not None:
+        for signal in reversed(signals):
+            if signal.value is None:
+                continue
+
+            if signal.type in last_signal_data:
+                if last_signal_data.keys() >= {ArduinoSensorTypes.HUMIDITY, ArduinoSensorTypes.TEMPERATURE}:
+                    break
+
+                continue
+
+            last_signal_data[signal.type] = signal.value
+
+        humidity = last_signal_data.get(ArduinoSensorTypes.HUMIDITY)
+        temperature = last_signal_data.get(ArduinoSensorTypes.TEMPERATURE)
+
+        if humidity is not None:
             can_send_warning = self._can_send_warning('humidity')
 
-            if last_arduino_log.humidity < config.NORMAL_HUMIDITY_RANGE[0] and can_send_warning:
-                self.messenger.send_message(f'There is low humidity in the room ({last_arduino_log.humidity}%)!')
+            if humidity < config.NORMAL_HUMIDITY_RANGE[0] and can_send_warning:
+                self.messenger.send_message(f'There is low humidity in the room ({humidity}%)!')
                 self._mark_as_sent('humidity')
 
-            if last_arduino_log.humidity > config.NORMAL_HUMIDITY_RANGE[1] and can_send_warning:
-                self.messenger.send_message(f'There is high humidity in the room ({last_arduino_log.humidity}%)!')
+            if humidity > config.NORMAL_HUMIDITY_RANGE[1] and can_send_warning:
+                self.messenger.send_message(f'There is high humidity in the room ({humidity}%)!')
                 self._mark_as_sent('humidity')
 
-        if last_arduino_log.temperature is not None:
+        if temperature is not None:
             can_send_warning = self._can_send_warning('temperature')
 
-            if last_arduino_log.temperature < config.NORMAL_TEMPERATURE_RANGE[0] and can_send_warning:
-                self.messenger.send_message(f'There is a low temperature in the room ({last_arduino_log.temperature})!')
+            if temperature < config.NORMAL_TEMPERATURE_RANGE[0] and can_send_warning:
+                self.messenger.send_message(f'There is a low temperature in the room ({temperature})!')
                 self._mark_as_sent('temperature')
 
-            if last_arduino_log.temperature > config.NORMAL_TEMPERATURE_RANGE[1] and can_send_warning:
+            if temperature > config.NORMAL_TEMPERATURE_RANGE[1] and can_send_warning:
                 self.messenger.send_message(
-                    f'There is a high temperature in the room ({last_arduino_log.temperature})!',
+                    f'There is a high temperature in the room ({temperature})!',
                 )
                 self._mark_as_sent('temperature')
 

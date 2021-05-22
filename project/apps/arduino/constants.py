@@ -12,3 +12,9 @@ class ArduinoSensorTypes:
     PIR_SENSOR = 'pir_sensor'
     HUMIDITY = 'humidity'
     TEMPERATURE = 'temperature'
+
+    ALL = {
+        PIR_SENSOR,
+        HUMIDITY,
+        TEMPERATURE,
+    }

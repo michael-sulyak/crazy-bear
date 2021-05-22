@@ -23,11 +23,11 @@ class FileStorage:
         file_name = os.path.join('/', now.strftime('%Y-%m-%d'), file_name)
         self._dbx.files_upload(content, file_name)
 
-    def upload_df_as_xlsx(self, file_name: str, data_frame: DataFrame) -> None:
-        io_buffer = io.BytesIO()
-        data_frame.to_excel(io_buffer)
+    def upload_df_as_csv(self, file_name: str, data_frame: DataFrame) -> None:
+        io_buffer = io.StringIO()
+        data_frame.to_csv(io_buffer, index=False)
         io_buffer.seek(0)
-        self.upload(file_name=file_name, content=io_buffer.read())
+        self.upload(file_name=file_name, content=io_buffer.read().encode())
 
     def upload_frame(self, file_name: str, frame: np.array) -> None:
         is_success, buffer = cv2.imencode('.jpg', frame)

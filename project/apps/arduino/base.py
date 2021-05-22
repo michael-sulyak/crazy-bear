@@ -7,8 +7,7 @@ from datetime import datetime
 import serial
 
 from . import constants
-from .models import ArduinoLog
-from ..db import db_session
+from ..signals.models import Signal
 from ... import config
 
 
@@ -61,33 +60,26 @@ class ArduinoConnector:
             self.finish()
             raise
 
-    def process_updates(self) -> typing.List[ArduinoLog]:
+    def process_updates(self) -> typing.List[Signal]:
         if not self.is_active:
             return []
 
-        new_arduino_logs = []
+        signals = []
 
         for response in self._read_serial():
             logging.debug(response)
 
             if response.type == constants.ArduinoResponseTypes.SENSORS:
-                arduino_log = ArduinoLog(**response.payload, received_at=response.received_at)
-
-                if not new_arduino_logs:
-                    new_arduino_logs.append(arduino_log)
-                elif new_arduino_logs[-1].pir_sensor < arduino_log.pir_sensor:
-                    new_arduino_logs[-1] = arduino_log
-
-                continue
+                for name, value in response.payload.items():
+                    signals.append(Signal(type=name, value=value, received_at=response.received_at))
 
             if response.type == constants.ArduinoResponseTypes.SETTINGS:
                 self._settings = response.payload
 
-        if new_arduino_logs:
-            with db_session().transaction:
-                db_session().add_all(new_arduino_logs)
+        if signals:
+            Signal.bulk_add(signals)
 
-        return new_arduino_logs
+        return signals
 
     def finish(self) -> None:
         self.is_active = False

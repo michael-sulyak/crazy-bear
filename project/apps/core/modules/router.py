@@ -5,7 +5,7 @@ import typing
 import schedule
 
 from ..base import BaseModule, Command
-from ...common.models import Signal
+from ...signals.models import Signal
 from ...task_queue import TaskPriorities
 from ...common.tplink import TpLinkClient
 from ...common.utils import check_user_connection_to_router, create_plot, synchronized
@@ -23,7 +23,7 @@ class Router(BaseModule):
     _tplink_client: TpLinkClient
     _last_connected_at: datetime.datetime
     _timedelta_for_connection: datetime.timedelta = datetime.timedelta(seconds=30)
-    _prev_is_connected: typing.Optional[bool] = None
+    _user_was_connected: typing.Optional[bool] = None
     _last_saving: datetime.datetime
     _timedelta_for_saving: datetime.timedelta = datetime.timedelta(minutes=1)
 
@@ -58,16 +58,11 @@ class Router(BaseModule):
 
     def init_schedule(self, scheduler: schedule.Scheduler) -> tuple:
         return (
-            scheduler.every(2).hours.do(
+            scheduler.every(1).seconds.do(
                 self.unique_task_queue.push,
-                lambda: Signal.clear(signal_types=(constants.USER_IS_CONNECTED_TO_ROUTER,)),
-                priority=TaskPriorities.LOW,
+                self._check_user_status,
+                priority=TaskPriorities.HIGH,
             ),
-            # scheduler.every(1).seconds.do(
-            #     self.unique_task_queue.push,
-            #     self._check_user_status,
-            #     priority=TaskPriorities.HIGH,
-            # ),
         )
 
     def process_command(self, command: Command) -> typing.Any:
@@ -78,16 +73,12 @@ class Router(BaseModule):
         return False
 
     @synchronized
-    def tick(self) -> None:
-        self._check_user_status()
-
-    @synchronized
     def _check_user_status(self) -> None:
         now = datetime.datetime.now()
 
         need_to_recheck = (
-            self._prev_is_connected is not True
-            or now - self._last_checking >= self._timedelta_for_checking
+                self._user_was_connected is not True
+                or now - self._last_checking >= self._timedelta_for_checking
         )
 
         if not need_to_recheck:
@@ -95,11 +86,11 @@ class Router(BaseModule):
 
         is_connected = check_user_connection_to_router()
 
-        need_to_save = self._prev_is_connected != is_connected or now - self._last_saving >= self._timedelta_for_saving
+        need_to_save = self._user_was_connected != is_connected or now - self._last_saving >= self._timedelta_for_saving
 
         if need_to_save:
             Signal.add(signal_type=constants.USER_IS_CONNECTED_TO_ROUTER, value=int(is_connected))
-            self._prev_is_connected = is_connected
+            self._user_was_connected = is_connected
             self._last_saving = now
 
         if is_connected:
@@ -125,7 +116,7 @@ class Router(BaseModule):
         if not stats:
             return None
 
-        return create_plot(title='User is connected to router', x_attr='time', y_attr='value', stats=stats)
+        return create_plot(title='User is connected to router', x_attr='received_at', y_attr='value', stats=stats)
 
     def _send_connected_devices(self) -> None:
         connected_devices = self.tplink_client.get_connected_devices()

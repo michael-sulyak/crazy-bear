@@ -54,7 +54,7 @@ class Commander:
         while True:
             try:
                 self.tick()
-                time.sleep(1)
+                time.sleep(0.2)
             except Shutdown:
                 break
 
@@ -78,8 +78,6 @@ class Commander:
         except Exception as e:
             logging.exception(e)
             return
-
-        core_events.tick.send()
 
     def process_updates(self) -> None:
         for message in self.messenger.get_updates():

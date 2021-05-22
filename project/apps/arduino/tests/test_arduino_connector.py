@@ -1,5 +1,6 @@
 from ..base import ArduinoConnector
-from ..models import ArduinoLog
+from ..constants import ArduinoSensorTypes
+from ...signals.models import Signal
 
 
 class TestMessenger:
@@ -54,11 +55,14 @@ def test_process_updates(test_db):
         b'"payload": {"pir_sensor": 100, "humidity": 20, "temperature": 30}}' + arduino_connector.TERMINATOR
     )
     arduino_connector.process_updates()
-    last_log = ArduinoLog.last_avg()
-    assert last_log is not None
-    assert last_log.pir_sensor == 100
-    assert last_log.humidity == 20
-    assert last_log.temperature == 30
+
+    humidity = Signal.last_aggregated(ArduinoSensorTypes.HUMIDITY)
+    temperature = Signal.last_aggregated(ArduinoSensorTypes.TEMPERATURE)
+    pir_sensor = Signal.last_aggregated(ArduinoSensorTypes.PIR_SENSOR)
+
+    assert pir_sensor == 100
+    assert humidity == 20
+    assert temperature == 30
 
     arduino_connector.finish()
     assert ser._is_open is False

@@ -125,12 +125,13 @@ class Task:
                     self.run_after = datetime.datetime.now() + e.after
                     self.priority = constants.TaskPriorities.LOW
 
-                if self.retry_policy.max_retries <= self._retries:
+                if self._retries <= self.retry_policy.max_retries:
                     logging.info(f'Retry policy for {self}')
                     raise
 
             self.error = e.source
             self.status = constants.TaskStatus.FAILED
+            logging.exception(e.source)
         except Exception as e:
             self.error = e
             self.status = constants.TaskStatus.FAILED

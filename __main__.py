@@ -90,6 +90,7 @@ def main():
             modules.AutoSecurity,
             modules.Router,
             modules.RecommendationSystem,
+            modules.Signals,
         ),
         state=state,
         scheduler=scheduler,

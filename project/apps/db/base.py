@@ -11,6 +11,7 @@ __all__ = (
     'db_engine',
     'db_session',
     'close_db_session',
+    'vacuum',
 )
 
 Base = declarative_base()
@@ -25,3 +26,8 @@ def db_session() -> Session:
 
 
 close_db_session = MySession.remove
+
+
+def vacuum() -> None:
+    with db_engine.connect() as con:
+        con.execute('VACUUM;')

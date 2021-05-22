@@ -4,23 +4,18 @@ import typing
 
 import schedule
 import serial
-from pandas import DataFrame
-from sqlalchemy import func as sa_func
 
+from ...signals.models import Signal
 from ..base import BaseModule, Command
 from ..constants import ARDUINO_IS_ENABLED, WEATHER_HUMIDITY, WEATHER_TEMPERATURE
 from ...arduino.base import ArduinoConnector
-from ...arduino.models import ArduinoLog
+from ...arduino.constants import ArduinoSensorTypes
 from ...common.constants import OFF, ON
-from ...common.models import Signal
-from ...common.storage import file_storage
 from ...common.utils import create_plot, synchronized
 from ...core import events
 from ...core.constants import PHOTO, SECURITY_IS_ENABLED, USE_CAMERA
-from ...db import db_session
 from ...messengers.constants import BotCommands
 from ...task_queue import TaskPriorities
-from .... import config
 
 
 __all__ = (
@@ -34,27 +29,19 @@ class Arduino(BaseModule):
     }
     _arduino_connector: typing.Optional[ArduinoConnector] = None
 
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-
     def init_schedule(self, scheduler: schedule.Scheduler) -> tuple:
         return (
-            scheduler.every(1).hour.do(
+            scheduler.every(1).second.do(
                 self.unique_task_queue.push,
-                self._backup,
-                priority=TaskPriorities.LOW,
-            ),
-            scheduler.every(2).hours.do(
-                self.unique_task_queue.push,
-                ArduinoLog.clear,
-                priority=TaskPriorities.LOW,
+                self.check,
+                priority=TaskPriorities.HIGH,
             ),
         )
 
     def subscribe_to_events(self) -> tuple:
         return (
             *super().subscribe_to_events(),
-            events.request_for_statistics.connect(self._create_arduino_sensor_stats),
+            events.request_for_statistics.connect(self._create_arduino_sensor_avg_stats),
         )
 
     def process_command(self, command: Command) -> typing.Any:
@@ -71,7 +58,7 @@ class Arduino(BaseModule):
         return False
 
     @synchronized
-    def tick(self) -> None:
+    def check(self) -> None:
         arduino_connector_is_not_active = self._arduino_connector and not self._arduino_connector.is_active
 
         if arduino_connector_is_not_active:
@@ -112,70 +99,75 @@ class Arduino(BaseModule):
         if self._arduino_connector:
             self._arduino_connector.finish()
             self._arduino_connector = None
-            self._backup()
             self.messenger.send_message('Arduino is off')
         else:
             self.messenger.send_message('Arduino is already off')
 
-    def _create_arduino_sensor_stats(self,
-                                     date_range: typing.Tuple[datetime.datetime, datetime.datetime],
-                                     components: typing.Set[str]) -> typing.Optional[typing.List[io.BytesIO]]:
-        if not self.state[ARDUINO_IS_ENABLED] or 'arduino' not in components:
+    @staticmethod
+    def _create_arduino_sensor_avg_stats(date_range: typing.Tuple[datetime.datetime, datetime.datetime],
+                                         components: typing.Set[str]) -> typing.Optional[typing.List[io.BytesIO]]:
+        if 'arduino' not in components:
             return None
 
-        stats = ArduinoLog.get_avg(date_range=date_range)
+        humidity_stats = Signal.get_aggregated(ArduinoSensorTypes.HUMIDITY, date_range=date_range)
+        temperature_stats = Signal.get_aggregated(ArduinoSensorTypes.TEMPERATURE, date_range=date_range)
 
-        if not stats:
-            return None
+        weather_temperature = None
+        weather_humidity = None
 
-        if 'extra_data' in components and len(stats) >= 2:
-            date_range = (stats[0].time, stats[-1].time)
+        if 'extra_data' in components:
+            if len(temperature_stats) >= 2:
+                weather_humidity = Signal.get_aggregated(
+                    signal_type=WEATHER_HUMIDITY,
+                    date_range=(humidity_stats[0].received_at, humidity_stats[-1].received_at,),
+                )
 
-            weather_temperature = Signal.get_aggregated(
-                signal_type=WEATHER_TEMPERATURE,
-                aggregate_function=sa_func.avg,
-                date_range=date_range,
-            )
-            weather_humidity = Signal.get_aggregated(
-                signal_type=WEATHER_HUMIDITY,
-                aggregate_function=sa_func.avg,
-                date_range=date_range,
-            )
-        else:
-            weather_temperature = None
-            weather_humidity = None
+            if len(temperature_stats) >= 2:
+                weather_temperature = Signal.get_aggregated(
+                    signal_type=WEATHER_TEMPERATURE,
+                    date_range=(temperature_stats[0].received_at, temperature_stats[-1].received_at,),
+                )
 
-        return [
-            create_plot(
+        plots = []
+
+        if temperature_stats:
+            plots.append(create_plot(
                 title='Temperature',
-                x_attr='time',
-                y_attr='temperature',
-                stats=stats,
+                x_attr='aggregated_time',
+                y_attr='value',
+                stats=temperature_stats,
                 additional_plots=(
-                    [{'x_attr': 'time', 'y_attr': 'value', 'stats': weather_temperature}]
+                    [{'x_attr': 'aggregated_time', 'y_attr': 'value', 'stats': weather_temperature}]
                     if weather_temperature else None
                 ),
                 legend=(
                     ['Inside', 'Outside']
                     if weather_temperature else None
                 ),
-            ),
-            create_plot(
+            ))
+
+        if humidity_stats:
+            plots.append(create_plot(
                 title='Humidity',
-                x_attr='time',
-                y_attr='humidity',
-                stats=stats,
+                x_attr='aggregated_time',
+                y_attr='value',
+                stats=humidity_stats,
                 additional_plots=(
-                    [{'x_attr': 'time', 'y_attr': 'value', 'stats': weather_humidity}]
+                    [{'x_attr': 'aggregated_time', 'y_attr': 'value', 'stats': weather_humidity}]
                     if weather_humidity else None
                 ),
                 legend=(
                     ['Inside', 'Outside']
                     if weather_humidity else None
                 ),
-            ),
-            create_plot(title='PIR Sensor', x_attr='time', y_attr='pir_sensor', stats=stats),
-        ]
+            ))
+
+        pir_stats = Signal.get(ArduinoSensorTypes.PIR_SENSOR, date_range=date_range)
+
+        if pir_stats:
+            plots.append(create_plot(title='PIR Sensor', x_attr='received_at', y_attr='value', stats=pir_stats))
+
+        return plots
 
     @synchronized
     def _process_arduino_updates(self) -> None:
@@ -183,27 +175,30 @@ class Arduino(BaseModule):
             return
 
         security_is_enabled: bool = self.state[SECURITY_IS_ENABLED]
-        new_arduino_logs = self._arduino_connector.process_updates()
+        signals = self._arduino_connector.process_updates()
 
-        if not new_arduino_logs:
+        if not signals:
             return
 
         if security_is_enabled:
             last_movement = None
 
-            for arduino_log in reversed(new_arduino_logs):
-                if arduino_log.pir_sensor <= 50:
+            for signal in reversed(signals):
+                if signal.type != ArduinoSensorTypes.PIR_SENSOR:
                     continue
 
-                if not last_movement or last_movement.pir_sensor < arduino_log.pir_sensor:
-                    last_movement = arduino_log
+                if signal.value <= 100:
+                    continue
+
+                if not last_movement or last_movement.signal < signal.value:
+                    last_movement = signal
 
             if last_movement:
                 events.motion_detected.send()
 
                 self.messenger.send_message(
                     f'*Detected movement*\n'
-                    f'Current pir sensor: `{last_movement.pir_sensor}`\n'
+                    f'Current pir sensor: `{last_movement.value}`\n'
                     f'Timestamp: `{last_movement.received_at.strftime("%Y-%m-%d, %H:%M:%S")}`'
                 )
                 use_camera: bool = self.state[USE_CAMERA]
@@ -211,31 +206,4 @@ class Arduino(BaseModule):
                 if use_camera:
                     self._run_command(BotCommands.CAMERA, PHOTO)
 
-        events.new_arduino_logs.send(new_arduino_logs=new_arduino_logs)
-
-    @synchronized
-    def _backup(self) -> None:
-        if not self.state[ARDUINO_IS_ENABLED]:
-            return
-
-        all_logs = db_session().query(
-            ArduinoLog.pir_sensor,
-            ArduinoLog.humidity,
-            ArduinoLog.temperature,
-            ArduinoLog.received_at,
-        ).order_by(
-            ArduinoLog.received_at,
-        ).all()
-
-        if all_logs:
-            df = DataFrame(all_logs, columns=('pir_sensor', 'humidity', 'temperature', 'received_at',))
-            file_storage.upload_df_as_xlsx(
-                file_name=f'arduino_logs/{df.iloc[0].received_at.strftime("%Y-%m-%d, %H:%M:%S")}'
-                          f'-{df.iloc[-1].received_at.strftime("%Y-%m-%d, %H:%M:%S")}.xlsx',
-                data_frame=df,
-            )
-
-        timestamp = datetime.datetime.now() - config.STORAGE_TIME
-
-        with db_session().transaction:
-            db_session().query(ArduinoLog).filter(ArduinoLog.received_at <= timestamp).delete()
+        events.new_arduino_data.send(signals=signals)
