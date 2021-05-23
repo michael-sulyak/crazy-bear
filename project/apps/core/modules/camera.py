@@ -54,12 +54,14 @@ class Camera(BaseModule):
                 priority=task_queue.TaskPriorities.LOW,
             ),
             scheduler.every(10).minutes.do(
+                self.unique_task_queue.push,
                 self._update_camera_status,
+                priority=task_queue.TaskPriorities.LOW,
             ),
-            scheduler.every(1).second.do(
+            scheduler.every(10).seconds.do(
                 self.unique_task_queue.push,
                 self.check,
-                priority=task_queue.TaskPriorities.HIGH,
+                priority=task_queue.TaskPriorities.MEDIUM,
             ),
         )
 
@@ -143,12 +145,14 @@ class Camera(BaseModule):
 
         self.messenger.send_message('The camera is on')
 
+        if self.state[VIDEO_SECURITY]:
+            self._enable_security()
+
     @synchronized
     def _disable_camera(self) -> None:
-        security_is_enabled: bool = self.state[SECURITY_IS_ENABLED]
         self.state[USE_CAMERA] = False
 
-        if security_is_enabled:
+        if self.state[SECURITY_IS_ENABLED]:
             self._disable_security()
 
         if self._video_stream:
@@ -171,8 +175,8 @@ class Camera(BaseModule):
             self.messenger.send_message('Video security is already enabled')
             return
 
-        if not self._video_stream:
-            self._enable_camera()
+        # if not self._video_stream:
+        #     self._enable_camera()
 
         if self._video_stream:
             video_guard = VideoGuard(

@@ -1,3 +1,4 @@
+import datetime
 import logging
 import queue
 import time
@@ -9,6 +10,7 @@ from . import events as core_events
 from .base import BaseModule, ModuleContext, Message
 from ..common.exceptions import Shutdown
 from ..common.state import State
+from ..common.utils import is_sleep_hours
 from ..task_queue import BaseTaskQueue, BaseWorker, MemTaskQueue, ThreadWorker
 from ..db import close_db_session
 from ..messengers import events
@@ -19,7 +21,7 @@ class Commander:
     messenger: BaseMessenger
     state: State
     command_handlers: typing.Tuple[BaseModule, ...]
-    scheduler: typing.Optional[schedule.Scheduler]
+    scheduler: schedule.Scheduler
     message_queue: queue
     task_queue: BaseTaskQueue
     task_worker: BaseWorker
@@ -54,30 +56,33 @@ class Commander:
         while True:
             try:
                 self.tick()
-                time.sleep(0.2)
+
+                if is_sleep_hours(datetime.datetime.now()):
+                    time.sleep(1)
+                else:
+                    time.sleep(0.2)
             except Shutdown:
                 break
 
-        self._close()
+        self.close()
 
     def tick(self) -> None:
-        if self.scheduler:
-            try:
-                # All jobs have to be in async queue
-                self.scheduler.run_pending()
-            except Shutdown as e:
-                raise e
-            except Exception as e:
-                self.messenger.exception(e)
-                logging.exception(e)
+        try:
+            # All jobs have to be in async queue
+            self.scheduler.run_pending()
+        except Shutdown as e:
+            raise e
+        except Exception as e:
+            self.messenger.exception(e)
+            logging.exception(e)
 
         try:
             self.process_updates()
         except Shutdown as e:
             raise e
         except Exception as e:
+            self.messenger.exception(e)
             logging.exception(e)
-            return
 
     def process_updates(self) -> None:
         for message in self.messenger.get_updates():
@@ -102,7 +107,7 @@ class Commander:
                 if not is_processed:
                     self.messenger.send_message('Unknown command')
 
-    def _close(self) -> None:
+    def close(self) -> None:
         logging.info('Home assistant is stopping...')
 
         logging.info('[shutdown] Clearing schedule...')

@@ -18,17 +18,16 @@ class RecommendationSystem(BaseModule):
         constants.RECOMMENDATION_SYSTEM_IS_ENABLED: False,
     }
     _last_sent_at_map: typing.Dict[str, datetime.datetime]
-    _timedelta_for_sending: datetime.timedelta = datetime.timedelta(hours=2)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-        self._last_sent_at_map = defaultdict(lambda: datetime.datetime.now() - self._timedelta_for_sending)
+        self._last_sent_at_map = defaultdict(lambda: datetime.datetime.now() - datetime.timedelta(days=365))
 
     def subscribe_to_events(self) -> tuple:
         return (
             *super().subscribe_to_events(),
-            events.new_arduino_data.connect(self._process_new_arduino_logs),
+            self._process_new_arduino_logs,
         )
 
     @synchronized
@@ -76,7 +75,7 @@ class RecommendationSystem(BaseModule):
         temperature = last_signal_data.get(ArduinoSensorTypes.TEMPERATURE)
 
         if humidity is not None:
-            can_send_warning = self._can_send_warning('humidity')
+            can_send_warning = self._can_send_warning('humidity', datetime.timedelta(hours=2))
 
             if humidity < config.NORMAL_HUMIDITY_RANGE[0] and can_send_warning:
                 self.messenger.send_message(f'There is low humidity in the room ({humidity}%)!')
@@ -87,7 +86,7 @@ class RecommendationSystem(BaseModule):
                 self._mark_as_sent('humidity')
 
         if temperature is not None:
-            can_send_warning = self._can_send_warning('temperature')
+            can_send_warning = self._can_send_warning('temperature', datetime.timedelta(hours=2))
 
             if temperature < config.NORMAL_TEMPERATURE_RANGE[0] and can_send_warning:
                 self.messenger.send_message(f'There is a low temperature in the room ({temperature})!')
@@ -99,13 +98,13 @@ class RecommendationSystem(BaseModule):
                 )
                 self._mark_as_sent('temperature')
 
-    def _can_send_warning(self, name: str) -> bool:
+    def _can_send_warning(self, name: str, timedelta_for_sending: datetime.timedelta) -> bool:
         now = datetime.datetime.now()
 
         if is_sleep_hours(now):
             return False
 
-        if now - self._last_sent_at_map[name] <= self._timedelta_for_sending:
+        if now - self._last_sent_at_map[name] <= timedelta_for_sending:
             return False
 
         if not self.state[constants.USER_IS_CONNECTED_TO_ROUTER]:

@@ -190,7 +190,7 @@ class Signal(db.Base):
 
         count = query.count()
 
-        if not count or len(aggregated_data) / count > 0.8:
+        if not count or len(aggregated_data) / count > 0.9:
             return
 
         with db.db_session().transaction:
@@ -222,7 +222,7 @@ class Signal(db.Base):
 
         file_storage.upload_df_as_csv(
             file_name=f'signals/{df.iloc[0].received_at.strftime("%Y-%m-%d, %H:%M:%S")}'
-                      f'-{df.iloc[-1].received_at.strftime("%Y-%m-%d, %H:%M:%S")}.xlsx',
+                      f'-{df.iloc[-1].received_at.strftime("%Y-%m-%d, %H:%M:%S")}.csv',
             data_frame=df,
         )
 

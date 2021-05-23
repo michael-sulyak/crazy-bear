@@ -17,5 +17,7 @@ class BotCommands:
     CONNECTED_DEVICES = '/connected_devices'
     RECOMMENDATION_SYSTEM = '/recommendation_system'
     HELP = '/help'
+    RESTART = '/restart'
+    CHECK_DB = '/check_db'
     DB_STATS = '/db_stats'
     RETURN = '/return'

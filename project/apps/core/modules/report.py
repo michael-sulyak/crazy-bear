@@ -286,12 +286,11 @@ class Report(BaseModule):
             Signal.add(signal_type=constants.CPU_TEMPERATURE, value=cpu_temperature)
 
             now = datetime.datetime.now()
-            minutes = 30
 
-            if now - self._last_cpu_notification > datetime.timedelta(minutes=minutes):
+            if now - self._last_cpu_notification > datetime.timedelta(minutes=30):
                 if cpu_temperature > 70:
                     self.messenger.send_message('CPU temperature is very high!')
-                    self._last_cpu_notification = now - datetime.timedelta(minutes=minutes - 5)
+                    self._last_cpu_notification = now - datetime.timedelta(minutes=28)
                 elif cpu_temperature > 60:
                     self.messenger.send_message('CPU temperature is high!')
                     self._last_cpu_notification = now

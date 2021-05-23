@@ -1,6 +1,7 @@
 import typing
 
 from ..base import BaseModule, Command
+from ...common.exceptions import Shutdown
 from ...messengers.constants import BotCommands
 from ...messengers.utils import TelegramMenu
 
@@ -15,6 +16,9 @@ class Menu(BaseModule):
     PREV = '←'
 
     def process_command(self, command: Command) -> typing.Any:
+        if command.name == BotCommands.RESTART:
+            raise Shutdown
+
         if command.name == BotCommands.RETURN:
             menu = self.state[TelegramMenu.MENU]
 

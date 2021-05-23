@@ -114,8 +114,8 @@ class Command:
     def get_cleaned_flags(self) -> typing.Set[str]:
         return set(arg[1:] for arg in self.get_flags())
 
-    def is_same(self, name, *args, **kwargs) -> bool:
-        return self.name == name and self.args == args and self.kwargs == kwargs
+    # def is_same(self, name, *args, **kwargs) -> bool:
+    #     return self.name == name and self.args == args and self.kwargs == kwargs
 
 
 @dataclass

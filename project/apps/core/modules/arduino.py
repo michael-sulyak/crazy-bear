@@ -68,7 +68,7 @@ class Arduino(BaseModule):
         arduino_connector_is_active = self._arduino_connector and self._arduino_connector.is_active
 
         if arduino_connector_is_active:
-            self.unique_task_queue.push(self._process_arduino_updates, priority=TaskPriorities.HIGH)
+            self._process_arduino_updates()
 
     @synchronized
     def disable(self) -> None:
@@ -183,27 +183,26 @@ class Arduino(BaseModule):
         if security_is_enabled:
             last_movement = None
 
-            for signal in reversed(signals):
+            for signal in signals:
                 if signal.type != ArduinoSensorTypes.PIR_SENSOR:
                     continue
 
                 if signal.value <= 100:
                     continue
 
-                if not last_movement or last_movement.signal < signal.value:
+                if not last_movement or last_movement.value < signal.value:
                     last_movement = signal
 
             if last_movement:
-                events.motion_detected.send()
-
                 self.messenger.send_message(
                     f'*Detected movement*\n'
                     f'Current pir sensor: `{last_movement.value}`\n'
                     f'Timestamp: `{last_movement.received_at.strftime("%Y-%m-%d, %H:%M:%S")}`'
                 )
-                use_camera: bool = self.state[USE_CAMERA]
 
-                if use_camera:
+                if self.state[USE_CAMERA]:
                     self._run_command(BotCommands.CAMERA, PHOTO)
+
+                events.motion_detected.send()
 
         events.new_arduino_data.send(signals=signals)

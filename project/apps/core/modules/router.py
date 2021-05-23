@@ -5,14 +5,13 @@ import typing
 import schedule
 
 from ..base import BaseModule, Command
-from ...signals.models import Signal
-from ...task_queue import TaskPriorities
 from ...common.tplink import TpLinkClient
 from ...common.utils import check_user_connection_to_router, create_plot, synchronized
 from ...core import constants, events
 from ...messengers.constants import BotCommands
+from ...signals.models import Signal
+from ...task_queue import TaskPriorities
 from .... import config
-
 
 __all__ = (
     'Router',
@@ -33,6 +32,8 @@ class Router(BaseModule):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
+        self.state.subscribe(constants.USER_IS_CONNECTED_TO_ROUTER, self._process_new_user_state)
+
         self.tplink_client = TpLinkClient(
             username=config.ROUTER_USERNAME,
             password=config.ROUTER_PASSWORD,
@@ -40,6 +41,7 @@ class Router(BaseModule):
         )
 
         now = datetime.datetime.now()
+
         self._last_connected_at = now
         self._last_saving = now
         self._last_checking = now
@@ -130,3 +132,11 @@ class Router(BaseModule):
             message += '\n'
 
         self.messenger.send_message(message)
+
+    @staticmethod
+    def _process_new_user_state(*, name: str, old_value: bool, new_value: bool) -> None:
+        if old_value and not new_value:
+            events.user_is_disconnected_to_router.send()
+
+        if new_value and not old_value:
+            events.user_is_connected_to_router.send()

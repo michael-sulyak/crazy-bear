@@ -2,11 +2,13 @@ import datetime
 import logging
 
 import schedule
+import typing
 
 from .. import constants
-from ..base import BaseModule
+from ..base import BaseModule, Command
 from ... import db
 from ...arduino.constants import ArduinoSensorTypes
+from ...messengers.constants import BotCommands
 from ...signals.models import Signal
 from ...task_queue import TaskPriorities
 
@@ -19,15 +21,28 @@ __all__ = (
 class Signals(BaseModule):
     def init_schedule(self, scheduler: schedule.Scheduler) -> tuple:
         return (
+            scheduler.every(30).minutes.do(
+                self.unique_task_queue.push,
+                self._check_db,
+                priority=TaskPriorities.LOW,
+            ),
             scheduler.every(2).hours.do(
                 self.unique_task_queue.push,
-                self._check_data,
+                Signal.backup,
                 priority=TaskPriorities.LOW,
             ),
         )
 
+    def process_command(self, command: Command) -> typing.Any:
+        if command.name == BotCommands.CHECK_DB:
+            self._check_db()
+            self.messenger.send_message('Checked')
+            return True
+
+        return False
+
     @staticmethod
-    def _check_data() -> None:
+    def _check_db() -> None:
         logging.debug('Signals._check_data()')
 
         for_compress = (
@@ -50,7 +65,11 @@ class Signals(BaseModule):
         Signal.clear(all_signals)
 
         now = datetime.datetime.now()
-        date_range = (now - datetime.timedelta(days=1), - datetime.timedelta(minutes=5),)
+
+        date_range = (
+            now - datetime.timedelta(hours=6),
+            now - datetime.timedelta(minutes=5),
+        )
 
         for item in for_compress:
             Signal.compress(
@@ -68,5 +87,3 @@ class Signals(BaseModule):
             ).delete()
 
         db.vacuum()
-
-        Signal.backup()

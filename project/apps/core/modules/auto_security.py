@@ -37,9 +37,9 @@ class AutoSecurity(BaseModule):
 
     def init_schedule(self, scheduler: schedule.Scheduler) -> tuple:
         return (
-            scheduler.every(1).second.do(
+            scheduler.every(1).minute.do(
                 self.unique_task_queue.push,
-                self._check_auto_security_status,
+                self._check_camera_status,
                 priority=TaskPriorities.HIGH,
             ),
         )
@@ -80,18 +80,12 @@ class AutoSecurity(BaseModule):
             self._disable_auto_security()
 
     @synchronized
-    def _enable_security(self) -> None:
-        self.state[SECURITY_IS_ENABLED] = True
-        self.messenger.send_message('Security is enabled')
-
-    @synchronized
-    def _disable_security(self) -> None:
-        self.state[SECURITY_IS_ENABLED] = False
-        self.messenger.send_message('Security is disabled')
-
-    @synchronized
     def _enable_auto_security(self) -> None:
         self.state[AUTO_SECURITY_IS_ENABLED] = True
+
+        events.user_is_connected_to_router.connect(self._process_user_is_connected_to_router)
+        events.user_is_disconnected_to_router.connect(self._process_user_is_disconnected_to_router)
+
         self.messenger.send_message('Auto security is enabled')
 
     @synchronized
@@ -104,6 +98,9 @@ class AutoSecurity(BaseModule):
             self._run_command(BotCommands.CAMERA, OFF)
 
         self._camera_was_not_used = False
+
+        events.user_is_connected_to_router.disconnect(self._process_user_is_connected_to_router)
+        events.user_is_disconnected_to_router.disconnect(self._process_user_is_disconnected_to_router)
 
         self.messenger.send_message('Auto security is disabled')
 
@@ -118,23 +115,39 @@ class AutoSecurity(BaseModule):
             self._camera_was_not_used = True
             self._run_command(BotCommands.CAMERA, ON)
 
+    def _process_user_is_connected_to_router(self) -> None:
+        if not self.state[AUTO_SECURITY_IS_ENABLED]:
+            return
+
+        if self.state[SECURITY_IS_ENABLED]:
+            self.messenger.send_message('The owner is found')
+            self._run_command(BotCommands.SECURITY, OFF)
+
+    def _process_user_is_disconnected_to_router(self) -> None:
+        if not self.state[AUTO_SECURITY_IS_ENABLED]:
+            return
+
+        if not self.state[SECURITY_IS_ENABLED]:
+            self.messenger.send_message('The owner is not found')
+            self._run_command(BotCommands.SECURITY, ON)
+
     @single_synchronized
-    def _check_auto_security_status(self) -> None:
+    def _check_camera_status(self) -> None:
         if not self.state[AUTO_SECURITY_IS_ENABLED]:
             return
 
         user_is_connected: bool = self.state[USER_IS_CONNECTED_TO_ROUTER]
-        security_is_enabled: bool = self.state[SECURITY_IS_ENABLED]
+        # security_is_enabled: bool = self.state[SECURITY_IS_ENABLED]
 
-        if user_is_connected and security_is_enabled:
-            self.messenger.send_message('The owner is found')
-            self._run_command(BotCommands.SECURITY, OFF)
-            return
-
-        if not user_is_connected and not security_is_enabled:
-            self.messenger.send_message('The owner is not found')
-            self._run_command(BotCommands.SECURITY, ON)
-            return
+        # if user_is_connected and security_is_enabled:
+        #     self.messenger.send_message('The owner is found')
+        #     self._run_command(BotCommands.SECURITY, OFF)
+        #     return
+        #
+        # if not user_is_connected and not security_is_enabled:
+        #     self.messenger.send_message('The owner is not found')
+        #     self._run_command(BotCommands.SECURITY, ON)
+        #     return
 
         with self._lock_for_last_movement_at:
             now = datetime.datetime.now()

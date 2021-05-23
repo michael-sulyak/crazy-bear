@@ -59,10 +59,10 @@ class TelegramMenu:
 
     def _get_other_menu(self) -> ReplyKeyboardMarkup:
         return ReplyKeyboardMarkup([
-            [BotCommands.REPORT, BotCommands.CONNECTED_DEVICES, BotCommands.DB_STATS],
+            [BotCommands.DB_STATS, BotCommands.CHECK_DB, f'{BotCommands.STATS} -f'],
             [
                 f'{BotCommands.RECOMMENDATION_SYSTEM} {OFF if self.state[RECOMMENDATION_SYSTEM_IS_ENABLED] else ON}',
-                BotCommands.HELP,
+                BotCommands.RESTART,
             ],
-            [f'{BotCommands.STATS} -f', BotCommands.RETURN],
+            [BotCommands.REPORT, BotCommands.CONNECTED_DEVICES, BotCommands.RETURN],
         ])
