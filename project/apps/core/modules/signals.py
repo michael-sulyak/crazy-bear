@@ -80,6 +80,7 @@ class Signals(BaseModule):
 
         for item in for_aggregated_compress:
             Signal.aggregated_compress(item, date_range=date_range)
+            Signal.compress(item, date_range=date_range)
 
         with db.db_session().transaction:
             db.db_session().query(Signal).filter(

@@ -73,16 +73,16 @@ class Commander:
         except Shutdown as e:
             raise e
         except Exception as e:
-            self.messenger.exception(e)
             logging.exception(e)
+            self.messenger.exception(e)
 
         try:
             self.process_updates()
         except Shutdown as e:
             raise e
         except Exception as e:
-            self.messenger.exception(e)
             logging.exception(e)
+            self.messenger.exception(e)
 
     def process_updates(self) -> None:
         for message in self.messenger.get_updates():
@@ -102,6 +102,7 @@ class Commander:
                 is_processed = exceptions or any(map(lambda x: x is True, results))
 
                 for exception in exceptions:
+                    logging.exception(exception)
                     self.messenger.exception(exception)
 
                 if not is_processed:

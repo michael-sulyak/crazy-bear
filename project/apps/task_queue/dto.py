@@ -131,7 +131,7 @@ class Task:
 
             self.error = e.source
             self.status = constants.TaskStatus.FAILED
-            logging.exception(e.source)
+            logging.warning(e.source, exc_info=True)
         except Exception as e:
             self.error = e
             self.status = constants.TaskStatus.FAILED

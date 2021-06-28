@@ -27,7 +27,7 @@ class RecommendationSystem(BaseModule):
     def subscribe_to_events(self) -> tuple:
         return (
             *super().subscribe_to_events(),
-            self._process_new_arduino_logs,
+            events.new_arduino_data.connect(self._process_new_arduino_logs),
         )
 
     @synchronized

@@ -1,5 +1,6 @@
 import datetime
 import io
+import logging
 import os
 import typing
 from collections import defaultdict
@@ -98,7 +99,7 @@ class Report(BaseModule):
 
             flags = command.get_cleaned_flags()
 
-            if flags == {'f'}:
+            if not flags or flags == {'f'}:
                 flags = self._stats_flags_map.keys()
 
             results, exceptions = events.request_for_statistics.process(
@@ -109,6 +110,7 @@ class Report(BaseModule):
             self.messenger.start_typing()
 
             for exception in exceptions:
+                logging.exception(exception)
                 self.messenger.exception(exception)
 
             plots = []

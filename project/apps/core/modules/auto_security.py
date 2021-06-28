@@ -88,6 +88,9 @@ class AutoSecurity(BaseModule):
 
         self.messenger.send_message('Auto security is enabled')
 
+        if not self.state[USER_IS_CONNECTED_TO_ROUTER]:
+            self._process_user_is_disconnected_to_router()
+
     @synchronized
     def _disable_auto_security(self) -> None:
         use_camera: bool = self.state[USE_CAMERA]

@@ -3,10 +3,12 @@ import logging
 import threading
 import traceback
 import typing
+from time import sleep
 
 import telegram
 from emoji import emojize
 from telegram import Update as TelegramUpdate
+from telegram.error import NetworkError as TelegramNetworkError, TimedOut as TelegramTimedOut
 from telegram.utils.request import Request as TelegramRequest
 
 from .base import BaseMessenger
@@ -41,38 +43,54 @@ class TelegramMessenger(CVMixin, BaseMessenger):
             else:
                 reply_markup = self.default_reply_markup
 
-        self._bot.send_message(
-            self.chat_id,
-            text=text,
-            parse_mode=parse_mode,
-            reply_markup=reply_markup,
-        )
+        try:
+            self._bot.send_message(
+                self.chat_id,
+                text=text,
+                parse_mode=parse_mode,
+                reply_markup=reply_markup,
+            )
+        except (TelegramNetworkError, TelegramTimedOut,) as e:
+            logging.warning(e, exc_info=True)
+            sleep(1)
 
     @synchronized
     def send_image(self, image: typing.Any, *, caption: typing.Optional[str] = None) -> None:
-        self._bot.send_photo(
-            self.chat_id,
-            photo=image,
-            caption=caption,
-        )
+        try:
+            self._bot.send_photo(
+                self.chat_id,
+                photo=image,
+                caption=caption,
+            )
+        except (TelegramNetworkError, TelegramTimedOut,) as e:
+            logging.warning(e, exc_info=True)
+            sleep(1)
 
     @synchronized
     def send_images(self, images: typing.Any) -> None:
         if not images:
             return
 
-        self._bot.send_media_group(
-            self.chat_id,
-            media=list(telegram.InputMediaPhoto(image) for image in images),
-        )
+        try:
+            self._bot.send_media_group(
+                self.chat_id,
+                media=list(telegram.InputMediaPhoto(image) for image in images),
+            )
+        except (TelegramNetworkError, TelegramTimedOut,) as e:
+            logging.warning(e, exc_info=True)
+            sleep(1)
 
     @synchronized
     def send_file(self, file: typing.Any, *, caption: typing.Optional[str] = None) -> None:
-        self._bot.send_document(
-            self.chat_id,
-            document=file,
-            caption=caption,
-        )
+        try:
+            self._bot.send_document(
+                self.chat_id,
+                document=file,
+                caption=caption,
+            )
+        except (TelegramNetworkError, TelegramTimedOut,) as e:
+            logging.warning(e, exc_info=True)
+            sleep(1)
 
     @synchronized
     def error(self, text: str, *, _title: str = 'Error') -> None:
@@ -87,8 +105,9 @@ class TelegramMessenger(CVMixin, BaseMessenger):
     def start_typing(self):
         try:
             self._bot.send_chat_action(chat_id=self.chat_id, action=telegram.ChatAction.TYPING)
-        except telegram.error.TimedOut as e:
+        except (TelegramNetworkError, TelegramTimedOut,) as e:
             logging.warning(e, exc_info=True)
+            sleep(1)
 
     @synchronized
     def get_updates(self) -> typing.Iterator[Message]:
@@ -96,7 +115,9 @@ class TelegramMessenger(CVMixin, BaseMessenger):
 
         try:
             updates = self._bot.get_updates(offset=self._updates_offset, timeout=5)
-        except telegram.error.TimedOut:
+        except (TelegramNetworkError, TelegramTimedOut,) as e:
+            logging.warning(e, exc_info=True)
+            sleep(1)
             return
 
         if updates:
