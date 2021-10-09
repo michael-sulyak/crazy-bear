@@ -5,7 +5,7 @@ import threading
 import typing
 from time import sleep
 
-from ...common.utils import synchronized
+from ...common.utils import synchronized_method
 from ..base import BaseTaskQueue, BaseWorker
 from ..dto import RetryPolicy, Task, default_retry_policy
 from ..constants import TaskPriorities, TaskStatus
@@ -132,11 +132,11 @@ class UniqueTaskQueue:
 
         return task
 
-    @synchronized
+    @synchronized_method
     def _track(self, task: Task) -> None:
         self._tasks_map[task.target] = task
 
-    @synchronized
+    @synchronized_method
     def _task_is_finished(self, target: typing.Callable) -> bool:
         if target not in self._tasks_map:
             return True

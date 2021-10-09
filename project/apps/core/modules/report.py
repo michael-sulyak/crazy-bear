@@ -10,19 +10,20 @@ from emoji import emojize
 
 from .. import events
 from ..base import BaseModule, Command
-from ..constants import ARDUINO_IS_ENABLED, CAMERA_IS_AVAILABLE, VIDEO_RECORDING_IS_ENABLED
+from ..constants import ARDUINO_IS_ENABLED, BotCommands, CAMERA_IS_AVAILABLE, VIDEO_RECORDING_IS_ENABLED
 from ... import db
 from ...arduino.constants import ArduinoSensorTypes
+from ...common.constants import INITED_AT
 from ...common.utils import (
-    check_user_connection_to_router, convert_params_to_date_range, create_plot, get_cpu_temp,
-    get_weather, synchronized,
+    convert_params_to_date_range, create_plot, get_cpu_temp,
+    get_weather, synchronized_method,
 )
 from ...core import constants
 from ...core.constants import (
     AUTO_SECURITY_IS_ENABLED, CURRENT_FPS, SECURITY_IS_ENABLED, USE_CAMERA,
     VIDEO_SECURITY,
 )
-from ...messengers.constants import BotCommands, INITED_AT
+from ...devices.utils import get_connected_devices_to_router
 from ...signals.models import Signal
 from ...task_queue import TaskPriorities
 from .... import config
@@ -147,15 +148,14 @@ class Report(BaseModule):
 
             self.messenger.send_message(
                 '**\\stats**\n'
-                '***Stats.***\n'
-                'Tags:\n'
-                f'{tags_info}'
+                f'{tags_info}\n\n'
+                '\devices <mac> <name> <is_defining>'
             )
             return True
 
         return False
 
-    @synchronized
+    @synchronized_method
     def _ping_task_queue(self, *, sent_at: datetime.datetime) -> None:
         now = datetime.datetime.now()
         diff = now - sent_at - self._timedelta_for_ping
@@ -193,25 +193,31 @@ class Report(BaseModule):
         except RuntimeError:
             cpu_temperature = self._empty_value
 
+        connected_devices = get_connected_devices_to_router()
+        connected_devices_str = ', '.join(
+            f'`{device.name}`' if device.name else f'`Unknown {device.mac_address}`'
+            for device in connected_devices
+        )
+
         message = (
             f'️*Crazy Bear* v{config.VERSION}\n\n'
-            
+
             f'Arduino: `{"On" if self.state[ARDUINO_IS_ENABLED] else "Off"}`\n\n'
-            
+
             f'Has camera: `{"Yes" if self.state[CAMERA_IS_AVAILABLE] else "No"}`\n'
             f'Camera: `{"On" if self.state[USE_CAMERA] else "Off"}`\n'
             f'Video recording: `{"On" if self.state[VIDEO_RECORDING_IS_ENABLED] else "Off"}`\n'
             f'FPS: `{current_fps}`\n\n'
-            
+
             f'Security: `{"On" if self.state[SECURITY_IS_ENABLED] else "Off"}`\n'
             f'Auto security: `{"On" if self.state[AUTO_SECURITY_IS_ENABLED] else "Off"}`\n'
             f'Video security: `{"On" if self.state[VIDEO_SECURITY] else "Off"}`\n'
-            f'User is connected to router: `{"Yes" if check_user_connection_to_router() else "No"}`\n\n'
-            
+            f'Connected devices: {connected_devices_str if connected_devices_str else "-"}\n\n'
+
             f'Humidity: `{humidity}`\n'
             f'Temperature: `{temperature}`\n'
             f'CPU Temperature: `{cpu_temperature}`\n\n'
-            
+
             # f'Task queue size: `{len(self.context.task_queue)}`\n'
             # f'Now: `{datetime.datetime.now().strftime("%d.%m.%Y, %H:%M:%S")}`\n'
             f'Started at: `{self.state[INITED_AT].strftime("%d.%m.%Y, %H:%M:%S")}`'
@@ -272,13 +278,13 @@ class Report(BaseModule):
             stats=task_queue_size_stats,
         )
 
-    @synchronized
+    @synchronized_method
     def _save_weather_data(self) -> None:
         weather = get_weather()
         Signal.add(signal_type=constants.WEATHER_TEMPERATURE, value=weather['main']['temp'])
         Signal.add(signal_type=constants.WEATHER_HUMIDITY, value=weather['main']['humidity'])
 
-    @synchronized
+    @synchronized_method
     def _save_cpu_temperature(self) -> None:
         try:
             cpu_temperature = get_cpu_temp()

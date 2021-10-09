@@ -2,7 +2,7 @@ import threading
 import typing
 from collections import defaultdict
 
-from .utils import synchronized
+from .utils import synchronized_method
 
 
 class StateException(Exception):
@@ -31,7 +31,7 @@ class State:
     def __delitem__(self, name: str) -> None:
         self.remove(name)
 
-    @synchronized
+    @synchronized_method
     def create(self, name: str, value: typing.Any = None) -> None:
         if self.has(name):
             raise StateException(f'The state already has key "{name}".')
@@ -42,7 +42,7 @@ class State:
         for name, value in kwargs.items():
             self.create(name, value)
 
-    @synchronized
+    @synchronized_method
     def get(self, name: str) -> typing.Any:
         return self._state[name]
 
@@ -64,28 +64,28 @@ class State:
         for name, value in kwargs.items():
             self.set(name, value)
 
-    @synchronized
+    @synchronized_method
     def has(self, name: str) -> bool:
         return name in self._state
 
     def has_many(self, *names) -> tuple:
         return tuple(self.has(name) for name in names)
 
-    @synchronized
+    @synchronized_method
     def remove(self, name: str) -> None:
         if not self.has(name):
             raise StateException(f'The state has not key "{name}".')
 
         self._state.pop(name)
 
-    @synchronized
+    @synchronized_method
     def subscribe(self, name: str, subscriber: typing.Callable) -> None:
         if not self.has(name):
             raise StateException(f'The state has not key "{name}".')
 
         self._subscribers_map[name] = (*self._subscribers_map[name], subscriber,)
 
-    @synchronized
+    @synchronized_method
     def unsubscribe(self, name: str, subscriber: typing.Callable) -> None:
         self._subscribers_map[name] = tuple(
             subscriber_

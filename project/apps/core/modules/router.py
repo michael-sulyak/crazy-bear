@@ -5,13 +5,15 @@ import typing
 import schedule
 
 from ..base import BaseModule, Command
+from ..constants import BotCommands
 from ...common.tplink import TpLinkClient
-from ...common.utils import check_user_connection_to_router, create_plot, synchronized
+from ...common.utils import create_plot, synchronized_method
 from ...core import constants, events
-from ...messengers.constants import BotCommands
+from ...devices.utils import check_if_host_is_at_home
 from ...signals.models import Signal
 from ...task_queue import TaskPriorities
 from .... import config
+
 
 __all__ = (
     'Router',
@@ -49,7 +51,7 @@ class Router(BaseModule):
     @property
     def initial_state(self) -> typing.Dict[str, typing.Any]:
         return {
-            constants.USER_IS_CONNECTED_TO_ROUTER: check_user_connection_to_router(),
+            constants.USER_IS_CONNECTED_TO_ROUTER: check_if_host_is_at_home(),
         }
 
     def subscribe_to_events(self) -> tuple:
@@ -74,7 +76,7 @@ class Router(BaseModule):
 
         return False
 
-    @synchronized
+    @synchronized_method
     def _check_user_status(self) -> None:
         now = datetime.datetime.now()
 
@@ -86,7 +88,7 @@ class Router(BaseModule):
         if not need_to_recheck:
             return
 
-        is_connected = check_user_connection_to_router()
+        is_connected = check_if_host_is_at_home()
 
         need_to_save = self._user_was_connected != is_connected or now - self._last_saving >= self._timedelta_for_saving
 

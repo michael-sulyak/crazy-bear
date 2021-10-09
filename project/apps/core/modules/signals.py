@@ -8,7 +8,7 @@ from .. import constants
 from ..base import BaseModule, Command
 from ... import db
 from ...arduino.constants import ArduinoSensorTypes
-from ...messengers.constants import BotCommands
+from ..constants import BotCommands
 from ...signals.models import Signal
 from ...task_queue import TaskPriorities
 

@@ -15,3 +15,26 @@ CURRENT_FPS = 'current_fps'
 PHOTO = 'photo'
 ARDUINO_IS_ENABLED = 'arduino_is_enabled'
 RECOMMENDATION_SYSTEM_IS_ENABLED = 'recommendation_system_is_enabled'
+
+
+class BotCommands:
+    REPORT = '/report'
+
+    TAKE_PICTURE = '/take_picture'
+
+    SECURITY = '/security'
+    ARDUINO = '/arduino'
+    CAMERA = '/camera'
+
+    STATUS = '/status'
+    STATS = '/stats'
+
+    OTHER = '/other'
+    CONNECTED_DEVICES = '/connected_devices'
+    RECOMMENDATION_SYSTEM = '/recommendation_system'
+    HELP = '/help'
+    RESTART = '/restart'
+    DEVICES = '/devices'
+    CHECK_DB = '/check_db'
+    DB_STATS = '/db_stats'
+    RETURN = '/return'

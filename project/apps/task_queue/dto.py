@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 from . import constants
 from .exceptions import BaseTaskQueueException, RepeatTask
-from ..common.utils import synchronized
+from ..common.utils import synchronized_method
 
 
 __all__ = (
@@ -86,12 +86,12 @@ class Task:
     )
 
     @property
-    @synchronized
+    @synchronized_method
     def status(self) -> str:
         return self._status
 
     @status.setter
-    @synchronized
+    @synchronized_method
     def status(self, value: str) -> None:
         self._status = value
 

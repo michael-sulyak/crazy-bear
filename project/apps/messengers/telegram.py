@@ -13,7 +13,7 @@ from telegram.utils.request import Request as TelegramRequest
 
 from .base import BaseMessenger
 from .mixins import CVMixin
-from ..common.utils import synchronized
+from ..common.utils import synchronized_method
 from ..core.base import Command, Message
 from ... import config
 
@@ -35,7 +35,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         self._lock = threading.RLock()
         self.default_reply_markup = default_reply_markup
 
-    @synchronized
+    @synchronized_method
     def send_message(self, text: str, *, parse_mode: str = 'markdown', reply_markup=None) -> None:
         if not reply_markup and self.default_reply_markup:
             if callable(self.default_reply_markup):
@@ -54,7 +54,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
             logging.warning(e, exc_info=True)
             sleep(1)
 
-    @synchronized
+    @synchronized_method
     def send_image(self, image: typing.Any, *, caption: typing.Optional[str] = None) -> None:
         try:
             self._bot.send_photo(
@@ -66,7 +66,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
             logging.warning(e, exc_info=True)
             sleep(1)
 
-    @synchronized
+    @synchronized_method
     def send_images(self, images: typing.Any) -> None:
         if not images:
             return
@@ -80,7 +80,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
             logging.warning(e, exc_info=True)
             sleep(1)
 
-    @synchronized
+    @synchronized_method
     def send_file(self, file: typing.Any, *, caption: typing.Optional[str] = None) -> None:
         try:
             self._bot.send_document(
@@ -92,16 +92,16 @@ class TelegramMessenger(CVMixin, BaseMessenger):
             logging.warning(e, exc_info=True)
             sleep(1)
 
-    @synchronized
+    @synchronized_method
     def error(self, text: str, *, _title: str = 'Error') -> None:
         logging.warning(text)
         self.send_message(f'{emojize(":pager:")} ️*{_title}* ```\n{text}\n```')
 
-    @synchronized
+    @synchronized_method
     def exception(self, exp: Exception) -> None:
         self.error(f'{repr(exp)}\n{"".join(traceback.format_tb(exp.__traceback__))}', _title='Exception')
 
-    @synchronized
+    @synchronized_method
     def start_typing(self):
         try:
             self._bot.send_chat_action(chat_id=self.chat_id, action=telegram.ChatAction.TYPING)
@@ -109,7 +109,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
             logging.warning(e, exc_info=True)
             sleep(1)
 
-    @synchronized
+    @synchronized_method
     def get_updates(self) -> typing.Iterator[Message]:
         now = datetime.datetime.now()
 

@@ -12,13 +12,13 @@ from project.apps import db
 from project.apps.common.exceptions import Shutdown
 from project.apps.common.utils import init_settings_for_plt
 from project.apps.core import modules
-from project.apps.messengers.utils import TelegramMenu
-from project.apps.common.constants import AUTO, ON
+from project.apps.common.constants import AUTO, INITED_AT, ON
 from project.apps.common.state import State
 from project.apps.common.storage import file_storage
 from project.apps.core.base import Command, Message
 from project.apps.core.commander import Commander
-from project.apps.messengers.constants import BotCommands, INITED_AT
+from project.apps.core.modules import TelegramMenu
+from project.apps.core.constants import BotCommands
 from project.apps.messengers.telegram import TelegramMessenger
 
 
@@ -91,6 +91,7 @@ def main():
             modules.Router,
             modules.RecommendationSystem,
             modules.Signals,
+            modules.Devices,
         ),
         state=state,
         scheduler=scheduler,

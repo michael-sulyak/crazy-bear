@@ -7,14 +7,13 @@ import serial
 
 from ...signals.models import Signal
 from ..base import BaseModule, Command
-from ..constants import ARDUINO_IS_ENABLED, WEATHER_HUMIDITY, WEATHER_TEMPERATURE
+from ..constants import ARDUINO_IS_ENABLED, BotCommands, WEATHER_HUMIDITY, WEATHER_TEMPERATURE
 from ...arduino.base import ArduinoConnector
 from ...arduino.constants import ArduinoSensorTypes
 from ...common.constants import OFF, ON
-from ...common.utils import create_plot, synchronized
+from ...common.utils import create_plot, synchronized_method
 from ...core import events
 from ...core.constants import PHOTO, SECURITY_IS_ENABLED, USE_CAMERA
-from ...messengers.constants import BotCommands
 from ...task_queue import TaskPriorities
 
 
@@ -57,7 +56,7 @@ class Arduino(BaseModule):
 
         return False
 
-    @synchronized
+    @synchronized_method
     def check(self) -> None:
         arduino_connector_is_not_active = self._arduino_connector and not self._arduino_connector.is_active
 
@@ -70,12 +69,12 @@ class Arduino(BaseModule):
         if arduino_connector_is_active:
             self._process_arduino_updates()
 
-    @synchronized
+    @synchronized_method
     def disable(self) -> None:
         super().disable()
         self._disable_arduino()
 
-    @synchronized
+    @synchronized_method
     def _enable_arduino(self) -> None:
         if self._arduino_connector:
             self.messenger.send_message('Arduino is already on')
@@ -92,7 +91,7 @@ class Arduino(BaseModule):
             self.state[ARDUINO_IS_ENABLED] = True
             self.messenger.send_message('Arduino is on')
 
-    @synchronized
+    @synchronized_method
     def _disable_arduino(self) -> None:
         self.state[ARDUINO_IS_ENABLED] = False
 
@@ -169,7 +168,7 @@ class Arduino(BaseModule):
 
         return plots
 
-    @synchronized
+    @synchronized_method
     def _process_arduino_updates(self) -> None:
         if not self._arduino_connector or not self._arduino_connector.is_active:
             return

@@ -124,7 +124,7 @@ def create_plot(*,
             return io.BytesIO(image.read())
 
 
-def check_user_connection_to_router() -> bool:
+def get_connected_macs_to_router() -> typing.Generator[str, None, None]:
     tplink_client = TpLinkClient(
         username=config.ROUTER_USERNAME,
         password=config.ROUTER_PASSWORD,
@@ -135,14 +135,13 @@ def check_user_connection_to_router() -> bool:
         connected_devices = tplink_client.get_connected_devices()
     except Exception as e:
         logging.exception(e)
-        return False
+        return
 
-    user_connection_to_router = any(
-        device.get('MACAddress') in config.ROUTER_USER_MAC_ADDRESSES
-        for device in connected_devices
-    )
+    for device in connected_devices:
+        mac_address = device.get('MACAddress')
 
-    return user_connection_to_router
+        if mac_address:
+            yield mac_address
 
 
 def camera_is_available(src: int) -> bool:
@@ -157,7 +156,7 @@ def get_weather() -> dict:
     return requests.get(config.OPENWEATHERMAP_URL, timeout=10).json()
 
 
-def synchronized(func: typing.Callable) -> typing.Callable:
+def synchronized_method(func: typing.Callable) -> typing.Callable:
     @functools.wraps(func)
     def _wrapper(self, *args, **kwargs):
         try:
@@ -197,3 +196,30 @@ def convert_params_to_date_range(delta_value: int = 24,
                                  delta_type: str = 'hours') -> typing.Tuple[datetime.datetime, datetime.datetime]:
     now = datetime.datetime.now()
     return now - datetime.timedelta(**{delta_type: delta_value}), now
+
+
+# TODO: Use it
+def max_timer(max_timedelta: datetime.timedelta, log: typing.Callable = logging.warning) -> typing.Callable:
+    def _decorator(func: typing.Callable) -> typing.Callable:
+        @functools.wraps(func)
+        def _wrapper(*args, **kwargs) -> typing.Any:
+            start = datetime.datetime.now()
+            result = _wrapper(*args, **kwargs)
+            delta = datetime.datetime.now() - start
+
+            if delta > max_timedelta:
+                log(
+                    f'Slow execution in {func.__module__}ю{func.__name__}',
+                    extra={
+                        'delta': delta,
+                        'args': args,
+                        'kwargs': kwargs,
+                        'result': result,
+                    },
+                )
+
+            return result
+
+        return _wrapper
+
+    return _decorator

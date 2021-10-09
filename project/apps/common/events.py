@@ -4,7 +4,7 @@ import typing
 from dataclasses import dataclass
 
 from .exceptions import Shutdown
-from .utils import synchronized
+from .utils import synchronized_method
 
 
 __all__ = (
@@ -23,7 +23,7 @@ class Event:
         self._lock = threading.Lock()
         self.providing_kwargs = tuple(providing_kwargs)
 
-    @synchronized
+    @synchronized_method
     def connect(self, func: typing.Callable) -> 'Receiver':
         assert callable(func)
 
@@ -31,7 +31,7 @@ class Event:
 
         return Receiver(func=func, event=self)
 
-    @synchronized
+    @synchronized_method
     def disconnect(self, receiver: typing.Callable) -> None:
         assert callable(receiver)
 

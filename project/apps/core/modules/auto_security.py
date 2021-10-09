@@ -7,13 +7,12 @@ import schedule
 from .. import events
 from ..base import BaseModule, Command
 from ..constants import (
-    AUTO_SECURITY_IS_ENABLED, CAMERA_IS_AVAILABLE, SECURITY_IS_ENABLED, USER_IS_CONNECTED_TO_ROUTER,
+    AUTO_SECURITY_IS_ENABLED, BotCommands, CAMERA_IS_AVAILABLE, SECURITY_IS_ENABLED, USER_IS_CONNECTED_TO_ROUTER,
     USE_CAMERA,
 )
 from ...common.constants import AUTO, OFF, ON
 from ...task_queue import TaskPriorities
-from ...common.utils import single_synchronized, synchronized
-from ...messengers.constants import BotCommands
+from ...common.utils import single_synchronized, synchronized_method
 
 
 __all__ = (
@@ -72,14 +71,14 @@ class AutoSecurity(BaseModule):
 
         return False
 
-    @synchronized
+    @synchronized_method
     def disable(self) -> None:
         super().disable()
 
         if self.state[AUTO_SECURITY_IS_ENABLED]:
             self._disable_auto_security()
 
-    @synchronized
+    @synchronized_method
     def _enable_auto_security(self) -> None:
         self.state[AUTO_SECURITY_IS_ENABLED] = True
 
@@ -91,7 +90,7 @@ class AutoSecurity(BaseModule):
         if not self.state[USER_IS_CONNECTED_TO_ROUTER]:
             self._process_user_is_disconnected_to_router()
 
-    @synchronized
+    @synchronized_method
     def _disable_auto_security(self) -> None:
         use_camera: bool = self.state[USE_CAMERA]
 
@@ -107,7 +106,7 @@ class AutoSecurity(BaseModule):
 
         self.messenger.send_message('Auto security is disabled')
 
-    @synchronized
+    @synchronized_method
     def _update_last_movement_at(self) -> None:
         with self._lock_for_last_movement_at:
             self._last_movement_at = datetime.datetime.now()

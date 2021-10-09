@@ -6,9 +6,9 @@ from .. import constants
 from ..base import BaseModule, Command
 from ...arduino.constants import ArduinoSensorTypes
 from ...common.constants import OFF, ON
-from ...common.utils import is_sleep_hours, synchronized
+from ...common.utils import is_sleep_hours, synchronized_method
 from ...core import events
-from ...messengers.constants import BotCommands
+from ..constants import BotCommands
 from ...signals.models import Signal
 from .... import config
 
@@ -30,7 +30,7 @@ class RecommendationSystem(BaseModule):
             events.new_arduino_data.connect(self._process_new_arduino_logs),
         )
 
-    @synchronized
+    @synchronized_method
     def process_command(self, command: Command) -> typing.Any:
         if command.name == BotCommands.RECOMMENDATION_SYSTEM:
             if command.first_arg == ON:
@@ -52,7 +52,7 @@ class RecommendationSystem(BaseModule):
 
         return False
 
-    @synchronized
+    @synchronized_method
     def _process_new_arduino_logs(self, signals: typing.List[Signal]) -> None:
         if not self.state[constants.RECOMMENDATION_SYSTEM_IS_ENABLED]:
             return
