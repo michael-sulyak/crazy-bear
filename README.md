@@ -1,5 +1,7 @@
 # CrazyBear - Home Assistant in Telegram
 
+![Sketch](https://github.com/expert-m/crazy-bear/tree/master/arduino_core/sketch.png)
+
 # Used:
 1. **Raspberry Pi 4**
 2. **Arduino Nano V3.0 ATmega328P** (is connected via USB to a **Raspberry Pi**)

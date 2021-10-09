@@ -144,3 +144,4 @@ cython_debug/
 /envs/
 /cli.py
 main.db
+.dev/
