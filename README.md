@@ -1,6 +1,6 @@
 # CrazyBear - Home Assistant in Telegram
 
-![Sketch](arduino_core/sketch.svg)
+![Sketch](sketch.jpg)
 
 # Used:
 1. **Raspberry Pi 4**

@@ -5,7 +5,7 @@ import typing
 import requests
 
 
-class TpLinkClient:
+class TpLink:
     username: typing.Optional[str]
     password: str
     url: str

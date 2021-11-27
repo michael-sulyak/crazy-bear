@@ -72,7 +72,7 @@ class Env:
         if not result:
             return None
 
-        return tuple(value_type(x) for x in result.split(separator))
+        return tuple(value_type(x.strip()) for x in result.split(separator))
 
     def frozenset(self,
                   name: str, *,

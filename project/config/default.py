@@ -1,4 +1,3 @@
-import datetime
 import time
 from os.path import dirname
 from pathlib import Path
@@ -11,7 +10,6 @@ from .utils import VersionDetails, env
 BASE_DIR = Path(dirname(__file__)) / '..' / '..'
 PROJECT_DIR = BASE_DIR / 'project'
 APPS_DIR = PROJECT_DIR / 'apps'
-
 
 # Version
 version_details = VersionDetails()
@@ -60,7 +58,9 @@ SENTRY_DSN = env('SENTRY_DSN')
 DROPBOX_TOKEN = env('DROPBOX_TOKEN')
 
 # Router
-ROUTER_USERNAME = env('ROUTER_USERNAME')
+ROUTER_TYPE = env('ROUTER_TYPE')
+assert ROUTER_TYPE in {'mi', 'tplink'}
+ROUTER_USERNAME = env('ROUTER_USERNAME', default=None)
 ROUTER_PASSWORD = env('ROUTER_PASSWORD')
 ROUTER_URL = env('ROUTER_URL')
 

@@ -2,7 +2,8 @@ import threading
 import typing
 
 from .dto import Device
-from ..common.utils import get_connected_macs_to_router
+from ..common.routers.utils import get_connected_macs_to_router
+from ..common.utils import timer
 from ..dynamic_config.events import dynamic_config_is_updated
 from ..dynamic_config.utils import dynamic_config
 
@@ -79,5 +80,6 @@ def get_connected_devices_to_router() -> typing.Generator[Device, None, None]:
             yield Device(mac_address=mac)
 
 
+@timer
 def check_if_host_is_at_home() -> bool:
     return any(device.is_defining for device in get_connected_devices_to_router())

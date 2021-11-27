@@ -16,7 +16,6 @@ import seaborn as sns
 from matplotlib.dates import DateFormatter
 from matplotlib.ticker import AutoLocator, MaxNLocator
 
-from .tplink import TpLinkClient
 from ... import config
 
 
@@ -124,26 +123,6 @@ def create_plot(*,
             return io.BytesIO(image.read())
 
 
-def get_connected_macs_to_router() -> typing.Generator[str, None, None]:
-    tplink_client = TpLinkClient(
-        username=config.ROUTER_USERNAME,
-        password=config.ROUTER_PASSWORD,
-        url=config.ROUTER_URL,
-    )
-
-    try:
-        connected_devices = tplink_client.get_connected_devices()
-    except Exception as e:
-        logging.exception(e)
-        return
-
-    for device in connected_devices:
-        mac_address = device.get('MACAddress')
-
-        if mac_address:
-            yield mac_address
-
-
 def camera_is_available(src: int) -> bool:
     cap = cv2.VideoCapture(src)
     is_available = cap.isOpened()
@@ -223,3 +202,20 @@ def max_timer(max_timedelta: datetime.timedelta, log: typing.Callable = logging.
         return _wrapper
 
     return _decorator
+
+
+def timer(func: typing.Callable) -> typing.Callable:
+    @functools.wraps(func)
+    def wrap_func(*args, **kwargs) -> typing.Any:
+        started_at = datetime.datetime.now()
+        result = func(*args, **kwargs)
+        finished_at = datetime.datetime.now()
+        logging.info(
+            'Function %s.%s executed in %s.',
+            func.__module__,
+            func.__qualname__,
+            finished_at - started_at,
+        )
+        return result
+
+    return wrap_func

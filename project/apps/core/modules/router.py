@@ -4,9 +4,10 @@ import typing
 
 import schedule
 
+from project.apps.common.routers.tplink import TpLink
 from ..base import BaseModule, Command
 from ..constants import BotCommands
-from ...common.tplink import TpLinkClient
+from ...common.routers.mi import mi_wifi
 from ...common.utils import create_plot, synchronized_method
 from ...core import constants, events
 from ...devices.utils import check_if_host_is_at_home
@@ -21,7 +22,6 @@ __all__ = (
 
 
 class Router(BaseModule):
-    _tplink_client: TpLinkClient
     _last_connected_at: datetime.datetime
     _timedelta_for_connection: datetime.timedelta = datetime.timedelta(seconds=30)
     _user_was_connected: typing.Optional[bool] = None
@@ -35,12 +35,6 @@ class Router(BaseModule):
         super().__init__(*args, **kwargs)
 
         self.state.subscribe(constants.USER_IS_CONNECTED_TO_ROUTER, self._process_new_user_state)
-
-        self.tplink_client = TpLinkClient(
-            username=config.ROUTER_USERNAME,
-            password=config.ROUTER_PASSWORD,
-            url=config.ROUTER_URL,
-        )
 
         now = datetime.datetime.now()
 
@@ -62,7 +56,7 @@ class Router(BaseModule):
 
     def init_schedule(self, scheduler: schedule.Scheduler) -> tuple:
         return (
-            scheduler.every(1).seconds.do(
+            scheduler.every(5).seconds.do(
                 self.unique_task_queue.push,
                 self._check_user_status,
                 priority=TaskPriorities.HIGH,
@@ -123,15 +117,28 @@ class Router(BaseModule):
         return create_plot(title='User is connected to router', x_attr='received_at', y_attr='value', stats=stats)
 
     def _send_connected_devices(self) -> None:
-        connected_devices = self.tplink_client.get_connected_devices()
-
         message = ''
 
-        for connected_device in connected_devices:
-            for key, value in connected_device.items():
-                message += f'*{key}:* {value}\n'
+        if config.ROUTER_TYPE == 'tplink':
+            tplink_client = TpLink(
+                username=config.ROUTER_USERNAME,
+                password=config.ROUTER_PASSWORD,
+                url=config.ROUTER_URL,
+            )
 
-            message += '\n'
+            connected_devices = tplink_client.get_connected_devices()
+
+            for connected_device in connected_devices:
+                for key, value in connected_device.items():
+                    message += f'*{key}:* {value}\n'
+
+                message += '\n'
+        elif config.ROUTER_TYPE == 'mi':
+            for device in mi_wifi.device_list()['list']:
+                for key, value in device.items():
+                    message += f'*{key}:* {value}\n'
+
+                message += '\n'
 
         self.messenger.send_message(message)
 
