@@ -2,7 +2,7 @@
 
 ## Preview
 
-![Sketch](preview.jpg)
+![Sketch](preview.png)
 
 ## Scheme
 
