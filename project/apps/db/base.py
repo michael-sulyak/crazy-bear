@@ -15,7 +15,11 @@ __all__ = (
 )
 
 Base = declarative_base()
-db_engine = create_engine(config.DATABASE_URL, echo=config.DATABASE_DEBUG)
+db_engine = create_engine(
+    config.DATABASE_URL,
+    echo=config.DATABASE_DEBUG,
+    connect_args={'timeout': 30},
+)
 
 session_factory = sessionmaker(bind=db_engine)
 MySession = scoped_session(session_factory)

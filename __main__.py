@@ -5,25 +5,23 @@ from datetime import datetime
 
 import schedule
 import sentry_sdk
-from telegram.utils.request import Request as TelegramRequest
 
 from project import config
 from project.apps import db
-from project.apps.common.exceptions import Shutdown
-from project.apps.common.utils import init_settings_for_plt
-from project.apps.core import modules
 from project.apps.common.constants import AUTO, INITED_AT, ON
+from project.apps.common.exceptions import Shutdown
 from project.apps.common.state import State
 from project.apps.common.storage import file_storage
+from project.apps.common.utils import init_settings_for_plt
+from project.apps.core import modules
 from project.apps.core.base import Command, Message
 from project.apps.core.commander import Commander
-from project.apps.core.modules import TelegramMenu
 from project.apps.core.constants import BotCommands
+from project.apps.core.modules import TelegramMenu
 from project.apps.messengers.telegram import TelegramMessenger
 
 
 logging.basicConfig(level='DEBUG' if config.DEBUG else 'INFO')
-
 
 sentry_sdk.init(
     dsn=config.SENTRY_DSN,
@@ -56,22 +54,7 @@ def main():
         INITED_AT: datetime.now(),
     })
 
-    if config.PROXY_URL:
-        logging.info('Found proxy for Telegram.')
-
-        request = TelegramRequest(
-            proxy_url=config.PROXY_URL,
-            urllib3_proxy_kwargs={
-                'username': config.PROXY_USERNAME,
-                'password': config.PROXY_PASSWORD,
-            },
-        )
-    else:
-        logging.info('Not found proxy for Telegram.')
-        request = None
-
     messenger = TelegramMessenger(
-        request=request,
         default_reply_markup=TelegramMenu(state=state),
     )
 
@@ -98,10 +81,10 @@ def main():
     )
 
     initial_commands = (
-        Command(name=BotCommands.STATUS),
         Command(name=BotCommands.ARDUINO, args=(ON,)),
         Command(name=BotCommands.SECURITY, args=(AUTO, ON,)),
         Command(name=BotCommands.RECOMMENDATION_SYSTEM, args=(ON,)),
+        Command(name=BotCommands.STATUS),
     )
 
     for command in initial_commands:

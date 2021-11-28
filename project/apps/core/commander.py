@@ -7,14 +7,14 @@ import typing
 import schedule
 
 from . import events as core_events
-from .base import BaseModule, ModuleContext, Message
+from .base import BaseModule, Message, ModuleContext
 from ..common.exceptions import Shutdown
 from ..common.state import State
 from ..common.utils import is_sleep_hours
-from ..task_queue import BaseTaskQueue, BaseWorker, MemTaskQueue, ThreadWorker
 from ..db import close_db_session
 from ..messengers import events
 from ..messengers.base import BaseMessenger
+from ..task_queue import BaseTaskQueue, BaseWorker, MemTaskQueue, ThreadWorker
 
 
 class Commander:
@@ -42,7 +42,6 @@ class Commander:
         module_context = ModuleContext(
             messenger=self.messenger,
             state=self.state,
-            message_queue=self.message_queue,
             scheduler=self.scheduler,
             task_queue=self.task_queue,
         )
@@ -70,16 +69,16 @@ class Commander:
         try:
             # All jobs have to be in async queue
             self.scheduler.run_pending()
-        except Shutdown as e:
-            raise e
+        except Shutdown:
+            raise
         except Exception as e:
             logging.exception(e)
             self.messenger.exception(e)
 
         try:
             self.process_updates()
-        except Shutdown as e:
-            raise e
+        except Shutdown:
+            raise
         except Exception as e:
             logging.exception(e)
             self.messenger.exception(e)
@@ -93,9 +92,13 @@ class Commander:
 
             self.message_queue.put(message)
 
-        while not self.message_queue.empty():
+        while True:
+            try:
+                update: Message = self.message_queue.get(block=False)
+            except queue.Empty:
+                break
+
             self.messenger.start_typing()
-            update: Message = self.message_queue.get()
 
             if update.command:
                 results, exceptions = events.input_command.process(command=update.command)
@@ -119,5 +122,8 @@ class Commander:
 
         logging.info('[shutdown] Sending "shutdown" signal...')
         core_events.shutdown.send()
+
+        logging.info('[shutdown] Closing messenger...')
+        self.messenger.close()
 
         self.messenger.send_message('Goodbye!')

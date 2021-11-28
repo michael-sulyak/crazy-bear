@@ -30,9 +30,12 @@ class BaseMessenger(mixins.BaseCVMixin, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def start_typing(self, *args, **kwargs):
+    def start_typing(self, *args, **kwargs) -> None:
         pass
 
     @abc.abstractmethod
     def get_updates(self) -> typing.Iterator['Message']:
+        pass
+
+    def close(self) -> None:
         pass

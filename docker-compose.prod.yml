@@ -12,4 +12,6 @@ services:
     volumes:
       - .:/app
       - /dev:/dev
+    ports:
+      - "8443:8443"
     command: python3 __main__.py

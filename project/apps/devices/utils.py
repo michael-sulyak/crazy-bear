@@ -80,6 +80,5 @@ def get_connected_devices_to_router() -> typing.Generator[Device, None, None]:
             yield Device(mac_address=mac)
 
 
-@timer
 def check_if_host_is_at_home() -> bool:
     return any(device.is_defining for device in get_connected_devices_to_router())

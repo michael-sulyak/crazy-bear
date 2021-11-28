@@ -30,7 +30,6 @@ from .... import config
 
 
 class Report(BaseModule):
-    _empty_value = '-'
     _signals_for_clearing = (
         constants.CPU_TEMPERATURE,
         constants.TASK_QUEUE_DELAY,
@@ -103,6 +102,9 @@ class Report(BaseModule):
             if not flags or flags == {'f'}:
                 flags = self._stats_flags_map.keys()
 
+            if flags == {'s'}:
+                flags = {'a', 'e', 'r'}
+
             results, exceptions = events.request_for_statistics.process(
                 date_range=date_range,
                 components={self._stats_flags_map[flag] for flag in flags},
@@ -147,10 +149,9 @@ class Report(BaseModule):
             )
 
             self.messenger.send_message(
-                '**\\stats**\n'
-                f'{tags_info}\n\n'
-                '\devices <mac> <name> <is_defining>'
+                '`\devices` *<mac>* *<name>* *<is_defining>*',
             )
+
             return True
 
         return False
@@ -170,28 +171,29 @@ class Report(BaseModule):
         )
 
     def _send_status(self) -> None:
+        yes, no, nothing = emojize(":check_mark_button:"), emojize(":multiply:"), emojize(':multiply:')
         humidity = Signal.last_aggregated(ArduinoSensorTypes.HUMIDITY)
         temperature = Signal.last_aggregated(ArduinoSensorTypes.TEMPERATURE)
 
         if humidity is not None:
             humidity = f'{round(humidity, 2)}%'
         else:
-            humidity = self._empty_value
+            humidity = nothing
 
         if temperature is not None:
             temperature = f'{round(temperature, 2)}℃'
         else:
-            temperature = self._empty_value
+            temperature = nothing
 
         if self.state[CURRENT_FPS] is None:
-            current_fps = self._empty_value
+            current_fps = nothing
         else:
             current_fps = round(self.state[CURRENT_FPS], 2)
 
         try:
             cpu_temperature = f'{round(get_cpu_temp(), 2)}℃'
         except RuntimeError:
-            cpu_temperature = self._empty_value
+            cpu_temperature = nothing
 
         connected_devices = get_connected_devices_to_router()
         connected_devices_str = ', '.join(
@@ -200,26 +202,29 @@ class Report(BaseModule):
         )
 
         message = (
-            f'️*Crazy Bear* v{config.VERSION}\n\n'
+            f'️{emojize(":gear:")} *Crazy Bear* `v{config.VERSION}`\n\n'
+            
+            f'{emojize(":floppy_disk:")} *Devices*\n'
+            f'Arduino: {yes if self.state[ARDUINO_IS_ENABLED] else no}\n\n'
 
-            f'Arduino: `{"On" if self.state[ARDUINO_IS_ENABLED] else "Off"}`\n\n'
-
-            f'Has camera: `{"Yes" if self.state[CAMERA_IS_AVAILABLE] else "No"}`\n'
-            f'Camera: `{"On" if self.state[USE_CAMERA] else "Off"}`\n'
-            f'Video recording: `{"On" if self.state[VIDEO_RECORDING_IS_ENABLED] else "Off"}`\n'
+            f'{emojize(":camera:")} *Camera*\n'
+            f'Has camera: {yes if self.state[CAMERA_IS_AVAILABLE] else no}\n'
+            f'Camera is used: {yes if self.state[USE_CAMERA] else no}\n'
+            f'Video recording: {yes if self.state[VIDEO_RECORDING_IS_ENABLED] else no}\n'
             f'FPS: `{current_fps}`\n\n'
 
-            f'Security: `{"On" if self.state[SECURITY_IS_ENABLED] else "Off"}`\n'
-            f'Auto security: `{"On" if self.state[AUTO_SECURITY_IS_ENABLED] else "Off"}`\n'
-            f'Video security: `{"On" if self.state[VIDEO_SECURITY] else "Off"}`\n'
-            f'Connected devices: {connected_devices_str if connected_devices_str else "-"}\n\n'
+            f'{emojize(":shield:")} *Security*\n'
+            f'Security: {yes if self.state[SECURITY_IS_ENABLED] else no}\n'
+            f'Auto security: {yes if self.state[AUTO_SECURITY_IS_ENABLED] else no}\n'
+            f'Video security: {yes if self.state[VIDEO_SECURITY] else no}\n'
+            f'WiFi: {connected_devices_str if connected_devices_str else nothing}\n\n'
 
+            f'{emojize(":bar_chart:")} *Sensors*\n'
             f'Humidity: `{humidity}`\n'
             f'Temperature: `{temperature}`\n'
             f'CPU Temperature: `{cpu_temperature}`\n\n'
 
-            # f'Task queue size: `{len(self.context.task_queue)}`\n'
-            # f'Now: `{datetime.datetime.now().strftime("%d.%m.%Y, %H:%M:%S")}`\n'
+            f'{emojize(":clipboard:")} *Other info*\n'
             f'Started at: `{self.state[INITED_AT].strftime("%d.%m.%Y, %H:%M:%S")}`'
         )
 

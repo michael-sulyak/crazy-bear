@@ -219,3 +219,9 @@ def timer(func: typing.Callable) -> typing.Callable:
         return result
 
     return wrap_func
+
+
+def get_my_ip() -> str:
+    response = requests.get('https://api.ipify.org')
+    response.raise_for_status()
+    return response.content.decode('utf8')

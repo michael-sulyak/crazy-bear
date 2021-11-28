@@ -145,3 +145,4 @@ cython_debug/
 /cli.py
 main.db
 .dev/
+certificate/

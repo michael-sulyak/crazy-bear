@@ -65,9 +65,10 @@ class ThreadWorker(BaseWorker):
         if self.is_run:
             return
 
-        logging.info('Run ThreadWorker')
+        logging.info(f'Run {self.__class__.__name__}...')
         self._is_run.set()
         self._thread.start()
+        logging.info(f'{self.__class__.__name__} is ready.')
 
     def stop(self) -> None:
         if not self.is_run:

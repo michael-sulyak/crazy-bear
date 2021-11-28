@@ -29,7 +29,7 @@ class BotCommands:
     STATUS = '/status'
     STATS = '/stats'
 
-    OTHER = '/other'
+    TO = '/to'
     CONNECTED_DEVICES = '/connected_devices'
     RECOMMENDATION_SYSTEM = '/recommendation_system'
     HELP = '/help'

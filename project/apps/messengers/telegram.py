@@ -1,21 +1,36 @@
 import datetime
 import logging
+import os
+import queue
+import ssl
 import threading
 import traceback
 import typing
+import uuid
 from time import sleep
 
 import telegram
 from emoji import emojize
 from telegram import Update as TelegramUpdate
 from telegram.error import NetworkError as TelegramNetworkError, TimedOut as TelegramTimedOut
+from telegram.ext import Updater as TelegramUpdater
 from telegram.utils.request import Request as TelegramRequest
+from telegram.utils.webhookhandler import WebhookAppClass, WebhookServer
 
 from .base import BaseMessenger
 from .mixins import CVMixin
-from ..common.utils import synchronized_method
+from ..common.utils import get_my_ip, synchronized_method
 from ..core.base import Command, Message
 from ... import config
+
+
+__all__ = (
+    'TelegramMessenger',
+)
+
+WEBHOOK_SSL_PEM = './certificate/cert.pem'
+WEBHOOK_SSL_KEY = './certificate/private.key'
+WEBHOOK_PORT = 8443
 
 
 class TelegramMessenger(CVMixin, BaseMessenger):
@@ -24,6 +39,9 @@ class TelegramMessenger(CVMixin, BaseMessenger):
     _bot: telegram.Bot
     _updates_offset: typing.Optional[int] = None
     _lock: threading.RLock
+    _update_queue: queue.Queue
+    _webhook_server: WebhookServer
+    _server_worker: threading.Thread
 
     def __init__(self, *,
                  request: typing.Optional[TelegramRequest] = None,
@@ -34,6 +52,99 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         )
         self._lock = threading.RLock()
         self.default_reply_markup = default_reply_markup
+        self._update_queue = queue.Queue()
+        self._start_webhook_server()
+
+    def _start_webhook_server(self) -> None:
+        ip = get_my_ip()
+        endpoint_for_webhook = str(uuid.uuid4())
+
+        os.system(
+            f'openssl req -newkey rsa:2048 -sha256 -nodes -keyout {WEBHOOK_SSL_KEY} -x509 -days 365 '
+            f'-out {WEBHOOK_SSL_PEM} -subj "/C=US/ST=New York/L=Brooklyn/O=Example Brooklyn Company/CN={ip}"'
+        )
+
+        webhook_url = f'https://{ip}:{WEBHOOK_PORT}/{endpoint_for_webhook}'
+
+        logging.info('Starting webhook on %s...', webhook_url)
+
+        def _worker():
+            webhook_app = WebhookAppClass(
+                webhook_path=f'/{endpoint_for_webhook}',
+                bot=self._bot,
+                update_queue=self._update_queue,
+            )
+
+            ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+            ssl_ctx.load_cert_chain(certfile=WEBHOOK_SSL_PEM, keyfile=WEBHOOK_SSL_KEY)
+
+            self._webhook_server = WebhookServer(
+                listen='0.0.0.0',
+                port=WEBHOOK_PORT,
+                webhook_app=webhook_app,
+                ssl_ctx=ssl_ctx,
+            )
+
+            with open(WEBHOOK_SSL_PEM, 'rb') as cert_file:
+                self._bot.set_webhook(
+                    url=webhook_url,
+                    certificate=cert_file,
+                    ip_address=ip,
+                    drop_pending_updates=True,
+                    max_connections=40,
+                )
+
+            self._webhook_server.serve_forever()
+
+        self._server_worker = threading.Thread(target=_worker)
+        self._server_worker.start()
+
+    # def _start_webhook2(self) -> None:
+    #     ip = get_my_ip()
+    #
+    #     # Overwrite the dispatcher, because I do need his workers
+    #     dispatcher = Dispatcher(
+    #         bot=self._bot,
+    #         update_queue=self._update_queue,
+    #         workers=0,
+    #         job_queue=Mock(),
+    #     )
+    #     dispatcher.start = lambda ready: ready and ready.set()
+    #     dispatcher.stop = lambda: None
+    #
+    #     updater = TelegramUpdater(
+    #         token=config.TELEGRAM_TOKEN,
+    #         workers=None,
+    #         dispatcher=dispatcher,
+    #     )
+    #
+    #     os.system(
+    #         f'openssl req -newkey rsa:2048 -sha256 -nodes -keyout {WEBHOOK_SSL_KEY} -x509 -days 365 '
+    #         f'-out {WEBHOOK_SSL_PEM} -subj "/C=US/ST=New York/L=Brooklyn/O=Example Brooklyn Company/CN={ip}"'
+    #     )
+    #
+    #     webhook_url = f'https://{ip}:8443/{config.TELEGRAM_TOKEN}'
+    #
+    #     logging.info('Starting webhook on %s...', webhook_url)
+    #
+    #     updater.start_webhook(
+    #         listen='0.0.0.0',
+    #         port=WEBHOOK_PORT,
+    #         url_path=config.TELEGRAM_TOKEN,
+    #         key=WEBHOOK_SSL_KEY,
+    #         cert=WEBHOOK_SSL_PEM,
+    #         ip_address=ip,
+    #         webhook_url=f'https://{ip}:{WEBHOOK_PORT}/{config.TELEGRAM_TOKEN}',
+    #     )
+    #     # print('start')
+    #     # while telegram_update := updater.update_queue.get(block=True):
+    #     #     print(type(telegram_update), telegram_update)
+    #
+    #     self.updater = updater
+
+    def close(self) -> None:
+        self._webhook_server.shutdown()
+        self._server_worker.join()
 
     @synchronized_method
     def send_message(self, text: str, *, parse_mode: str = 'markdown', reply_markup=None) -> None:
@@ -102,7 +213,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         self.error(f'{repr(exp)}\n{"".join(traceback.format_tb(exp.__traceback__))}', _title='Exception')
 
     @synchronized_method
-    def start_typing(self):
+    def start_typing(self) -> None:
         try:
             self._bot.send_chat_action(chat_id=self.chat_id, action=telegram.ChatAction.TYPING)
         except (TelegramNetworkError, TelegramTimedOut,) as e:
@@ -113,19 +224,11 @@ class TelegramMessenger(CVMixin, BaseMessenger):
     def get_updates(self) -> typing.Iterator[Message]:
         now = datetime.datetime.now()
 
-        try:
-            updates = self._bot.get_updates(offset=self._updates_offset, timeout=5)
-        except (TelegramNetworkError, TelegramTimedOut,) as e:
-            logging.warning(e, exc_info=True)
-            sleep(1)
-            return
-
-        if updates:
-            self._updates_offset = updates[-1].update_id + 1
-
-        for update in updates:
-            if not update.message:
-                continue
+        while True:
+            try:
+                update = self._update_queue.get(block=False)
+            except queue.Empty:
+                break
 
             if update.message.from_user.username != config.TELEGRAM_USERNAME:
                 text = update.message.text.replace("`", "\\`")
