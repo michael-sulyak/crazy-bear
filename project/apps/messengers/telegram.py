@@ -13,7 +13,6 @@ import telegram
 from emoji import emojize
 from telegram import Update as TelegramUpdate
 from telegram.error import NetworkError as TelegramNetworkError, TimedOut as TelegramTimedOut
-from telegram.ext import Updater as TelegramUpdater
 from telegram.utils.request import Request as TelegramRequest
 from telegram.utils.webhookhandler import WebhookAppClass, WebhookServer
 
@@ -98,49 +97,6 @@ class TelegramMessenger(CVMixin, BaseMessenger):
 
         self._server_worker = threading.Thread(target=_worker)
         self._server_worker.start()
-
-    # def _start_webhook2(self) -> None:
-    #     ip = get_my_ip()
-    #
-    #     # Overwrite the dispatcher, because I do need his workers
-    #     dispatcher = Dispatcher(
-    #         bot=self._bot,
-    #         update_queue=self._update_queue,
-    #         workers=0,
-    #         job_queue=Mock(),
-    #     )
-    #     dispatcher.start = lambda ready: ready and ready.set()
-    #     dispatcher.stop = lambda: None
-    #
-    #     updater = TelegramUpdater(
-    #         token=config.TELEGRAM_TOKEN,
-    #         workers=None,
-    #         dispatcher=dispatcher,
-    #     )
-    #
-    #     os.system(
-    #         f'openssl req -newkey rsa:2048 -sha256 -nodes -keyout {WEBHOOK_SSL_KEY} -x509 -days 365 '
-    #         f'-out {WEBHOOK_SSL_PEM} -subj "/C=US/ST=New York/L=Brooklyn/O=Example Brooklyn Company/CN={ip}"'
-    #     )
-    #
-    #     webhook_url = f'https://{ip}:8443/{config.TELEGRAM_TOKEN}'
-    #
-    #     logging.info('Starting webhook on %s...', webhook_url)
-    #
-    #     updater.start_webhook(
-    #         listen='0.0.0.0',
-    #         port=WEBHOOK_PORT,
-    #         url_path=config.TELEGRAM_TOKEN,
-    #         key=WEBHOOK_SSL_KEY,
-    #         cert=WEBHOOK_SSL_PEM,
-    #         ip_address=ip,
-    #         webhook_url=f'https://{ip}:{WEBHOOK_PORT}/{config.TELEGRAM_TOKEN}',
-    #     )
-    #     # print('start')
-    #     # while telegram_update := updater.update_queue.get(block=True):
-    #     #     print(type(telegram_update), telegram_update)
-    #
-    #     self.updater = updater
 
     def close(self) -> None:
         self._webhook_server.shutdown()

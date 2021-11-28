@@ -45,8 +45,8 @@ class Event:
         for receiver in self.receivers:
             try:
                 receiver(**kwargs)
-            except Shutdown as e:
-                raise e
+            except Shutdown:
+                raise
             except Exception as e:
                 logging.exception(e)
 
@@ -58,8 +58,8 @@ class Event:
             try:
                 result = receiver(**kwargs)
                 results.append(result)
-            except Shutdown as e:
-                raise e
+            except Shutdown:
+                raise
             except Exception as e:
                 logging.exception(e)
                 exceptions.append(e)

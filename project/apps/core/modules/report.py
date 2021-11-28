@@ -10,7 +10,10 @@ from emoji import emojize
 
 from .. import events
 from ..base import BaseModule, Command
-from ..constants import ARDUINO_IS_ENABLED, BotCommands, CAMERA_IS_AVAILABLE, VIDEO_RECORDING_IS_ENABLED
+from ..constants import (
+    ARDUINO_IS_ENABLED, BotCommands, CAMERA_IS_AVAILABLE, RECOMMENDATION_SYSTEM_IS_ENABLED,
+    VIDEO_RECORDING_IS_ENABLED,
+)
 from ... import db
 from ...arduino.constants import ArduinoSensorTypes
 from ...common.constants import INITED_AT
@@ -202,7 +205,7 @@ class Report(BaseModule):
         )
 
         message = (
-            f'️{emojize(":gear:")} *Crazy Bear* `v{config.VERSION}`\n\n'
+            f'️*Crazy Bear* `v{config.VERSION}`\n\n'
             
             f'{emojize(":floppy_disk:")} *Devices*\n'
             f'Arduino: {yes if self.state[ARDUINO_IS_ENABLED] else no}\n\n'
@@ -225,6 +228,7 @@ class Report(BaseModule):
             f'CPU Temperature: `{cpu_temperature}`\n\n'
 
             f'{emojize(":clipboard:")} *Other info*\n'
+            f'Recommendation system: {yes if self.state[RECOMMENDATION_SYSTEM_IS_ENABLED] else no}\n'
             f'Started at: `{self.state[INITED_AT].strftime("%d.%m.%Y, %H:%M:%S")}`'
         )
 
