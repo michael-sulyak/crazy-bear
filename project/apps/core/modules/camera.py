@@ -1,21 +1,20 @@
 import datetime
 import typing
 
-import schedule
 from imutils.video import VideoStream
 
 from ..base import BaseModule, Command
+from ..constants import BotCommands
 from ... import task_queue
 from ...common.constants import OFF, ON
 from ...common.storage import file_storage
 from ...common.utils import camera_is_available, synchronized_method
 from ...core import events
 from ...core.constants import (
-    CAMERA_IS_AVAILABLE, CURRENT_FPS, VIDEO_RECORDING_IS_ENABLED, SECURITY_IS_ENABLED,
-    USE_CAMERA, VIDEO_SECURITY,
+    CAMERA_IS_AVAILABLE, CURRENT_FPS, SECURITY_IS_ENABLED, USE_CAMERA, VIDEO_RECORDING_IS_ENABLED, VIDEO_SECURITY,
 )
 from ...guard.video_guard import VideoGuard
-from ..constants import BotCommands
+from ...task_queue import IntervalTask
 from .... import config
 
 
@@ -41,27 +40,28 @@ class Camera(BaseModule):
 
         self._update_camera_status()
 
-    def init_schedule(self, scheduler: schedule.Scheduler) -> tuple:
+    def init_repeatable_tasks(self) -> tuple:
         return (
-            scheduler.every(10).seconds.do(
-                self.unique_task_queue.push,
-                self._save_photo,
+            IntervalTask(
+                target=self._save_photo,
                 priority=task_queue.TaskPriorities.MEDIUM,
+                interval=datetime.timedelta(seconds=10),
+                run_immediately=False,
             ),
-            scheduler.every(30).seconds.do(
-                self.unique_task_queue.push,
-                self._check_video_stream,
+            IntervalTask(
+                target=self._check_video_stream,
                 priority=task_queue.TaskPriorities.LOW,
+                interval=datetime.timedelta(minutes=1),
             ),
-            scheduler.every(10).minutes.do(
-                self.unique_task_queue.push,
-                self._update_camera_status,
+            IntervalTask(
+                target=self._update_camera_status,
                 priority=task_queue.TaskPriorities.LOW,
+                interval=datetime.timedelta(minutes=10),
             ),
-            scheduler.every(10).seconds.do(
-                self.unique_task_queue.push,
-                self.check,
+            IntervalTask(
+                target=self.check,
                 priority=task_queue.TaskPriorities.MEDIUM,
+                interval=datetime.timedelta(seconds=10),
             ),
         )
 

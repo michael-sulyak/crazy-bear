@@ -1,24 +1,21 @@
 import abc
-import queue
 import threading
 import typing
 from dataclasses import dataclass, field
 
-import schedule
-
 from . import events
 from ..common.events import Receiver
 from ..common.state import State
-from ..task_queue import BaseTaskQueue, UniqueTaskQueue
 from ..messengers import events as messenger_events
 from ..messengers.base import BaseMessenger
+from ..task_queue import BaseTaskQueue, UniqueTaskQueue
+from ..task_queue.dto import RepeatableTask
 
 
 @dataclass
 class ModuleContext:
     messenger: BaseMessenger
     state: State
-    scheduler: schedule.Scheduler
     task_queue: BaseTaskQueue
 
 
@@ -29,8 +26,8 @@ class BaseModule(abc.ABC):
     state: State
     task_queue: BaseTaskQueue
     unique_task_queue: UniqueTaskQueue
-    _schedule_jobs: tuple
     _subscribers_to_events: typing.Tuple[Receiver, ...]
+    _repeatable_tasks: typing.Tuple[RepeatableTask, ...]
     _lock: typing.Union[threading.Lock, threading.RLock]
 
     def __init__(self, *, context: ModuleContext) -> None:
@@ -42,10 +39,13 @@ class BaseModule(abc.ABC):
         self.unique_task_queue = UniqueTaskQueue(task_queue=self.context.task_queue)
 
         self.state.create_many(**self.initial_state)
-        self._schedule_jobs = self.init_schedule(self.context.scheduler)
         self._subscribers_to_events = self.subscribe_to_events()
+        self._repeatable_tasks = self.init_repeatable_tasks()
 
-    def init_schedule(self, scheduler: schedule.Scheduler) -> tuple:
+        for repeatable_task in self._repeatable_tasks:
+            self.task_queue.put_task(repeatable_task)
+
+    def init_repeatable_tasks(self) -> tuple:
         return ()
 
     def subscribe_to_events(self) -> typing.Tuple[Receiver, ...]:
@@ -58,11 +58,11 @@ class BaseModule(abc.ABC):
         pass
 
     def disable(self) -> None:
-        for job in self._schedule_jobs:
-            self.context.scheduler.cancel_job(job)
-
         for subscriber in self._subscribers_to_events:
             subscriber.disconnect()
+
+        for repeatable_task in self._repeatable_tasks:
+            repeatable_task.cancel()
 
     @staticmethod
     def _run_command(name: str, *args, **kwargs) -> None:

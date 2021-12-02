@@ -16,3 +16,4 @@ class TaskStatus:
     STARTED = 'started'
     FINISHED = 'finished'
     FAILED = 'failed'
+    CANCELED = 'canceled'

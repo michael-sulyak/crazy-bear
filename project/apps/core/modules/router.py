@@ -2,17 +2,15 @@ import datetime
 import io
 import typing
 
-import schedule
-
-from project.apps.common.routers.tplink import TpLink
 from ..base import BaseModule, Command
 from ..constants import BotCommands
 from ...common.routers.mi import mi_wifi
+from ...common.routers.tplink import TpLink
 from ...common.utils import create_plot, synchronized_method
 from ...core import constants, events
 from ...devices.utils import check_if_host_is_at_home
 from ...signals.models import Signal
-from ...task_queue import TaskPriorities
+from ...task_queue import IntervalTask, TaskPriorities
 from .... import config
 
 
@@ -54,12 +52,12 @@ class Router(BaseModule):
             events.request_for_statistics.connect(self._create_router_stats),
         )
 
-    def init_schedule(self, scheduler: schedule.Scheduler) -> tuple:
+    def init_repeatable_tasks(self) -> tuple:
         return (
-            scheduler.every(5).seconds.do(
-                self.unique_task_queue.push,
-                self._check_user_status,
+            IntervalTask(
+                target=self._check_user_status,
                 priority=TaskPriorities.HIGH,
+                interval=datetime.timedelta(seconds=5),
             ),
         )
 

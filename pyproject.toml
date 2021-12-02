@@ -6,7 +6,6 @@ authors = ["expert_m"]
 
 [tool.poetry.dependencies]
 python = "^3.8"
-schedule = "^1.0.0"
 requests = "^2.23"
 pytz = "^2021.1"
 emoji = "^1.2.0"
@@ -27,6 +26,7 @@ pandas = { version = "1.0.5", optional = true }
 scipy = { version = "1.5.2", optional = true }
 python-dotenv = "^0.19.0"
 python-telegram-bot = "^13.8.1"
+crontab = "^0.23.0"
 
 [tool.poetry.dev-dependencies]
 

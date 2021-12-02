@@ -2,8 +2,6 @@ import datetime
 import threading
 import typing
 
-import schedule
-
 from .. import events
 from ..base import BaseModule, Command
 from ..constants import (
@@ -11,8 +9,8 @@ from ..constants import (
     USE_CAMERA,
 )
 from ...common.constants import AUTO, OFF, ON
-from ...task_queue import TaskPriorities
 from ...common.utils import single_synchronized, synchronized_method
+from ...task_queue import IntervalTask, TaskPriorities
 
 
 __all__ = (
@@ -34,12 +32,12 @@ class AutoSecurity(BaseModule):
 
         self._lock_for_last_movement_at = threading.RLock()
 
-    def init_schedule(self, scheduler: schedule.Scheduler) -> tuple:
+    def init_repeatable_tasks(self) -> tuple:
         return (
-            scheduler.every(1).minute.do(
-                self.unique_task_queue.push,
-                self._check_camera_status,
-                priority=TaskPriorities.HIGH,
+            IntervalTask(
+                target=self._check_camera_status,
+                priority=TaskPriorities.LOW,
+                interval=datetime.timedelta(minutes=1),
             ),
         )
 

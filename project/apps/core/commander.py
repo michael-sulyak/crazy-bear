@@ -4,8 +4,6 @@ import queue
 import time
 import typing
 
-import schedule
-
 from . import events as core_events
 from .base import BaseModule, Message, ModuleContext
 from ..common.exceptions import Shutdown
@@ -21,7 +19,6 @@ class Commander:
     messenger: BaseMessenger
     state: State
     command_handlers: typing.Tuple[BaseModule, ...]
-    scheduler: schedule.Scheduler
     message_queue: queue
     task_queue: BaseTaskQueue
     task_worker: BaseWorker
@@ -29,20 +26,16 @@ class Commander:
     def __init__(self, *,
                  messenger: BaseMessenger,
                  module_classes: typing.Iterable[typing.Type[BaseModule]],
-                 state: State,
-                 scheduler: schedule.Scheduler) -> None:
+                 state: State) -> None:
         self.message_queue = queue.Queue()
         self.task_queue = MemTaskQueue()
         self.task_worker = ThreadWorker(task_queue=self.task_queue, on_close=close_db_session)
-        self.task_worker.run()
         self.messenger = messenger
         self.state = state
-        self.scheduler = scheduler
 
         module_context = ModuleContext(
             messenger=self.messenger,
             state=self.state,
-            scheduler=self.scheduler,
             task_queue=self.task_queue,
         )
 
@@ -52,6 +45,8 @@ class Commander:
         )
 
     def run(self) -> typing.NoReturn:
+        self.task_worker.run()
+
         while True:
             try:
                 self.tick()
@@ -66,15 +61,6 @@ class Commander:
         self.close()
 
     def tick(self) -> None:
-        try:
-            # All jobs have to be in async queue
-            self.scheduler.run_pending()
-        except Shutdown:
-            raise
-        except Exception as e:
-            logging.exception(e)
-            self.messenger.exception(e)
-
         try:
             self.process_updates()
         except Shutdown:
@@ -113,9 +99,6 @@ class Commander:
 
     def close(self) -> None:
         logging.info('Home assistant is stopping...')
-
-        logging.info('[shutdown] Clearing schedule...')
-        schedule.clear()
 
         logging.info('[shutdown] Closing task queue...')
         self.task_worker.stop()

@@ -99,6 +99,14 @@ version = "0.4.4"
 
 [[package]]
 category = "main"
+description = "Parse and use crontab schedules in Python"
+name = "crontab"
+optional = false
+python-versions = "*"
+version = "0.23.0"
+
+[[package]]
+category = "main"
 description = "Composable style cycles"
 name = "cycler"
 optional = false
@@ -428,14 +436,6 @@ use_chardet_on_py3 = ["chardet (>=3.0.2,<5)"]
 
 [[package]]
 category = "main"
-description = "Job scheduling for humans."
-name = "schedule"
-optional = false
-python-versions = ">=3.6"
-version = "1.1.0"
-
-[[package]]
-category = "main"
 description = "SciPy: Scientific Library for Python"
 name = "scipy"
 optional = false
@@ -623,7 +623,7 @@ test = ["pytest (>=3.0.0)", "pytest-cov"]
 heavy = ["numpy", "matplotlib", "pandas", "scipy"]
 
 [metadata]
-content-hash = "e3a354a77eb3cac7c9e8d3d9131217fca8a5ee8cc416448cd9313062c71f062f"
+content-hash = "cf0229ae0a0137a1909a959602bb83e6cf1f2552989eca640d6eb392f18ad58f"
 python-versions = "^3.8"
 
 [metadata.files]
@@ -672,6 +672,9 @@ charset-normalizer = [
 colorama = [
     {file = "colorama-0.4.4-py2.py3-none-any.whl", hash = "sha256:9f47eda37229f68eee03b24b9748937c7dc3868f906e8ba69fbcbdd3bc5dc3e2"},
     {file = "colorama-0.4.4.tar.gz", hash = "sha256:5941b2b48a20143d2267e95b1c2a7603ce057ee39fd88e7329b0c292aa16869b"},
+]
+crontab = [
+    {file = "crontab-0.23.0.tar.gz", hash = "sha256:ca79dede9c2f572bb32f38703e8fddcf3427e86edc838f2ffe7ae4b9ee2b0733"},
 ]
 cycler = [
     {file = "cycler-0.11.0-py3-none-any.whl", hash = "sha256:3a27e95f763a428a739d2add979fa7494c912a32c17c4c38c4d5f082cad165a3"},
@@ -963,10 +966,6 @@ pytz-deprecation-shim = [
 requests = [
     {file = "requests-2.26.0-py2.py3-none-any.whl", hash = "sha256:6c1246513ecd5ecd4528a0906f910e8f0f9c6b8ec72030dc9fd154dc1a6efd24"},
     {file = "requests-2.26.0.tar.gz", hash = "sha256:b8aa58f8cf793ffd8782d3d8cb19e66ef36f7aba4353eec859e74678b01b07a7"},
-]
-schedule = [
-    {file = "schedule-1.1.0-py2.py3-none-any.whl", hash = "sha256:617adce8b4bf38c360b781297d59918fbebfb2878f1671d189f4f4af5d0567a4"},
-    {file = "schedule-1.1.0.tar.gz", hash = "sha256:e6ca13585e62c810e13a08682e0a6a8ad245372e376ba2b8679294f377dfc8e4"},
 ]
 scipy = [
     {file = "scipy-1.5.2-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:cca9fce15109a36a0a9f9cfc64f870f1c140cb235ddf27fe0328e6afb44dfed0"},

@@ -1,8 +1,11 @@
+import abc
 import datetime
 import logging
 import threading
 import typing
 from dataclasses import dataclass, field
+
+from crontab import CronTab
 
 from . import constants
 from .exceptions import BaseTaskQueueException, RepeatTask
@@ -11,6 +14,9 @@ from ..common.utils import synchronized_method
 
 __all__ = (
     'Task',
+    'IntervalTask',
+    'RepeatableTask',
+    'ScheduledTask',
     'RetryPolicy',
     'RetryPolicyForConnectionError',
     'default_retry_policy',
@@ -20,7 +26,7 @@ __all__ = (
 
 @dataclass
 class RetryPolicy:
-    max_retries: int = 3
+    max_retries: float = 3
     exceptions: typing.Tuple = (Exception,)
     retry_delay: typing.Optional[datetime.timedelta] = datetime.timedelta(seconds=30)
 
@@ -45,45 +51,56 @@ default_retry_policy = RetryPolicy(max_retries=0)
 retry_policy_for_connection_error = RetryPolicy(exceptions=(ConnectionError,))
 
 
-@dataclass(order=True)
+@dataclass(eq=False)
 class Task:
     priority: int
-    target: typing.Callable = field(
-        compare=False,
-    )
+    target: typing.Callable
     args: tuple = field(
-        compare=False,
+        default_factory=tuple,
     )
     kwargs: typing.Dict[str, typing.Any] = field(
-        compare=False,
+        default_factory=dict,
     )
     run_after: datetime.datetime = field(
         default_factory=datetime.datetime.now,
     )
     result: typing.Any = field(
-        compare=False,
         default=None,
     )
     error: typing.Optional[Exception] = field(
-        compare=False,
         default=None,
     )
     retry_policy: RetryPolicy = field(
-        compare=False,
         default=default_retry_policy,
     )
     _status: str = field(
-        compare=False,
         default=constants.TaskStatus.CREATED,
     )
-    _lock: threading.Lock = field(
-        compare=False,
-        default_factory=threading.Lock,
+    _lock: threading.RLock = field(
+        default_factory=threading.RLock,
     )
     _retries: int = field(
-        compare=False,
         default=0,
     )
+
+    # def __lt__(self, other: 'Task') -> bool:
+    #     return self.field_for_sorting < other.field_for_sorting
+    #
+    # def __le__(self, other: 'Task') -> bool:
+    #     return self.field_for_sorting <= other.field_for_sorting
+    #
+    # def __gt__(self, other: 'Task') -> bool:
+    #     return self.field_for_sorting > other.field_for_sorting
+    #
+    # def __ge__(self, other: 'Task') -> bool:
+    #     return self.field_for_sorting >= other.field_for_sorting
+    #
+    # def __eq__(self, other: 'Task') -> bool:
+    #     return self.field_for_sorting == other.field_for_sorting
+
+    @property
+    def field_for_sorting(self) -> typing.Any:
+        return self.run_after
 
     @property
     @synchronized_method
@@ -112,12 +129,20 @@ class Task:
         return task
 
     def run(self) -> None:
-        self.status = constants.TaskStatus.STARTED
+        with self._lock:
+            if self._status == constants.TaskStatus.CANCELED:
+                return
+
+            self._status = constants.TaskStatus.STARTED
+            self.result = None
+            self.error = None
 
         try:
             with self.retry_policy:
                 self.result = self.call()
         except RepeatTask as e:
+            logging.debug(e)
+
             self._retries += 1
 
             with self._lock:
@@ -129,15 +154,75 @@ class Task:
                     logging.info(f'Retry policy for {self}')
                     raise
 
-            self.error = e.source
-            self.status = constants.TaskStatus.FAILED
+            with self._lock:
+                self.error = e.source
+                self._status = constants.TaskStatus.FAILED
+
             logging.warning(e.source, exc_info=True)
         except Exception as e:
-            self.error = e
-            self.status = constants.TaskStatus.FAILED
+            with self._lock:
+                self.error = e
+                self._status = constants.TaskStatus.FAILED
+
             logging.exception(e)
         else:
             self.status = constants.TaskStatus.FINISHED
 
     def call(self) -> typing.Any:
         return self.target(*self.args, **self.kwargs)
+
+    @synchronized_method
+    def cancel(self) -> bool:
+        is_success = self._status in (constants.TaskStatus.CREATED, constants.TaskStatus.PENDING,)
+        self._status = constants.TaskStatus.CANCELED
+        return is_success
+
+
+class RepeatableTask(Task, abc.ABC):
+    pass
+
+
+@dataclass(eq=False)
+class IntervalTask(RepeatableTask):
+    interval: datetime.timedelta = field(
+        default=None,
+    )
+    run_immediately: bool = field(
+        default=True,
+    )
+
+    def __post_init__(self) -> None:
+        if not self.run_immediately:
+            self.run_after = datetime.datetime.now() + self.interval
+
+    def run(self) -> None:
+        logging.debug('Run interval %s', self)
+        super().run()
+
+        with self._lock:
+            if self._status != constants.TaskStatus.CANCELED:
+                self._retries = 0
+                self.run_after = datetime.datetime.now() + self.interval
+                logging.debug('Repeat %s after %s', self, self.run_after)
+                raise RepeatTask(source=None)
+
+
+@dataclass(eq=False)
+class ScheduledTask(RepeatableTask):
+    crontab: CronTab = field(
+        default=None,
+    )
+
+    def __post_init__(self) -> None:
+        self.run_after = self.crontab.next(self.run_after, return_datetime=True)
+
+    def run(self) -> None:
+        logging.debug('Run scheduled %s', self)
+        super().run()
+
+        with self._lock:
+            if self._status != constants.TaskStatus.CANCELED:
+                self._retries = 0
+                self.run_after = self.crontab.next(return_datetime=True)
+                logging.debug('Repeat %s after %s', self, self.run_after)
+                raise RepeatTask(source=None)

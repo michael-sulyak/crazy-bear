@@ -5,7 +5,6 @@ import os
 import typing
 from collections import defaultdict
 
-import schedule
 from emoji import emojize
 
 from .. import events
@@ -28,7 +27,7 @@ from ...core.constants import (
 )
 from ...devices.utils import get_connected_devices_to_router
 from ...signals.models import Signal
-from ...task_queue import TaskPriorities
+from ...task_queue import IntervalTask, TaskPriorities
 from .... import config
 
 
@@ -62,22 +61,22 @@ class Report(BaseModule):
             run_after=now + self._timedelta_for_ping,
         )
 
-    def init_schedule(self, scheduler: schedule.Scheduler) -> tuple:
+    def init_repeatable_tasks(self) -> tuple:
         return (
-            scheduler.every(10).seconds.do(
-                self.unique_task_queue.push,
-                self._save_cpu_temperature,
+            IntervalTask(
+                target=self._save_cpu_temperature,
                 priority=TaskPriorities.LOW,
+                interval=datetime.timedelta(seconds=10),
             ),
-            scheduler.every(5).minutes.do(
-                self.unique_task_queue.push,
-                self._save_weather_data,
+            IntervalTask(
+                target=self._save_weather_data,
                 priority=TaskPriorities.LOW,
+                interval=datetime.timedelta(minutes=5),
             ),
-            scheduler.every(10).minutes.do(
-                self.unique_task_queue.push,
-                self._save_ram_usage,
+            IntervalTask(
+                target=self._save_ram_usage,
                 priority=TaskPriorities.LOW,
+                interval=datetime.timedelta(minutes=10),
             ),
         )
 
@@ -152,7 +151,7 @@ class Report(BaseModule):
             )
 
             self.messenger.send_message(
-                '`\devices` *<mac>* *<name>* *<is_defining>*',
+                '`\\devices` *<mac>* *<name>* *<is_defining>*',
             )
 
             return True
@@ -162,10 +161,10 @@ class Report(BaseModule):
     @synchronized_method
     def _ping_task_queue(self, *, sent_at: datetime.datetime) -> None:
         now = datetime.datetime.now()
-        diff = now - sent_at - self._timedelta_for_ping
-
+        diff = datetime.datetime.now() - sent_at - self._timedelta_for_ping
         Signal.add(signal_type=constants.TASK_QUEUE_DELAY, value=diff.total_seconds(), received_at=now)
 
+        now = datetime.datetime.now()
         self.task_queue.put(
             self._ping_task_queue,
             kwargs={'sent_at': now},
@@ -206,7 +205,7 @@ class Report(BaseModule):
 
         message = (
             f'️*Crazy Bear* `v{config.VERSION}`\n\n'
-            
+
             f'{emojize(":floppy_disk:")} *Devices*\n'
             f'Arduino: {yes if self.state[ARDUINO_IS_ENABLED] else no}\n\n'
 

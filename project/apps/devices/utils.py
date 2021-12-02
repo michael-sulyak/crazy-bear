@@ -3,7 +3,6 @@ import typing
 
 from .dto import Device
 from ..common.routers.utils import get_connected_macs_to_router
-from ..common.utils import timer
 from ..dynamic_config.events import dynamic_config_is_updated
 from ..dynamic_config.utils import dynamic_config
 

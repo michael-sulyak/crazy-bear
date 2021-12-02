@@ -2,10 +2,8 @@ import datetime
 import io
 import typing
 
-import schedule
 import serial
 
-from ...signals.models import Signal
 from ..base import BaseModule, Command
 from ..constants import ARDUINO_IS_ENABLED, BotCommands, WEATHER_HUMIDITY, WEATHER_TEMPERATURE
 from ...arduino.base import ArduinoConnector
@@ -14,7 +12,8 @@ from ...common.constants import OFF, ON
 from ...common.utils import create_plot, synchronized_method
 from ...core import events
 from ...core.constants import PHOTO, SECURITY_IS_ENABLED, USE_CAMERA
-from ...task_queue import TaskPriorities
+from ...signals.models import Signal
+from ...task_queue import IntervalTask, TaskPriorities
 
 
 __all__ = (
@@ -28,12 +27,12 @@ class Arduino(BaseModule):
     }
     _arduino_connector: typing.Optional[ArduinoConnector] = None
 
-    def init_schedule(self, scheduler: schedule.Scheduler) -> tuple:
+    def init_repeatable_tasks(self) -> tuple:
         return (
-            scheduler.every(1).second.do(
-                self.unique_task_queue.push,
-                self.check,
+            IntervalTask(
+                target=self._check_serial,
                 priority=TaskPriorities.HIGH,
+                interval=datetime.timedelta(seconds=1),
             ),
         )
 
@@ -57,7 +56,7 @@ class Arduino(BaseModule):
         return False
 
     @synchronized_method
-    def check(self) -> None:
+    def _check_serial(self) -> None:
         arduino_connector_is_not_active = self._arduino_connector and not self._arduino_connector.is_active
 
         if arduino_connector_is_not_active:

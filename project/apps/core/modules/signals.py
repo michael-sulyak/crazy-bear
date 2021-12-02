@@ -1,16 +1,14 @@
 import datetime
 import logging
-
-import schedule
 import typing
 
 from .. import constants
 from ..base import BaseModule, Command
+from ..constants import BotCommands
 from ... import db
 from ...arduino.constants import ArduinoSensorTypes
-from ..constants import BotCommands
 from ...signals.models import Signal
-from ...task_queue import TaskPriorities
+from ...task_queue import IntervalTask, TaskPriorities
 
 
 __all__ = (
@@ -19,17 +17,19 @@ __all__ = (
 
 
 class Signals(BaseModule):
-    def init_schedule(self, scheduler: schedule.Scheduler) -> tuple:
+    def init_repeatable_tasks(self) -> tuple:
         return (
-            scheduler.every(30).minutes.do(
-                self.unique_task_queue.push,
-                self._check_db,
+            IntervalTask(
+                target=self._check_db,
                 priority=TaskPriorities.LOW,
+                interval=datetime.timedelta(minutes=30),
+                run_immediately=False,
             ),
-            scheduler.every(2).hours.do(
-                self.unique_task_queue.push,
-                Signal.backup,
+            IntervalTask(
+                target=Signal.backup,
                 priority=TaskPriorities.LOW,
+                interval=datetime.timedelta(hours=2),
+                run_immediately=False,
             ),
         )
 

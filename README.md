@@ -10,10 +10,10 @@
 
 ## Used:
 1. **Raspberry Pi 4**
-2. **Arduino Nano V3.0 ATmega328P** (is connected via USB to a **Raspberry Pi**)
+2. **Arduino Nano V3.0 ATmega328P** (is connected via USB to the **Raspberry Pi**)
    1. **AM2302 DHT22**
    2. **HC-SR501**
-3. **Logitech C270 HD** (is connected via USB to a **Raspberry Pi**)
+3. **Logitech C270 HD** (is connected via USB to the **Raspberry Pi**)
 
 ## Setup
 
@@ -27,4 +27,7 @@ docker-compose build
 docker-compose up -d
 ```
 
-4. If you want to use Arduino then you need to upload `arduino_core`.
+4. If you want to use Arduino then you need to upload `arduino_core`. Libs:
+```bash
+arduino-cli lib install RF24 "DHT sensor library" Crypto ArduinoJson
+```

@@ -5,11 +5,11 @@ import threading
 import typing
 from time import sleep
 
-from ...common.utils import synchronized_method
-from ..base import BaseTaskQueue, BaseWorker
-from ..dto import RetryPolicy, Task, default_retry_policy
+from ..base import BaseTaskQueue, BaseWorker, TaskPriorityQueue
 from ..constants import TaskPriorities, TaskStatus
+from ..dto import RetryPolicy, Task, default_retry_policy
 from ..exceptions import RepeatTask
+from ...common.utils import synchronized_method
 
 
 __all__ = (
@@ -20,10 +20,10 @@ __all__ = (
 
 
 class MemTaskQueue(BaseTaskQueue):
-    _tasks: queue.PriorityQueue
+    _tasks: TaskPriorityQueue
 
     def __init__(self) -> None:
-        self._tasks = queue.PriorityQueue()
+        self._tasks = TaskPriorityQueue()
 
     def __len__(self) -> int:
         return self._tasks.qsize()
@@ -77,7 +77,7 @@ class ThreadWorker(BaseWorker):
         self._is_run.clear()
 
         if len(self.task_queue):
-            logging.warning(f'TaskQueue is locked, but there are {len(self.task_queue)} tasks in queue.')
+            logging.warning(f'TaskQueue is stopped, but there are {len(self.task_queue)} tasks in queue.')
 
         self._thread.join()
 
@@ -86,16 +86,11 @@ class ThreadWorker(BaseWorker):
             task = self.task_queue.get()
 
             if task is None:
+                logging.info('Wait tasks')
                 sleep(self._getting_delay)
                 continue
 
-            if task.run_after > datetime.datetime.now():
-                logging.debug('Skip task')
-                sleep(self._getting_delay)
-                self.task_queue.put_task(task)
-                continue
-
-            logging.debug('Get %s from MemTaskQueue', task)
+            logging.info('Get %s from MemTaskQueue', task)
 
             try:
                 task.run()
@@ -111,9 +106,9 @@ class ThreadWorker(BaseWorker):
 class UniqueTaskQueue:
     _lock: threading.Lock
     _tasks_map: typing.Dict[typing.Callable, Task]
-    _task_queue: MemTaskQueue
+    _task_queue: BaseTaskQueue
 
-    def __init__(self, *, task_queue: MemTaskQueue) -> None:
+    def __init__(self, *, task_queue: BaseTaskQueue) -> None:
         self._task_queue = task_queue
         self._tasks_map = {}
         self._lock = threading.Lock()

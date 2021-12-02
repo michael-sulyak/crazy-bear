@@ -3,8 +3,8 @@ import logging
 import signal
 from datetime import datetime
 
-import schedule
 import sentry_sdk
+from crontab import CronTab
 
 from project import config
 from project.apps import db
@@ -19,6 +19,8 @@ from project.apps.core.commander import Commander
 from project.apps.core.constants import BotCommands
 from project.apps.core.modules import TelegramMenu
 from project.apps.messengers.telegram import TelegramMessenger
+from project.apps.task_queue import TaskPriorities
+from project.apps.task_queue.dto import ScheduledTask
 
 
 logging.basicConfig(level='DEBUG' if config.DEBUG else 'INFO')
@@ -58,9 +60,6 @@ def main():
         default_reply_markup=TelegramMenu(state=state),
     )
 
-    scheduler = schedule.Scheduler()
-    scheduler.every().day.at('01:00').do(file_storage.remove_old_folders)
-
     logging.info('Starting bot...')
 
     commander = Commander(
@@ -77,8 +76,18 @@ def main():
             modules.Devices,
         ),
         state=state,
-        scheduler=scheduler,
     )
+
+    initial_tasks = (
+        ScheduledTask(
+            target=file_storage.remove_old_folders,
+            priority=TaskPriorities.LOW,
+            crontab=CronTab('0 1 * * *'),
+        ),
+    )
+
+    for initial_task in initial_tasks:
+        commander.task_queue.put_task(initial_task)
 
     initial_commands = (
         Command(name=BotCommands.ARDUINO, args=(ON,)),
