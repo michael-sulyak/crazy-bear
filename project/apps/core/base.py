@@ -75,6 +75,9 @@ class Command:
     args: typing.Union[typing.Tuple, typing.List] = field(default_factory=tuple)
     kwargs: typing.Dict = field(default_factory=dict)
 
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}(\'{self.name}\', args={self.args}, kwargs={self.kwargs})'
+
     @property
     def first_arg(self) -> typing.Any:
         return self.get_arg(0)

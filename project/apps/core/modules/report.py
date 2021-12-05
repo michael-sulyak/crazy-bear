@@ -27,7 +27,7 @@ from ...core.constants import (
 )
 from ...devices.utils import get_connected_devices_to_router
 from ...signals.models import Signal
-from ...task_queue import IntervalTask, TaskPriorities
+from ...task_queue import IntervalTask, RepeatableTask, TaskPriorities
 from .... import config
 
 
@@ -54,12 +54,12 @@ class Report(BaseModule):
         now = datetime.datetime.now()
         self._last_cpu_notification = now
 
-        self.task_queue.put(
-            self._ping_task_queue,
+        self.task_queue.put_task(RepeatableTask(
+            target=self._ping_task_queue,
             kwargs={'sent_at': now},
             priority=TaskPriorities.LOW,
             run_after=now + self._timedelta_for_ping,
-        )
+        ))
 
     def init_repeatable_tasks(self) -> tuple:
         return (
@@ -94,9 +94,22 @@ class Report(BaseModule):
             return True
 
         if command.name == BotCommands.STATS:
+            delta_type: str = command.get_second_arg('hours', skip_flags=True)
+            delta_value: str = command.get_first_arg('24', skip_flags=True)
+
+            if delta_type not in ('hours', 'minutes', 'seconds',):
+                self.messenger.send_message('Wrong a delta type')
+                return
+
+            if delta_value.isdigit():
+                delta_value: int = int(delta_value)
+            else:
+                self.messenger.send_message('Wrong a delta value')
+                return
+
             date_range = convert_params_to_date_range(
-                delta_type=command.get_second_arg('hours', skip_flags=True),
-                delta_value=int(command.get_first_arg(24, skip_flags=True)),
+                delta_type=delta_type,
+                delta_value=delta_value,
             )
 
             flags = command.get_cleaned_flags()
@@ -241,7 +254,7 @@ class Report(BaseModule):
 
         cpu_temp_stats = Signal.get_aggregated(
             signal_type=constants.CPU_TEMPERATURE,
-            date_range=date_range,
+            datetime_range=date_range,
         )
 
         if not cpu_temp_stats:
@@ -257,7 +270,7 @@ class Report(BaseModule):
 
         ram_stats = Signal.get_aggregated(
             signal_type=constants.RAM_USAGE,
-            date_range=date_range,
+            datetime_range=date_range,
         )
 
         if not ram_stats:
@@ -273,7 +286,7 @@ class Report(BaseModule):
 
         task_queue_size_stats = Signal.get(
             signal_type=constants.TASK_QUEUE_DELAY,
-            date_range=date_range,
+            datetime_range=date_range,
         )
 
         if not task_queue_size_stats:
@@ -345,18 +358,19 @@ class Report(BaseModule):
         )
 
     def _send_db_stats(self) -> None:
+        sql = """
+        SELECT table_name, pg_size_pretty(pg_relation_size(quote_ident(table_name))) AS table_size
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+        ORDER BY table_size;
+        """
         with db.db_engine.connect() as con:
-            result = tuple(dict(row) for row in con.execute('SELECT * FROM dbstat;'))
-
-        agg_result = defaultdict(lambda: 0)
-
-        for item in result:
-            agg_result[item['name']] += item['pgsize']
+            result = tuple(dict(row) for row in con.execute(sql))
 
         prepared_result = '**Table:**\n'
 
-        for name, pg_size in agg_result.items():
-            prepared_result += f'`{name}`: {round(pg_size / 1024 / 1024, 2)} mb.\n'
+        for row in result:
+            prepared_result += f'`{row["table_name"]}`: {row["table_size"]}\n'
 
         prepared_result += '\n**Table Signal:**\n'
 

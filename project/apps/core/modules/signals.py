@@ -2,13 +2,16 @@ import datetime
 import logging
 import typing
 
+from crontab import CronTab
+
 from .. import constants
 from ..base import BaseModule, Command
 from ..constants import BotCommands
 from ... import db
 from ...arduino.constants import ArduinoSensorTypes
+from ...common.utils import current_time
 from ...signals.models import Signal
-from ...task_queue import IntervalTask, TaskPriorities
+from ...task_queue import IntervalTask, ScheduledTask, TaskPriorities
 
 
 __all__ = (
@@ -31,23 +34,33 @@ class Signals(BaseModule):
                 interval=datetime.timedelta(hours=2),
                 run_immediately=False,
             ),
+            ScheduledTask(
+                target=db.vacuum,
+                priority=TaskPriorities.LOW,
+                crontab=CronTab('0 4 * * *'),
+            ),
         )
 
     def process_command(self, command: Command) -> typing.Any:
         if command.name == BotCommands.CHECK_DB:
             self._check_db()
-            self.messenger.send_message('Checked')
+            self.messenger.send_message('Checked. Run `VACUUM FULL`')
+            self.messenger.start_typing()
+            db.vacuum()
+            self.messenger.send_message('`VACUUM FULL` is finished')
             return True
 
         return False
 
     @staticmethod
     def _check_db() -> None:
-        logging.debug('Signals._check_data()')
-
         for_compress = (
             constants.USER_IS_CONNECTED_TO_ROUTER,
             constants.TASK_QUEUE_DELAY,
+            ArduinoSensorTypes.PIR_SENSOR,
+        )
+
+        for_compress_by_time = (
             ArduinoSensorTypes.PIR_SENSOR,
         )
 
@@ -60,13 +73,13 @@ class Signals(BaseModule):
             ArduinoSensorTypes.HUMIDITY,
         )
 
-        all_signals = (*for_compress, *for_aggregated_compress,)
+        all_signals = {*for_compress, *for_compress_by_time, *for_aggregated_compress}
 
         Signal.clear(all_signals)
 
-        now = datetime.datetime.now()
+        now = current_time()
 
-        date_range = (
+        datetime_range = (
             now - datetime.timedelta(hours=6),
             now - datetime.timedelta(minutes=5),
         )
@@ -74,17 +87,17 @@ class Signals(BaseModule):
         for item in for_compress:
             Signal.compress(
                 item,
-                date_range=date_range,
+                datetime_range=datetime_range,
                 approximation=20 if item == ArduinoSensorTypes.PIR_SENSOR else 0,
             )
 
+        for item in for_compress_by_time:
+            Signal.compress_by_time(item, datetime_range=datetime_range)
+
         for item in for_aggregated_compress:
-            Signal.aggregated_compress(item, date_range=date_range)
-            Signal.compress(item, date_range=date_range)
+            Signal.aggregated_compress(item, datetime_range=datetime_range)
+            Signal.compress(item, datetime_range=datetime_range)
 
-        with db.db_session().transaction:
-            db.db_session().query(Signal).filter(
-                Signal.type.notin_(all_signals),
-            ).delete()
-
-        db.vacuum()
+        db.db_session().query(Signal).filter(
+            Signal.type.notin_(all_signals),
+        ).delete()

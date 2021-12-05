@@ -14,4 +14,19 @@ services:
       - /dev:/dev
     ports:
       - "8443:8443"
+    depends_on:
+      - postgres
     command: python3 __main__.py
+
+  postgres:
+    restart: always
+    image: postgres:14.1
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+#    ports:
+#      - "5432:5432"
+    env_file:
+      - envs/local.env
+
+volumes:
+  postgres_data: { }

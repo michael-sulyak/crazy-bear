@@ -6,6 +6,7 @@ import os
 import tempfile
 import threading
 import typing
+from contextlib import contextmanager
 
 import cv2
 import matplotlib.dates as mdates
@@ -13,6 +14,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import requests
 import seaborn as sns
+import sentry_sdk
 from matplotlib.dates import DateFormatter
 from matplotlib.ticker import AutoLocator, MaxNLocator
 
@@ -32,7 +34,7 @@ def get_cpu_temp() -> float:
         temp_str = file.read()
 
     try:
-        return int(temp_str) / 1000
+        return int(temp_str) / 1_000
     except (IndexError, ValueError,) as e:
         raise RuntimeError('Could not parse temperature output.') from e
 
@@ -59,9 +61,10 @@ def create_plot(*,
 
     x = tuple(getattr(item, x_attr) for item in stats)
     y = tuple(round(getattr(item, y_attr), 1) for item in stats)
+    x_is_date = isinstance(x[0], (datetime.date, datetime.datetime,))
 
     fig, ax = plt.subplots(figsize=(12, 8,))
-    ax.plot(x, y, marker=marker)
+    ax.plot(mdates.date2num(x) if x_is_date else x, y, marker=marker)
 
     if additional_plots is not None:
         for additional_plot in additional_plots:
@@ -73,7 +76,7 @@ def create_plot(*,
     if legend is not None:
         ax.legend(legend)
 
-    if isinstance(x[0], (datetime.date, datetime.datetime,)):
+    if x_is_date:
         if len(x) > 1:
             diff = abs(x[0] - x[-1])
             postfix = f'({x[0].strftime("%H:%M:%S %d.%m.%y")} - {x[-1].strftime("%H:%M:%S %d.%m.%y")})'
@@ -108,7 +111,7 @@ def create_plot(*,
     else:
         ax.xaxis.set_major_locator(AutoLocator())
 
-    if all(isinstance(i, int) or isinstance(i, float) and i.is_integer() for i in y):
+    if all(isinstance(i, int) or (isinstance(i, float) and i.is_integer()) for i in y):
         ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 
     ax.set_title(title)
@@ -173,7 +176,7 @@ def is_sleep_hours(timestamp: datetime.datetime) -> bool:
 
 def convert_params_to_date_range(delta_value: int = 24,
                                  delta_type: str = 'hours') -> typing.Tuple[datetime.datetime, datetime.datetime]:
-    now = datetime.datetime.now()
+    now = current_time()
     return now - datetime.timedelta(**{delta_type: delta_value}), now
 
 
@@ -225,3 +228,27 @@ def get_my_ip() -> str:
     response = requests.get('https://api.ipify.org')
     response.raise_for_status()
     return response.content.decode('utf8')
+
+
+@contextmanager
+def log_performance(operation_type: str, name: str):
+    with sentry_sdk.start_transaction(op=operation_type, name=name):
+        yield
+
+
+def log_func_performance(operation_type: str) -> typing.Callable:
+    def decorate(func: typing.Callable) -> typing.Callable:
+        func_name = f'{func.__module__}.{func.__qualname__}'
+
+        @functools.wraps(func)
+        def wrap_func(*args, **kwargs) -> typing.Any:
+            with log_performance(operation_type, func_name):
+                return func(*args, **kwargs)
+
+        return wrap_func
+
+    return decorate
+
+
+def current_time() -> datetime.datetime:
+    return datetime.datetime.now().astimezone()

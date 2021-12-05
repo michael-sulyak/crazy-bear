@@ -27,11 +27,15 @@ class Arduino(BaseModule):
     }
     _arduino_connector: typing.Optional[ArduinoConnector] = None
 
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._arduino_connector = ArduinoConnector()
+
     def init_repeatable_tasks(self) -> tuple:
         return (
             IntervalTask(
-                target=self._check_serial,
-                priority=TaskPriorities.HIGH,
+                target=self._check_arduino_connector,
+                priority=TaskPriorities.LOW,
                 interval=datetime.timedelta(seconds=1),
             ),
         )
@@ -40,6 +44,7 @@ class Arduino(BaseModule):
         return (
             *super().subscribe_to_events(),
             events.request_for_statistics.connect(self._create_arduino_sensor_avg_stats),
+            events.new_arduino_data.connect(self._process_new_arduino_logs),
         )
 
     def process_command(self, command: Command) -> typing.Any:
@@ -56,34 +61,31 @@ class Arduino(BaseModule):
         return False
 
     @synchronized_method
-    def _check_serial(self) -> None:
-        arduino_connector_is_not_active = self._arduino_connector and not self._arduino_connector.is_active
-
-        if arduino_connector_is_not_active:
-            self._disable_arduino()
-            return
-
-        arduino_connector_is_active = self._arduino_connector and self._arduino_connector.is_active
-
-        if arduino_connector_is_active:
-            self._process_arduino_updates()
-
-    @synchronized_method
     def disable(self) -> None:
         super().disable()
         self._disable_arduino()
 
     @synchronized_method
+    def _check_arduino_connector(self) -> None:
+        if self.state[ARDUINO_IS_ENABLED]:
+            if not self._arduino_connector.is_active:
+                self._disable_arduino()
+                return
+
+            signals = self._arduino_connector.process_updates()
+
+            if signals:
+                events.new_arduino_data.send(signals=signals)
+
+    @synchronized_method
     def _enable_arduino(self) -> None:
-        if self._arduino_connector:
+        if self._arduino_connector.is_active:
             self.messenger.send_message('Arduino is already on')
             return
 
         try:
-            self._arduino_connector = ArduinoConnector()
-            self._arduino_connector.start()
+            self._arduino_connector.open()
         except serial.SerialException:
-            self._arduino_connector = None
             self.state[ARDUINO_IS_ENABLED] = False
             self.messenger.send_message('Arduino can not be connected')
         else:
@@ -94,9 +96,8 @@ class Arduino(BaseModule):
     def _disable_arduino(self) -> None:
         self.state[ARDUINO_IS_ENABLED] = False
 
-        if self._arduino_connector:
-            self._arduino_connector.finish()
-            self._arduino_connector = None
+        if self._arduino_connector.is_active:
+            self._arduino_connector.close()
             self.messenger.send_message('Arduino is off')
         else:
             self.messenger.send_message('Arduino is already off')
@@ -107,8 +108,8 @@ class Arduino(BaseModule):
         if 'arduino' not in components:
             return None
 
-        humidity_stats = Signal.get_aggregated(ArduinoSensorTypes.HUMIDITY, date_range=date_range)
-        temperature_stats = Signal.get_aggregated(ArduinoSensorTypes.TEMPERATURE, date_range=date_range)
+        humidity_stats = Signal.get_aggregated(ArduinoSensorTypes.HUMIDITY, datetime_range=date_range)
+        temperature_stats = Signal.get_aggregated(ArduinoSensorTypes.TEMPERATURE, datetime_range=date_range)
 
         weather_temperature = None
         weather_humidity = None
@@ -117,13 +118,13 @@ class Arduino(BaseModule):
             if len(temperature_stats) >= 2:
                 weather_humidity = Signal.get_aggregated(
                     signal_type=WEATHER_HUMIDITY,
-                    date_range=(humidity_stats[0].received_at, humidity_stats[-1].received_at,),
+                    datetime_range=(humidity_stats[0].aggregated_time, humidity_stats[-1].aggregated_time,),
                 )
 
             if len(temperature_stats) >= 2:
                 weather_temperature = Signal.get_aggregated(
                     signal_type=WEATHER_TEMPERATURE,
-                    date_range=(temperature_stats[0].received_at, temperature_stats[-1].received_at,),
+                    datetime_range=(temperature_stats[0].aggregated_time, temperature_stats[-1].aggregated_time,),
                 )
 
         plots = []
@@ -160,7 +161,7 @@ class Arduino(BaseModule):
                 ),
             ))
 
-        pir_stats = Signal.get(ArduinoSensorTypes.PIR_SENSOR, date_range=date_range)
+        pir_stats = Signal.get(ArduinoSensorTypes.PIR_SENSOR, datetime_range=date_range)
 
         if pir_stats:
             plots.append(create_plot(title='PIR Sensor', x_attr='received_at', y_attr='value', stats=pir_stats))
@@ -168,17 +169,8 @@ class Arduino(BaseModule):
         return plots
 
     @synchronized_method
-    def _process_arduino_updates(self) -> None:
-        if not self._arduino_connector or not self._arduino_connector.is_active:
-            return
-
-        security_is_enabled: bool = self.state[SECURITY_IS_ENABLED]
-        signals = self._arduino_connector.process_updates()
-
-        if not signals:
-            return
-
-        if security_is_enabled:
+    def _process_new_arduino_logs(self, signals: typing.List[Signal]) -> None:
+        if self.state[SECURITY_IS_ENABLED]:
             last_movement = None
 
             for signal in signals:
@@ -202,5 +194,3 @@ class Arduino(BaseModule):
                     self._run_command(BotCommands.CAMERA, PHOTO)
 
                 events.motion_detected.send()
-
-        events.new_arduino_data.send(signals=signals)

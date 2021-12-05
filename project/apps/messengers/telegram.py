@@ -13,8 +13,8 @@ import telegram
 from emoji import emojize
 from telegram import Update as TelegramUpdate
 from telegram.error import NetworkError as TelegramNetworkError, TimedOut as TelegramTimedOut
+from telegram.ext.utils.webhookhandler import WebhookAppClass, WebhookServer
 from telegram.utils.request import Request as TelegramRequest
-from telegram.utils.webhookhandler import WebhookAppClass, WebhookServer
 
 from .base import BaseMessenger
 from .mixins import CVMixin
@@ -60,7 +60,8 @@ class TelegramMessenger(CVMixin, BaseMessenger):
 
         os.system(
             f'openssl req -newkey rsa:2048 -sha256 -nodes -keyout {WEBHOOK_SSL_KEY} -x509 -days 365 '
-            f'-out {WEBHOOK_SSL_PEM} -subj "/C=US/ST=New York/L=Brooklyn/O=Example Brooklyn Company/CN={ip}"'
+            f'-out {WEBHOOK_SSL_PEM} -subj "/C=US/ST=New York/L=Brooklyn/O=Example Brooklyn Company/CN={ip}" '
+            f'v>/dev/null 2>&1'
         )
 
         webhook_url = f'https://{ip}:{WEBHOOK_PORT}/{endpoint_for_webhook}'

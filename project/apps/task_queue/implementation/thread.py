@@ -86,11 +86,11 @@ class ThreadWorker(BaseWorker):
             task = self.task_queue.get()
 
             if task is None:
-                logging.info('Wait tasks')
+                logging.debug('Wait tasks')
                 sleep(self._getting_delay)
                 continue
 
-            logging.info('Get %s from MemTaskQueue', task)
+            logging.debug('Get %s from MemTaskQueue', task)
 
             try:
                 task.run()

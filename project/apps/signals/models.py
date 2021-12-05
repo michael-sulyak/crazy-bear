@@ -1,14 +1,16 @@
 import datetime
+import itertools
 import typing
 
 import sqlalchemy
 from pandas import DataFrame
-from sqlalchemy import DateTime, func as sa_func
+from sqlalchemy import func as sa_func
 
-from ... import config
 from .. import db
 from ..common.storage import file_storage
+from ..common.utils import current_time
 from ..db import db_session
+from ... import config
 
 
 class Signal(db.Base):
@@ -28,7 +30,7 @@ class Signal(db.Base):
         nullable=False,
     )
     received_at = sqlalchemy.Column(
-        sqlalchemy.DateTime,
+        sqlalchemy.DateTime(timezone=True),
         index=True,
         nullable=False,
     )
@@ -36,34 +38,34 @@ class Signal(db.Base):
     @classmethod
     def add(cls, signal_type: str, value: float, *, received_at: typing.Optional[datetime.datetime] = None) -> 'Signal':
         if received_at is None:
-            received_at = datetime.datetime.now()
+            received_at = current_time()
 
         item = cls(type=signal_type, value=value, received_at=received_at)
 
-        with db.db_session().transaction:
+        with db.db_session().begin():
             db.db_session().add(item)
 
         return item
 
     @classmethod
     def bulk_add(cls, signals: typing.Iterable['Signal']) -> None:
-        with db.db_session().transaction:
+        with db.db_session().begin():
             db.db_session().add_all(signals)
 
     @classmethod
     def clear(cls, signal_types: typing.Iterable[str]) -> None:
-        timestamp = datetime.datetime.now() - config.STORAGE_TIME
+        timestamp = current_time() - config.STORAGE_TIME
 
-        with db.db_session().transaction:
+        with db.db_session().begin():
             db.db_session().query(cls).filter(cls.type.in_(signal_types), cls.received_at <= timestamp).delete()
 
     @classmethod
     def get(cls,
             signal_type: str, *,
-            date_range: typing.Tuple[datetime.datetime, datetime.datetime]) -> typing.List['Signal']:
+            datetime_range: typing.Tuple[datetime.datetime, datetime.datetime]) -> typing.List['Signal']:
         query_data = cls._get_query_data(
             signal_type=signal_type,
-            date_range=date_range,
+            datetime_range=datetime_range,
         )
 
         if not query_data:
@@ -87,10 +89,10 @@ class Signal(db.Base):
     def get_aggregated(cls,
                        signal_type: str, *,
                        aggregate_function: typing.Callable = sa_func.avg,
-                       date_range: typing.Tuple[datetime.datetime, datetime.datetime]) -> typing.List['Signal']:
+                       datetime_range: typing.Tuple[datetime.datetime, datetime.datetime]) -> typing.List['Signal']:
         query_data = cls._get_query_data(
             signal_type=signal_type,
-            date_range=date_range,
+            datetime_range=datetime_range,
         )
 
         if not query_data:
@@ -98,11 +100,7 @@ class Signal(db.Base):
 
         signals = db.db_session().query(
             aggregate_function(cls.value).label('value'),
-            cls.received_at.label('received_at'),
-            sa_func.datetime(
-                sa_func.strftime(query_data['time_tpl'], cls.received_at),
-                type_=DateTime,
-            ).label('aggregated_time'),
+            sa_func.date_trunc(query_data['date_trunc'], cls.received_at).label('aggregated_time'),
         ).filter(
             cls.received_at >= query_data['start_time'],
             cls.received_at <= query_data['end_time'],
@@ -111,7 +109,7 @@ class Signal(db.Base):
         ).group_by(
             'aggregated_time',
         ).order_by(
-            cls.received_at,
+            'aggregated_time',
         ).all()
 
         return signals
@@ -121,7 +119,7 @@ class Signal(db.Base):
                         signal_type: str, *,
                         aggregate_function: typing.Callable = sa_func.avg,
                         td: datetime.timedelta = datetime.timedelta(minutes=1)) -> typing.Any:
-        now = datetime.datetime.now()
+        now = current_time()
 
         result = db.db_session().query(
             aggregate_function(cls.value).label('value'),
@@ -129,16 +127,75 @@ class Signal(db.Base):
             cls.type == signal_type,
             cls.received_at >= now - td,
             cls.value.isnot(None),
-        ).group_by().first()
+        ).first()[0]
 
-        return result[0] if result else None
+        return result
+
+    @classmethod
+    def compress_by_time(cls,
+                         signal_type: str, *,
+                         datetime_range: typing.Tuple[datetime.datetime, datetime.datetime]) -> None:
+        query_data = cls._get_query_data(
+            signal_type=signal_type,
+            datetime_range=datetime_range,
+        )
+
+        if not query_data:
+            return
+
+        one_microsecond = datetime.timedelta(microseconds=1)
+        one_trunc = datetime.timedelta(**{f'{query_data["date_trunc"]}s': 1})
+
+        signals = db.db_session().query(
+            sa_func.max(cls.value).label('value'),
+            sa_func.date_trunc(query_data['date_trunc'], cls.received_at).label('aggregated_time'),
+        ).filter(
+            cls.received_at >= query_data['start_time'],
+            cls.received_at <= query_data['end_time'],
+            cls.type == signal_type,
+            cls.value.isnot(None),
+        ).group_by(
+            'aggregated_time',
+        ).order_by(
+            'aggregated_time',
+        ).all()
+
+        if not signals:
+            return
+
+        new_signals = [Signal(type=signal_type, value=signals[0].value, received_at=signals[0].aggregated_time)]
+        previous_time = signals[0].aggregated_time
+
+        for signal in itertools.islice(signals, 1, None):
+            if signal.aggregated_time - previous_time > one_trunc:
+                new_signals.append(Signal(
+                    type=signal_type,
+                    value=0,
+                    received_at=previous_time + one_microsecond,
+                ))
+                new_signals.append(Signal(
+                    type=signal_type,
+                    value=0,
+                    received_at=signal.aggregated_time - one_microsecond,
+                ))
+
+            new_signals.append(Signal(type=signal_type, value=signal.value, received_at=signal.aggregated_time))
+            previous_time = signal.aggregated_time
+
+        with db.db_session().begin():
+            db.db_session().query(cls).filter(
+                cls.received_at >= query_data['start_time'],
+                cls.received_at <= query_data['end_time'],
+                cls.type == signal_type,
+            ).delete()
+            db.db_session().add_all(new_signals)
 
     @classmethod
     def compress(cls,
                  signal_type: str, *,
-                 date_range: typing.Tuple[datetime.datetime, datetime.datetime],
+                 datetime_range: typing.Tuple[datetime.datetime, datetime.datetime],
                  approximation: float = 0) -> None:
-        data = cls.get(signal_type, date_range=date_range)
+        data = cls.get(signal_type, datetime_range=datetime_range)
 
         if not data:
             return
@@ -167,7 +224,7 @@ class Signal(db.Base):
                 last_value_to_remove = None
 
         if received_at_to_remove:
-            with db.db_session().transaction:
+            with db.db_session().begin():
                 db.db_session().query(cls).filter(
                     cls.type == signal_type,
                     cls.received_at.in_(received_at_to_remove),
@@ -177,10 +234,14 @@ class Signal(db.Base):
     def aggregated_compress(cls,
                             signal_type: str, *,
                             aggregate_function: typing.Callable = sa_func.avg,
-                            date_range: typing.Tuple[datetime.datetime, datetime.datetime]) -> None:
-        aggregated_data = cls.get_aggregated(signal_type, aggregate_function=aggregate_function, date_range=date_range)
+                            datetime_range: typing.Tuple[datetime.datetime, datetime.datetime]) -> None:
+        aggregated_data = cls.get_aggregated(
+            signal_type,
+            aggregate_function=aggregate_function,
+            datetime_range=datetime_range,
+        )
 
-        start_time, end_time = date_range
+        start_time, end_time = datetime_range
 
         query = db.db_session().query(cls).filter(
             cls.received_at >= start_time,
@@ -193,14 +254,14 @@ class Signal(db.Base):
         if not count or len(aggregated_data) / count > 0.9:
             return
 
-        with db.db_session().transaction:
+        with db.db_session().begin():
             query.delete()
 
             db.db_session().add_all(
                 cls(
                     type=signal_type,
                     value=item.value,
-                    received_at=item.received_at,
+                    received_at=item.aggregated_time,
                 )
                 for item in aggregated_data
             )
@@ -241,13 +302,13 @@ class Signal(db.Base):
     @classmethod
     def _get_query_data(cls,
                         signal_type: str, *,
-                        date_range: typing.Tuple[datetime.datetime, datetime.datetime],
+                        datetime_range: typing.Tuple[datetime.datetime, datetime.datetime],
                         ) -> typing.Optional[typing.Dict[str, typing.Any]]:
-        start_time, end_time = date_range
-
-        time_filter = db.db_session().query(cls.received_at).filter(
-            cls.received_at >= start_time,
-            cls.received_at <= end_time,
+        time_filter = db.db_session().query(
+            cls.received_at,
+        ).filter(
+            cls.received_at >= datetime_range[0],
+            cls.received_at <= datetime_range[1],
             cls.type == signal_type,
             cls.value.isnot(None),
         )
@@ -262,12 +323,12 @@ class Signal(db.Base):
         diff = last_time - first_time
 
         if diff < datetime.timedelta(minutes=2):
-            time_tpl = '%Y-%m-%dT%H:%M:%S'
+            date_trunc = 'second'
         else:
-            time_tpl = '%Y-%m-%dT%H:%M:00'
+            date_trunc = 'minute'
 
         return {
-            'time_tpl': time_tpl,
+            'date_trunc': date_trunc,
             'start_time': first_time,
             'end_time': last_time,
         }

@@ -9,13 +9,14 @@ from crontab import CronTab
 
 from . import constants
 from .exceptions import BaseTaskQueueException, RepeatTask
-from ..common.utils import synchronized_method
+from ..common.utils import log_func_performance, synchronized_method
 
 
 __all__ = (
     'Task',
     'IntervalTask',
     'RepeatableTask',
+    'DelayedTask',
     'ScheduledTask',
     'RetryPolicy',
     'RetryPolicyForConnectionError',
@@ -82,6 +83,9 @@ class Task:
     _retries: int = field(
         default=0,
     )
+
+    def __post_init__(self) -> None:
+        self.target = log_func_performance(self.__class__.__name__.lower())(self.target)
 
     # def __lt__(self, other: 'Task') -> bool:
     #     return self.field_for_sorting < other.field_for_sorting
@@ -178,7 +182,7 @@ class Task:
         return is_success
 
 
-class RepeatableTask(Task, abc.ABC):
+class RepeatableTask(Task):
     pass
 
 
@@ -192,6 +196,8 @@ class IntervalTask(RepeatableTask):
     )
 
     def __post_init__(self) -> None:
+        super().__post_init__()
+
         if not self.run_immediately:
             self.run_after = datetime.datetime.now() + self.interval
 
@@ -208,13 +214,27 @@ class IntervalTask(RepeatableTask):
 
 
 @dataclass(eq=False)
+class DelayedTask(RepeatableTask):
+    delay: datetime.timedelta = field(
+        default=None,
+    )
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+
+        self.run_after = self.run_after + self.delay
+
+
+@dataclass(eq=False)
 class ScheduledTask(RepeatableTask):
     crontab: CronTab = field(
         default=None,
     )
 
     def __post_init__(self) -> None:
-        self.run_after = self.crontab.next(self.run_after, return_datetime=True)
+        super().__post_init__()
+
+        self.run_after = self.crontab.next(self.run_after, default_utc=False, return_datetime=True)
 
     def run(self) -> None:
         logging.debug('Run scheduled %s', self)
@@ -223,6 +243,6 @@ class ScheduledTask(RepeatableTask):
         with self._lock:
             if self._status != constants.TaskStatus.CANCELED:
                 self._retries = 0
-                self.run_after = self.crontab.next(return_datetime=True)
+                self.run_after = self.crontab.next(default_utc=False, return_datetime=True)
                 logging.debug('Repeat %s after %s', self, self.run_after)
                 raise RepeatTask(source=None)

@@ -2,11 +2,12 @@ import json
 import logging
 import typing
 from dataclasses import dataclass, field
-from datetime import datetime
+import datetime
 
 import serial
 
 from . import constants
+from ..common.utils import current_time
 from ..signals.models import Signal
 from ... import config
 
@@ -16,7 +17,7 @@ class ArduinoResponse:
     type: str
     sent_at: int
     payload: typing.Optional[dict] = None
-    received_at: datetime = field(default_factory=datetime.now)
+    received_at: datetime.datetime = field(default_factory=current_time)
 
 
 # @dataclass
@@ -36,34 +37,36 @@ class ArduinoResponse:
 
 
 class ArduinoConnector:
-    is_active: bool = True
-    TERMINATOR: bytes = b'\r\n'
+    terminator: bytes = b'\r\n'
+    is_active: bool = False
     _serial: serial.Serial
     _buffer: bytes = b''
     _settings: dict
 
     def __init__(self, ser: typing.Optional[serial.Serial] = None) -> None:
         if ser is None:
-            ser = serial.Serial(port=config.ARDUINO_TTY)
+            ser = serial.Serial()
+            ser.setPort(config.ARDUINO_TTY)
 
         self._serial = ser
         self._settings = {}
 
-    def start(self) -> None:
-        self.is_active = True
+    def open(self) -> None:
+        if self.is_active:
+            return
+
         self._serial.close()
 
         try:
             self._serial.open()
             self._serial.reset_input_buffer()
         except Exception:
-            self.finish()
+            self.close()
             raise
 
-    def process_updates(self) -> typing.List[Signal]:
-        if not self.is_active:
-            return []
+        self.is_active = True
 
+    def process_updates(self) -> typing.List[Signal]:
         signals = []
 
         for response in self._read_serial():
@@ -81,23 +84,24 @@ class ArduinoConnector:
 
         return signals
 
-    def finish(self) -> None:
-        self.is_active = False
+    def close(self) -> None:
         self._serial.close()
+        self.is_active = False
 
     def _read_serial(self) -> typing.Iterator[ArduinoResponse]:
         self._buffer += self._serial.read(self._serial.in_waiting)
 
         lines = []
 
-        if self.TERMINATOR in self._buffer:
-            lines = self._buffer.split(self.TERMINATOR)
-            self._buffer = lines[-1]
+        if self.terminator in self._buffer:
+            lines = self._buffer.split(self.terminator)
 
-        for line in lines[:-1]:
-            if not line:
-                continue
+            if lines[-1] != b'':
+                self._buffer = lines[-1]
 
+            lines = lines[:-1]
+
+        for line in lines:
             try:
                 line = line.decode()
                 line = json.loads(line)

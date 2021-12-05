@@ -102,7 +102,7 @@ class MiWiFi:
     def check_wan_type(self):
         return self.get_data('xqsystem/check_wan_type')
 
-    def get_data(self, endpoint: str) -> dict:
+    def get_data(self, endpoint: str,*, _update_token: bool = True) -> dict:
         assert self.token is not None
 
         response = requests.get(
@@ -110,8 +110,17 @@ class MiWiFi:
             timeout=5,
         )
         response.raise_for_status()
+        data = response.json()
 
-        return response.json()
+        if 'code' in data and data['code'] == 401:
+            if _update_token:
+                # Try to update token.
+                mi_wifi.login()
+                return self.get_data(endpoint, _update_token=False)
+
+            raise Exception('Invalid request')
+
+        return data
 
 
 if config.ROUTER_TYPE == 'mi':

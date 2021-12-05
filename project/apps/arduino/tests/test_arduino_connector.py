@@ -36,10 +36,10 @@ def test_connection():
     ser = TestSerial()
     arduino_connector = ArduinoConnector(ser=ser)
 
-    arduino_connector.start()
+    arduino_connector.open()
     assert ser._is_open is True
 
-    arduino_connector.finish()
+    arduino_connector.close()
     assert ser._is_open is False
 
 
@@ -47,12 +47,12 @@ def test_process_updates(test_db):
     ser = TestSerial()
     arduino_connector = ArduinoConnector(ser=ser)
 
-    arduino_connector.start()
+    arduino_connector.open()
     assert ser._is_open is True
 
     ser._write_message(
         b'{"type": "sensors", "sent_at": 0, '
-        b'"payload": {"pir_sensor": 100, "humidity": 20, "temperature": 30}}' + arduino_connector.TERMINATOR
+        b'"payload": {"pir_sensor": 100, "humidity": 20, "temperature": 30}}' + arduino_connector.terminator
     )
     arduino_connector.process_updates()
 
@@ -64,5 +64,5 @@ def test_process_updates(test_db):
     assert humidity == 20
     assert temperature == 30
 
-    arduino_connector.finish()
+    arduino_connector.close()
     assert ser._is_open is False

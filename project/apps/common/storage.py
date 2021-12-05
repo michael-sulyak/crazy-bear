@@ -8,7 +8,7 @@ import dropbox
 import numpy as np
 from pandas import DataFrame
 
-from .utils import single_synchronized
+from .utils import current_time, single_synchronized
 from ... import config
 
 
@@ -16,10 +16,10 @@ class FileStorage:
     _dbx: dropbox.Dropbox
 
     def __init__(self) -> None:
-        self._dbx = dropbox.Dropbox(config.DROPBOX_TOKEN)
+        self._dbx = dropbox.Dropbox(config.DROPBOX_TOKEN, timeout=10)
 
     def upload(self, file_name: str, content: bytes) -> None:
-        now = datetime.datetime.now()
+        now = current_time()
         file_name = os.path.join('/', now.strftime('%Y-%m-%d'), file_name)
         self._dbx.files_upload(content, file_name)
 

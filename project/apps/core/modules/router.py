@@ -6,7 +6,7 @@ from ..base import BaseModule, Command
 from ..constants import BotCommands
 from ...common.routers.mi import mi_wifi
 from ...common.routers.tplink import TpLink
-from ...common.utils import create_plot, synchronized_method
+from ...common.utils import create_plot, is_sleep_hours, synchronized_method
 from ...core import constants, events
 from ...devices.utils import check_if_host_is_at_home
 from ...signals.models import Signal
@@ -72,13 +72,17 @@ class Router(BaseModule):
     def _check_user_status(self) -> None:
         now = datetime.datetime.now()
 
-        need_to_recheck = (
-                self._user_was_connected is not True
-                or now - self._last_checking >= self._timedelta_for_checking
-        )
+        timedelta_for_checking = self._timedelta_for_checking
+
+        if self._user_was_connected and is_sleep_hours(now):
+            timedelta_for_checking *= 5
+
+        need_to_recheck = not self._user_was_connected or now - self._last_checking >= timedelta_for_checking
 
         if not need_to_recheck:
             return
+
+        self._last_checking = now
 
         is_connected = check_if_host_is_at_home()
 
@@ -106,7 +110,7 @@ class Router(BaseModule):
 
         stats = Signal.get(
             signal_type=constants.USER_IS_CONNECTED_TO_ROUTER,
-            date_range=date_range,
+            datetime_range=date_range,
         )
 
         if not stats:

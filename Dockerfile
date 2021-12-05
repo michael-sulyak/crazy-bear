@@ -37,8 +37,9 @@ RUN apt-get update && apt-get install -y \
     python3-scipy=1.5.2-2 \
     python3-matplotlib=3.3.0-3 \
     python3-pandas=1.0.5+dfsg-3 \
-    python3-opencv=4.2.0+dfsg-6build6
+    python3-opencv=4.2.0+dfsg-6build6 \
+    python3-psycopg2=2.8.5-1
 
 # Requirements
-COPY ./requirements.txt  /app
+COPY ./requirements.txt /app
 RUN pip3 install -r requirements.txt

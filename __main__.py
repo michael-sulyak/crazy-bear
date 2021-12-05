@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
+import datetime
 import logging
 import signal
-from datetime import datetime
 
 import sentry_sdk
 from crontab import CronTab
+from sentry_sdk.integrations.logging import LoggingIntegration
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+from sentry_sdk.integrations.threading import ThreadingIntegration
 
 from project import config
 from project.apps import db
@@ -20,16 +23,53 @@ from project.apps.core.constants import BotCommands
 from project.apps.core.modules import TelegramMenu
 from project.apps.messengers.telegram import TelegramMessenger
 from project.apps.task_queue import TaskPriorities
-from project.apps.task_queue.dto import ScheduledTask
+from project.apps.task_queue.dto import DelayedTask, ScheduledTask
 
 
-logging.basicConfig(level='DEBUG' if config.DEBUG else 'INFO')
+logging_level = logging.DEBUG if config.DEBUG else logging.INFO
+logging.basicConfig(level=logging_level)
+
+
+def get_traces_sampler(sampling_context: dict) -> float:
+    op = sampling_context['transaction_context']['op']
+
+    if op == 'cmd':
+        return 0.5
+
+    if op == 'task':
+        return 0.1
+
+    if op == 'repeatabletask':
+        return 0.001
+
+    if op == 'delayedtask':
+        return 0.01
+
+    if op == 'intervaltask':
+        return 0.005
+
+    if op == 'scheduledtask':
+        return 0.1
+
+    return 0.5
+
 
 sentry_sdk.init(
     dsn=config.SENTRY_DSN,
     release=config.VERSION,
     environment=config.PROJECT_ENV,
     debug=config.DEBUG,
+    integrations=(
+        LoggingIntegration(
+            level=logging_level,
+            event_level=logging.ERROR,
+        ),
+        ThreadingIntegration(
+            propagate_hub=True,
+        ),
+        SqlalchemyIntegration(),
+    ),
+    traces_sampler=get_traces_sampler,
 )
 
 
@@ -49,11 +89,8 @@ def main():
     logging.info('Creating database...')
     db.Base.metadata.create_all(db.db_engine)
 
-    logging.info('Removing old data...')
-    file_storage.remove_old_folders()
-
     state = State({
-        INITED_AT: datetime.now(),
+        INITED_AT: datetime.datetime.now(),
     })
 
     messenger = TelegramMessenger(
@@ -79,6 +116,11 @@ def main():
     )
 
     initial_tasks = (
+        DelayedTask(
+            target=file_storage.remove_old_folders,
+            priority=TaskPriorities.LOW,
+            delay=datetime.timedelta(seconds=10),
+        ),
         ScheduledTask(
             target=file_storage.remove_old_folders,
             priority=TaskPriorities.LOW,

@@ -5,10 +5,10 @@ import time
 import typing
 
 from . import events as core_events
-from .base import BaseModule, Message, ModuleContext
+from .base import BaseModule, ModuleContext
 from ..common.exceptions import Shutdown
 from ..common.state import State
-from ..common.utils import is_sleep_hours
+from ..common.utils import current_time, is_sleep_hours, log_performance
 from ..db import close_db_session
 from ..messengers import events
 from ..messengers.base import BaseMessenger
@@ -19,7 +19,7 @@ class Commander:
     messenger: BaseMessenger
     state: State
     command_handlers: typing.Tuple[BaseModule, ...]
-    message_queue: queue
+    message_queue: queue.Queue
     task_queue: BaseTaskQueue
     task_worker: BaseWorker
 
@@ -47,11 +47,13 @@ class Commander:
     def run(self) -> typing.NoReturn:
         self.task_worker.run()
 
+        logging.info('Commander is started.')
+
         while True:
             try:
                 self.tick()
 
-                if is_sleep_hours(datetime.datetime.now()):
+                if is_sleep_hours(current_time()):
                     time.sleep(1)
                 else:
                     time.sleep(0.2)
@@ -80,14 +82,17 @@ class Commander:
 
         while True:
             try:
-                update: Message = self.message_queue.get(block=False)
+                message = self.message_queue.get(block=False)
             except queue.Empty:
                 break
 
             self.messenger.start_typing()
 
-            if update.command:
-                results, exceptions = events.input_command.process(command=update.command)
+            if not message.command:
+                continue
+
+            with log_performance('cmd', str(message.command)):
+                results, exceptions = events.input_command.process(command=message.command)
                 is_processed = exceptions or any(map(lambda x: x is True, results))
 
                 for exception in exceptions:
