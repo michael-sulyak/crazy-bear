@@ -2,13 +2,12 @@ import datetime
 import functools
 import io
 import logging
-import os
-import tempfile
 import threading
 import typing
 from contextlib import contextmanager
 
 import cv2
+import matplotlib
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -19,6 +18,37 @@ from matplotlib.dates import DateFormatter
 from matplotlib.ticker import AutoLocator, MaxNLocator
 
 from ... import config
+from ...config import PY_TIME_ZONE
+
+
+def timer(func: typing.Callable) -> typing.Callable:
+    @functools.wraps(func)
+    def wrap_func(*args, **kwargs) -> typing.Any:
+        started_at = datetime.datetime.now()
+        result = func(*args, **kwargs)
+        finished_at = datetime.datetime.now()
+        logging.info(
+            'Function %s.%s executed in %s.',
+            func.__module__,
+            func.__qualname__,
+            finished_at - started_at,
+        )
+        return result
+
+    return wrap_func
+
+
+@contextmanager
+def inline_timer(name: str) -> typing.Generator:
+    started_at = datetime.datetime.now()
+    yield
+    finished_at = datetime.datetime.now()
+
+    logging.info(
+        '%s executed in %s.',
+        name,
+        finished_at - started_at,
+    )
 
 
 def get_cpu_temp() -> float:
@@ -39,21 +69,21 @@ def get_cpu_temp() -> float:
         raise RuntimeError('Could not parse temperature output.') from e
 
 
-def init_settings_for_plt():
+def init_settings_for_plt() -> None:
+    matplotlib.use('Agg')
     plt.ioff()
     sns.set()
     pd.plotting.register_matplotlib_converters()
 
 
+@timer
 def create_plot(*,
                 title: str,
                 x_attr: str,
                 y_attr: str,
-                stats: list,
+                stats: typing.Sequence,
                 additional_plots: typing.Optional[typing.Sequence[dict]] = None,
                 legend: typing.Optional[typing.Sequence[str]] = None) -> io.BytesIO:
-    # init_settings_for_plt() is called before
-
     if len(stats) <= 2:
         marker = 'o'
     else:
@@ -85,45 +115,45 @@ def create_plot(*,
             postfix = ''
 
         if diff < datetime.timedelta(seconds=10):
-            ax.xaxis.set_major_formatter(DateFormatter('%H:%M:%S'))
+            ax.xaxis.set_major_formatter(DateFormatter('%H:%M:%S', tz=PY_TIME_ZONE))
             ax.xaxis.set_major_locator(mdates.SecondLocator(interval=1))
             plt.xlabel(f'Time {postfix}')
         elif diff < datetime.timedelta(minutes=20):
-            ax.xaxis.set_major_formatter(DateFormatter('%H:%M'))
+            ax.xaxis.set_major_formatter(DateFormatter('%H:%M', tz=PY_TIME_ZONE))
             ax.xaxis.set_major_locator(mdates.MinuteLocator(interval=1))
             plt.xlabel(f'Time {postfix}')
         elif diff <= datetime.timedelta(hours=24):
-            ax.xaxis.set_major_formatter(DateFormatter('%H'))
+            ax.xaxis.set_major_formatter(DateFormatter('%H', tz=PY_TIME_ZONE))
             ax.xaxis.set_major_locator(mdates.HourLocator(interval=1))
             plt.xlabel(f'Hours {postfix}')
         elif diff < datetime.timedelta(days=30):
-            ax.xaxis.set_major_formatter(DateFormatter('%d'))
+            ax.xaxis.set_major_formatter(DateFormatter('%d', tz=PY_TIME_ZONE))
             ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
             plt.xlabel(f'Days {postfix}')
         elif diff < datetime.timedelta(days=30 * 15):
-            ax.xaxis.set_major_formatter(DateFormatter('%m'))
+            ax.xaxis.set_major_formatter(DateFormatter('%m', tz=PY_TIME_ZONE))
             ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
             plt.xlabel(f'Months {postfix}')
         else:
-            ax.xaxis.set_major_formatter(DateFormatter('%y'))
+            ax.xaxis.set_major_formatter(DateFormatter('%y', tz=PY_TIME_ZONE))
             ax.xaxis.set_major_locator(mdates.YearLocator())
             plt.xlabel(f'Years {postfix}')
     else:
         ax.xaxis.set_major_locator(AutoLocator())
 
-    if all(isinstance(i, int) or (isinstance(i, float) and i.is_integer()) for i in y):
+    if all((isinstance(i, int) or (isinstance(i, float) and i.is_integer())) for i in y):
         ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 
     ax.set_title(title)
 
-    with tempfile.TemporaryDirectory() as temp_dir_name:
-        image_name = os.path.join(temp_dir_name, f'{title}.png')
-        fig.savefig(image_name)
-        fig.clear()
-        plt.close(fig)
+    buffer = io.BytesIO()
+    fig.savefig(buffer, format='png')
+    buffer.seek(0)
 
-        with open(image_name, 'rb') as image:
-            return io.BytesIO(image.read())
+    fig.clear()
+    plt.close(fig)
+
+    return buffer
 
 
 def camera_is_available(src: int) -> bool:
@@ -205,23 +235,6 @@ def max_timer(max_timedelta: datetime.timedelta, log: typing.Callable = logging.
         return _wrapper
 
     return _decorator
-
-
-def timer(func: typing.Callable) -> typing.Callable:
-    @functools.wraps(func)
-    def wrap_func(*args, **kwargs) -> typing.Any:
-        started_at = datetime.datetime.now()
-        result = func(*args, **kwargs)
-        finished_at = datetime.datetime.now()
-        logging.info(
-            'Function %s.%s executed in %s.',
-            func.__module__,
-            func.__qualname__,
-            finished_at - started_at,
-        )
-        return result
-
-    return wrap_func
 
 
 def get_my_ip() -> str:

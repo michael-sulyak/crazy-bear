@@ -40,7 +40,8 @@ class ArduinoConnector:
     terminator: bytes = b'\r\n'
     is_active: bool = False
     _serial: serial.Serial
-    _buffer: bytes = b''
+    _empty_string: bytes = b''
+    _buffer: bytes = _empty_string
     _settings: dict
 
     def __init__(self, ser: typing.Optional[serial.Serial] = None) -> None:
@@ -96,7 +97,9 @@ class ArduinoConnector:
         if self.terminator in self._buffer:
             lines = self._buffer.split(self.terminator)
 
-            if lines[-1] != b'':
+            if lines[-1] == self._empty_string:
+                self._buffer = self._empty_string
+            else:
                 self._buffer = lines[-1]
 
             lines = lines[:-1]

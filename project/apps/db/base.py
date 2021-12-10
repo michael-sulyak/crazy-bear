@@ -21,7 +21,7 @@ db_engine = create_engine(
     echo=config.DATABASE_DEBUG,
 )
 
-session_factory = sessionmaker(bind=db_engine, autocommit=True)
+session_factory = sessionmaker(bind=db_engine, autocommit=True, autoflush=True)
 MySession = scoped_session(session_factory)
 
 

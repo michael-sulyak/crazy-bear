@@ -31,27 +31,28 @@ logging.basicConfig(level=logging_level)
 
 
 def get_traces_sampler(sampling_context: dict) -> float:
+    return 0
     op = sampling_context['transaction_context']['op']
 
     if op == 'cmd':
-        return 0.5
+        return 0.1
 
     if op == 'task':
-        return 0.1
+        return 0.05
 
     if op == 'repeatabletask':
-        return 0.001
+        return 0.0005
 
     if op == 'delayedtask':
-        return 0.01
-
-    if op == 'intervaltask':
         return 0.005
 
-    if op == 'scheduledtask':
-        return 0.1
+    if op == 'intervaltask':
+        return 0.001
 
-    return 0.5
+    if op == 'scheduledtask':
+        return 0.05
+
+    return 0.25
 
 
 sentry_sdk.init(
@@ -73,8 +74,8 @@ sentry_sdk.init(
 )
 
 
-def handle_sigterm(*args):
-    raise Shutdown()
+def handle_sigterm(*args) -> None:
+    raise Shutdown
 
 
 signal.signal(signal.SIGINT, handle_sigterm)

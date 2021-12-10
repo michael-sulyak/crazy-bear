@@ -3,7 +3,6 @@ import io
 import logging
 import os
 import typing
-from collections import defaultdict
 
 from emoji import emojize
 
@@ -99,13 +98,13 @@ class Report(BaseModule):
 
             if delta_type not in ('hours', 'minutes', 'seconds',):
                 self.messenger.send_message('Wrong a delta type')
-                return
+                return True
 
             if delta_value.isdigit():
                 delta_value: int = int(delta_value)
             else:
                 self.messenger.send_message('Wrong a delta value')
-                return
+                return True
 
             date_range = convert_params_to_date_range(
                 delta_type=delta_type,

@@ -13,6 +13,7 @@ from ...common.utils import create_plot, synchronized_method
 from ...core import events
 from ...core.constants import PHOTO, SECURITY_IS_ENABLED, USE_CAMERA
 from ...signals.models import Signal
+from ...signals.utils import downgrade_signals
 from ...task_queue import IntervalTask, TaskPriorities
 
 
@@ -136,11 +137,11 @@ class Arduino(BaseModule):
                 y_attr='value',
                 stats=temperature_stats,
                 additional_plots=(
-                    [{'x_attr': 'aggregated_time', 'y_attr': 'value', 'stats': weather_temperature}]
+                    ({'x_attr': 'aggregated_time', 'y_attr': 'value', 'stats': weather_temperature},)
                     if weather_temperature else None
                 ),
                 legend=(
-                    ['Inside', 'Outside']
+                    ('Inside', 'Outside',)
                     if weather_temperature else None
                 ),
             ))
@@ -152,11 +153,11 @@ class Arduino(BaseModule):
                 y_attr='value',
                 stats=humidity_stats,
                 additional_plots=(
-                    [{'x_attr': 'aggregated_time', 'y_attr': 'value', 'stats': weather_humidity}]
+                    ({'x_attr': 'aggregated_time', 'y_attr': 'value', 'stats': weather_humidity},)
                     if weather_humidity else None
                 ),
                 legend=(
-                    ['Inside', 'Outside']
+                    ('Inside', 'Outside',)
                     if weather_humidity else None
                 ),
             ))
@@ -164,6 +165,7 @@ class Arduino(BaseModule):
         pir_stats = Signal.get(ArduinoSensorTypes.PIR_SENSOR, datetime_range=date_range)
 
         if pir_stats:
+            pir_stats = tuple(downgrade_signals(pir_stats))
             plots.append(create_plot(title='PIR Sensor', x_attr='received_at', y_attr='value', stats=pir_stats))
 
         return plots

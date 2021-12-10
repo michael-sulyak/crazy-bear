@@ -1,3 +1,5 @@
+import os
+import signal
 import typing
 
 from telegram import ReplyKeyboardMarkup
@@ -9,7 +11,6 @@ from ..constants import (
     VIDEO_RECORDING_IS_ENABLED,
 )
 from ...common.constants import AUTO, OFF, ON
-from ...common.exceptions import Shutdown
 from ...common.state import State
 
 
@@ -108,7 +109,8 @@ class Menu(BaseModule):
 
     def process_command(self, command: Command) -> typing.Any:
         if command.name == BotCommands.RESTART:
-            raise Shutdown
+            os.kill(os.getpid(), signal.SIGTERM)
+            return True
 
         if command.name == BotCommands.RETURN:
             menu = self.state[TelegramMenu.MENU]

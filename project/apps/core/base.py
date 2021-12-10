@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from . import events
 from ..common.events import Receiver
 from ..common.state import State
+from ..common.types import FrozenDict
 from ..messengers import events as messenger_events
 from ..messengers.base import BaseMessenger
 from ..task_queue import BaseTaskQueue, UniqueTaskQueue
@@ -72,8 +73,12 @@ class BaseModule(abc.ABC):
 @dataclass
 class Command:
     name: str
-    args: typing.Union[typing.Tuple, typing.List] = field(default_factory=tuple)
-    kwargs: typing.Dict = field(default_factory=dict)
+    args: typing.Sequence = field(
+        default_factory=tuple,
+    )
+    kwargs: typing.Mapping = field(
+        default_factory=FrozenDict,
+    )
 
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}(\'{self.name}\', args={self.args}, kwargs={self.kwargs})'

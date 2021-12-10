@@ -71,7 +71,7 @@ class Signal(db.Base):
         if not query_data:
             return []
 
-        signal = db.db_session().query(
+        signals = db.db_session().query(
             cls.value,
             cls.received_at.label('received_at'),
         ).filter(
@@ -83,7 +83,7 @@ class Signal(db.Base):
             cls.received_at,
         ).all()
 
-        return signal
+        return signals
 
     @classmethod
     def get_aggregated(cls,
@@ -164,23 +164,23 @@ class Signal(db.Base):
             return
 
         new_signals = [Signal(type=signal_type, value=signals[0].value, received_at=signals[0].aggregated_time)]
-        previous_time = signals[0].aggregated_time
+        # previous_time = signals[0].aggregated_time
 
         for signal in itertools.islice(signals, 1, None):
-            if signal.aggregated_time - previous_time > one_trunc:
-                new_signals.append(Signal(
-                    type=signal_type,
-                    value=0,
-                    received_at=previous_time + one_microsecond,
-                ))
-                new_signals.append(Signal(
-                    type=signal_type,
-                    value=0,
-                    received_at=signal.aggregated_time - one_microsecond,
-                ))
+            # if signal.aggregated_time - previous_time > one_trunc:
+            #     new_signals.append(Signal(
+            #         type=signal_type,
+            #         value=0,
+            #         received_at=previous_time + one_microsecond,
+            #     ))
+            #     new_signals.append(Signal(
+            #         type=signal_type,
+            #         value=0,
+            #         received_at=signal.aggregated_time - one_microsecond,
+            #     ))
 
             new_signals.append(Signal(type=signal_type, value=signal.value, received_at=signal.aggregated_time))
-            previous_time = signal.aggregated_time
+            # previous_time = signal.aggregated_time
 
         with db.db_session().begin():
             db.db_session().query(cls).filter(
