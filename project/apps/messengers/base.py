@@ -6,7 +6,7 @@ from . import mixins
 
 class BaseMessenger(mixins.BaseCVMixin, abc.ABC):
     @abc.abstractmethod
-    def send_message(self, text: str, *args, **kwargs) -> None:
+    def send_message(self, text: str, *args, **kwargs) -> typing.Any:
         pass
 
     @abc.abstractmethod
@@ -38,4 +38,8 @@ class BaseMessenger(mixins.BaseCVMixin, abc.ABC):
         pass
 
     def close(self) -> None:
+        pass
+
+    @abc.abstractmethod
+    def remove_message(self, message_id: int) -> None:
         pass

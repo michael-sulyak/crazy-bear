@@ -193,10 +193,13 @@ def single_synchronized(func: typing.Callable) -> typing.Callable:
     return _wrapper
 
 
-def is_sleep_hours(timestamp: datetime.datetime) -> bool:
+def is_sleep_hours(timestamp: typing.Optional[datetime.datetime] = None) -> bool:
     assert 0 <= config.SLEEP_HOURS[0] <= 24
     assert 0 <= config.SLEEP_HOURS[1] <= 24
     assert config.SLEEP_HOURS[0] != config.SLEEP_HOURS[1]
+
+    if timestamp is None:
+        timestamp = current_time()
 
     if config.SLEEP_HOURS[0] > config.SLEEP_HOURS[1]:
         return timestamp.hour >= config.SLEEP_HOURS[0] or timestamp.hour <= config.SLEEP_HOURS[1]

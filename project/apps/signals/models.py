@@ -1,5 +1,4 @@
 import datetime
-import itertools
 import typing
 
 import sqlalchemy
@@ -134,7 +133,8 @@ class Signal(db.Base):
     @classmethod
     def compress_by_time(cls,
                          signal_type: str, *,
-                         datetime_range: typing.Tuple[datetime.datetime, datetime.datetime]) -> None:
+                         datetime_range: typing.Tuple[datetime.datetime, datetime.datetime],
+                         aggregate_function: typing.Callable = sa_func.avg) -> None:
         query_data = cls._get_query_data(
             signal_type=signal_type,
             datetime_range=datetime_range,
@@ -143,11 +143,8 @@ class Signal(db.Base):
         if not query_data:
             return
 
-        one_microsecond = datetime.timedelta(microseconds=1)
-        one_trunc = datetime.timedelta(**{f'{query_data["date_trunc"]}s': 1})
-
         signals = db.db_session().query(
-            sa_func.max(cls.value).label('value'),
+            aggregate_function(cls.value).label('value'),
             sa_func.date_trunc(query_data['date_trunc'], cls.received_at).label('aggregated_time'),
         ).filter(
             cls.received_at >= query_data['start_time'],
@@ -163,24 +160,10 @@ class Signal(db.Base):
         if not signals:
             return
 
-        new_signals = [Signal(type=signal_type, value=signals[0].value, received_at=signals[0].aggregated_time)]
-        # previous_time = signals[0].aggregated_time
-
-        for signal in itertools.islice(signals, 1, None):
-            # if signal.aggregated_time - previous_time > one_trunc:
-            #     new_signals.append(Signal(
-            #         type=signal_type,
-            #         value=0,
-            #         received_at=previous_time + one_microsecond,
-            #     ))
-            #     new_signals.append(Signal(
-            #         type=signal_type,
-            #         value=0,
-            #         received_at=signal.aggregated_time - one_microsecond,
-            #     ))
-
-            new_signals.append(Signal(type=signal_type, value=signal.value, received_at=signal.aggregated_time))
-            # previous_time = signal.aggregated_time
+        new_signals = tuple(
+            Signal(type=signal_type, value=signal.value, received_at=signal.aggregated_time)
+            for signal in signals
+        )
 
         with db.db_session().begin():
             db.db_session().query(cls).filter(
@@ -194,26 +177,31 @@ class Signal(db.Base):
     def compress(cls,
                  signal_type: str, *,
                  datetime_range: typing.Tuple[datetime.datetime, datetime.datetime],
-                 approximation: float = 0) -> None:
-        data = cls.get(signal_type, datetime_range=datetime_range)
+                 approximation_value: float = 0,
+                 approximation_time: datetime.timedelta = datetime.timedelta(hours=1)) -> None:
+        signals = cls.get(signal_type, datetime_range=datetime_range)
 
-        if not data:
+        if len(signals) < 2:
             return
 
         received_at_to_remove = []
         last_value_to_remove = None
 
-        for i, item in enumerate(data):
-            if i == 0 or i >= len(data) - 1:
+        for i, item in enumerate(signals):
+            if i == 0 or i >= len(signals) - 1:
                 continue
 
-            cond_1 = abs(data[i - 1].value - item.value) <= approximation
-            cond_2 = abs(data[i + 1].value - item.value) <= approximation
+            if signals[i].received_at - signals[i - 1].received_at >= approximation_time:
+                last_value_to_remove = None
+                continue
+
+            cond_1 = abs(signals[i - 1].value - item.value) <= approximation_value
+            cond_2 = abs(signals[i + 1].value - item.value) <= approximation_value
 
             if last_value_to_remove is None:
                 cond_3 = True
             else:
-                cond_3 = abs(last_value_to_remove - item.value) <= approximation
+                cond_3 = abs(last_value_to_remove - item.value) <= approximation_value
 
             if cond_1 and cond_2 and cond_3:
                 received_at_to_remove.append(item.received_at)

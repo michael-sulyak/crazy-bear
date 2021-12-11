@@ -25,6 +25,7 @@ from ...core.constants import (
     VIDEO_SECURITY,
 )
 from ...devices.utils import get_connected_devices_to_router
+from ...messengers.utils import ProgressBar
 from ...signals.models import Signal
 from ...task_queue import IntervalTask, RepeatableTask, TaskPriorities
 from .... import config
@@ -87,6 +88,38 @@ class Report(BaseModule):
             events.request_for_statistics.connect(self._create_ram_stats),
         )
 
+    def _pipe(self, receivers, kwargs):
+        with ProgressBar(self.messenger, title='Collecting stats...') as progress_bar:
+            count = len(receivers)
+            plots = []
+            exceptions = []
+
+            for i in range(count):
+                try:
+                    result = yield
+                except Exception as e:
+                    exceptions.append(e)
+                    continue
+
+                if result is not None:
+                    if isinstance(result, (tuple, list,)):
+                        plots.extend(result)
+                    else:
+                        plots.append(result)
+
+                progress_bar.set((i + 1) / count)
+
+            for exception in exceptions:
+                logging.exception(exception)
+                self.messenger.exception(exception)
+
+            if plots:
+                self.messenger.send_images(images=plots)
+            else:
+                self.messenger.send_message('There is still little data')
+
+        yield None
+
     def process_command(self, command: Command) -> typing.Any:
         if command.name == BotCommands.STATUS:
             self._send_status()
@@ -96,7 +129,7 @@ class Report(BaseModule):
             delta_type: str = command.get_second_arg('hours', skip_flags=True)
             delta_value: str = command.get_first_arg('24', skip_flags=True)
 
-            if delta_type not in ('hours', 'minutes', 'seconds',):
+            if delta_type not in ('days', 'hours', 'minutes', 'seconds',):
                 self.messenger.send_message('Wrong a delta type')
                 return True
 
@@ -119,32 +152,11 @@ class Report(BaseModule):
             if flags == {'s'}:
                 flags = {'a', 'e', 'r'}
 
-            results, exceptions = events.request_for_statistics.process(
+            events.request_for_statistics.pipe(
+                self._pipe,
                 date_range=date_range,
                 components={self._stats_flags_map[flag] for flag in flags},
             )
-
-            self.messenger.start_typing()
-
-            for exception in exceptions:
-                logging.exception(exception)
-                self.messenger.exception(exception)
-
-            plots = []
-
-            for result in results:
-                if result is None:
-                    continue
-
-                if isinstance(result, (tuple, list,)):
-                    plots.extend(result)
-                else:
-                    plots.append(result)
-
-            if plots:
-                self.messenger.send_images(images=plots)
-            else:
-                self.messenger.send_message('There is still little data')
 
             return True
 
@@ -163,7 +175,7 @@ class Report(BaseModule):
             )
 
             self.messenger.send_message(
-                '`\\devices` *<mac>* *<name>* *<is_defining>*',
+                '`/devices` *<mac>* *<name>* *<is_defining>*',
             )
 
             return True

@@ -124,5 +124,7 @@ class Command:
 
 @dataclass
 class Message:
+    chat_id: typing.Optional[int] = None
+    username: typing.Optional[str] = None
     text: typing.Optional[str] = None
     command: typing.Optional[Command] = None

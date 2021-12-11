@@ -165,7 +165,6 @@ class Arduino(BaseModule):
         pir_stats = Signal.get(ArduinoSensorTypes.PIR_SENSOR, datetime_range=date_range)
 
         if pir_stats:
-            pir_stats = tuple(downgrade_signals(pir_stats))
             plots.append(create_plot(title='PIR Sensor', x_attr='received_at', y_attr='value', stats=pir_stats))
 
         return plots

@@ -66,6 +66,28 @@ class Event:
 
         return results, exceptions
 
+    def pipe(self, func: typing.Callable, **kwargs) -> typing.Any:
+        handler = func(receivers=self.receivers, kwargs=kwargs)
+        next(handler)
+
+        for receiver in self.receivers:
+            try:
+                receiver_result = receiver(**kwargs)
+            except Shutdown:
+                raise
+            except Exception as e:
+                logging.exception(e)
+                handler.throw(e)
+            else:
+                handler.send(receiver_result)
+
+        try:
+            next(handler)
+        except StopIteration as e:
+            return e.value
+        else:
+            logging.exception('Wrong value')
+
 
 @dataclass
 class Receiver:

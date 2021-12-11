@@ -53,10 +53,10 @@ class Commander:
             try:
                 self.tick()
 
-                if is_sleep_hours(current_time()):
+                if is_sleep_hours():
                     time.sleep(1)
                 else:
-                    time.sleep(0.2)
+                    time.sleep(0.1)
             except Shutdown:
                 break
 
@@ -75,7 +75,10 @@ class Commander:
         for message in self.messenger.get_updates():
             if message.command:
                 logging.info(
-                    f'Command: {message.command.name} args={message.command.args} kwargs={message.command.kwargs}',
+                    'Command: %s args=%s kwargs=%s',
+                    message.command.name,
+                    message.command.args,
+                    message.command.kwargs,
                 )
 
             self.message_queue.put(message)
@@ -96,10 +99,9 @@ class Commander:
                 is_processed = exceptions or any(map(lambda x: x is True, results))
 
                 for exception in exceptions:
-                    logging.exception(exception)
                     self.messenger.exception(exception)
 
-                if not is_processed:
+                if not is_processed and not exceptions:
                     self.messenger.send_message('Unknown command')
 
     def close(self) -> None:

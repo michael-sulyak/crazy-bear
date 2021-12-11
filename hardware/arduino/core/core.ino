@@ -64,32 +64,32 @@ void loop() {
 //       jsonBuffer.clear();
 //     }
 
-//     const int pirSensor = analogRead(PIR_SENSOR_PIN);
-//     const unsigned short diff = millis() - lastSentAt;
-//     const bool needToSend = (pirSensor > 20 && diff >= detectionDelay) || (diff >= sendingDelay);
-//
-//     if (needToSend) {
-//       jsonBuffer["type"] = typeSensors;
-//       jsonBuffer["payload"]["pir_sensor"] = pirSensor;
-//       jsonBuffer["payload"]["humidity"] = dhtSensor.readHumidity();
-//       jsonBuffer["payload"]["temperature"] = dhtSensor.readTemperature();
-//       sendJsonBuffer();
-//       jsonBuffer.clear();
-//
-//       lastSentAt = millis();
-//     }
+    const int pirSensor = analogRead(PIR_SENSOR_PIN);
+    const unsigned short diff = millis() - lastSentAt;
+    const bool needToSend = (pirSensor > 20 && diff >= detectionDelay) || (diff >= sendingDelay);
 
-    if (radioManager.hasInputData()) {
-        Serial.println("Has something");
+    if (needToSend) {
+      jsonBuffer["type"] = typeSensors;
+      jsonBuffer["payload"]["pir_sensor"] = pirSensor;
+      jsonBuffer["payload"]["humidity"] = dhtSensor.readHumidity();
+      jsonBuffer["payload"]["temperature"] = dhtSensor.readTemperature();
+      sendJsonBuffer();
+      jsonBuffer.clear();
 
-        if (radioManager.read(jsonBuffer)) {
-            Serial.println("Result:");
-            serializeJson(jsonBuffer, Serial);
-            Serial.println();
-            Serial.println("----");
-            jsonBuffer.clear();
-        }
+      lastSentAt = millis();
     }
+
+//     if (radioManager.hasInputData()) {
+//         Serial.println("Has something");
+//
+//         if (radioManager.read(jsonBuffer)) {
+//             Serial.println("Result:");
+//             serializeJson(jsonBuffer, Serial);
+//             Serial.println();
+//             Serial.println("----");
+//             jsonBuffer.clear();
+//         }
+//     }
 
     delay(200);
 }

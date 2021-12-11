@@ -1,8 +1,8 @@
 import datetime
-import logging
 import typing
 
 from crontab import CronTab
+from sqlalchemy import func as sa_func
 
 from .. import constants
 from ..base import BaseModule, Command
@@ -61,10 +61,6 @@ class Signals(BaseModule):
         )
 
         for_compress_by_time = (
-            ArduinoSensorTypes.PIR_SENSOR,
-        )
-
-        for_aggregated_compress = (
             constants.WEATHER_TEMPERATURE,
             constants.WEATHER_HUMIDITY,
             constants.CPU_TEMPERATURE,
@@ -73,7 +69,7 @@ class Signals(BaseModule):
             ArduinoSensorTypes.HUMIDITY,
         )
 
-        all_signals = {*for_compress, *for_compress_by_time, *for_aggregated_compress}
+        all_signals = {*for_compress, *for_compress_by_time}
 
         Signal.clear(all_signals)
 
@@ -84,18 +80,29 @@ class Signals(BaseModule):
             now - datetime.timedelta(minutes=5),
         )
 
+        Signal.compress_by_time(
+            ArduinoSensorTypes.PIR_SENSOR,
+            datetime_range=datetime_range,
+            aggregate_function=sa_func.max,
+        )
+
         for item in for_compress:
+            if item == ArduinoSensorTypes.PIR_SENSOR:
+                approximation_value = 20
+            elif item in (ArduinoSensorTypes.TEMPERATURE, ArduinoSensorTypes.HUMIDITY,):
+                approximation_value = 0.1
+            else:
+                approximation_value = 0
+
             Signal.compress(
                 item,
                 datetime_range=datetime_range,
-                approximation=20 if item == ArduinoSensorTypes.PIR_SENSOR else 0,
+                approximation_value=approximation_value,
+                approximation_time=datetime.timedelta(minutes=10),
             )
 
         for item in for_compress_by_time:
             Signal.compress_by_time(item, datetime_range=datetime_range)
-
-        for item in for_aggregated_compress:
-            Signal.aggregated_compress(item, datetime_range=datetime_range)
             Signal.compress(item, datetime_range=datetime_range)
 
         db.db_session().query(Signal).filter(
