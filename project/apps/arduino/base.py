@@ -15,10 +15,15 @@ from ... import config
 @dataclass
 class ArduinoResponse:
     type: str
-    sent_at: int
     payload: typing.Optional[dict] = None
     received_at: datetime.datetime = field(default_factory=current_time)
 
+
+SENSORS_PAYLOAD_MAP = {
+    'p': 'pir_sensor',
+    'h': 'humidity',
+    't': 'temperature',
+}
 
 # @dataclass
 # class ArduinoRequest:
@@ -115,4 +120,7 @@ class ArduinoConnector:
             if not isinstance(line, dict):
                 continue
 
-            yield ArduinoResponse(**line)
+            yield ArduinoResponse(
+                type=line['t'],
+                payload={SENSORS_PAYLOAD_MAP[k]: v for k, v in line['p'].items()},
+            )

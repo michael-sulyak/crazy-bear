@@ -36,7 +36,14 @@ class Devices(BaseModule):
         name = command.second_arg
         is_defining = command.third_arg == 'true'
 
-        if mac_address in device_manager.devices_map:
+        to_delete = not name and mac_address in device_manager.devices_map
+        to_update = not to_delete and mac_address in device_manager.devices_map
+        to_create = not to_delete and not to_update
+
+        if to_create:
+            device_manager.add_device(Device(mac_address=mac_address, name=name, is_defining=is_defining))
+            self.messenger.send_message('Added')
+        elif to_update:
             devices = device_manager.devices
 
             for device in devices:
@@ -47,9 +54,15 @@ class Devices(BaseModule):
                 device.is_defining = is_defining
 
             device_manager.set_devices(devices)
+            self.messenger.send_message('Saved')
+        elif to_delete:
+            device_manager.set_devices([
+                device
+                for device in device_manager.devices
+                if device.mac_address != mac_address
+            ])
+            self.messenger.send_message('Deleted')
         else:
-            device_manager.add_device(Device(mac_address=mac_address, name=name, is_defining=is_defining))
-
-        self.messenger.send_message('Added')
+            self.messenger.send_message('Wrong data')
 
         return True

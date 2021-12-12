@@ -23,7 +23,13 @@ class ProgressBar:
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         self.messenger.remove_message(self.message_id)
 
-    def set(self, progress: float) -> None:
+    def set(self, progress: float, *, title: typing.Optional[str] = None) -> None:
+        if title is not None:
+            if title == '':
+                self.title = ''
+            else:
+                self.title = f'{title}\n'
+
         self.messenger.send_message(
             f'{self.title}{self._generate_bar(progress)}',
             message_id=self.message_id,

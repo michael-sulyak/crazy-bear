@@ -255,11 +255,22 @@ class Signal(db.Base):
             )
 
     @classmethod
-    def backup(cls) -> None:
+    def backup(cls,
+               datetime_range: typing.Optional[typing.Tuple[datetime.datetime, datetime.datetime]] = None) -> None:
+        if datetime_range is None:
+            filters = ()
+        else:
+            filters = (
+                cls.received_at >= datetime_range[0],
+                cls.received_at <= datetime_range[1],
+            )
+
         all_data = db_session().query(
             cls.type,
             cls.value,
             cls.received_at,
+        ).filter(
+            *filters,
         ).order_by(
             cls.received_at,
         ).all()

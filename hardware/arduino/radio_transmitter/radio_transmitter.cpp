@@ -1,4 +1,4 @@
-#include "radio_manager.hh"
+#include "radio_transmitter.hh"
 
 #include <ArduinoJson.h>
 
@@ -7,18 +7,6 @@
 #include <nRF24L01.h>  // https://nrf24.github.io/RF24/
 #include <RF24.h>  // https://nrf24.github.io/RF24/
 
-
-#if ENCRYPT
-
-#include <Crypto.h>  // https://rweather.github.io/arduinolibs/crypto.html
-#include <AES.h>  // https://rweather.github.io/arduinolibs/crypto.html
-
-#endif
-
-
-#if ENCRYPT
-const uint8_t aue128_key[16] = AES128_KEY;
-#endif
 
 void rawRadioRead(RF24 &radio) {
     char buffer[33];
@@ -31,32 +19,29 @@ void rawRadioRead(RF24 &radio) {
 }
 
 int availableMemory() {
-    int size = 2048;// For ATmega328
+    int size = 2048;  // For ATmega328
     byte *buf;
     while ((buf = (byte *) malloc(--size)) == NULL);
     free(buf);
     return size;
 }
 
-RadioManager::RadioManager(RF24 &radio) {
+RadioTransmitter::RadioTransmitter(RF24 &radio) {
     _radio = &radio;
-#if ENCRYPT
-    _aes128 = new AES128;
-#endif
 }
 
-void RadioManager::initRadio() {
+void RadioTransmitter::init() {
     _radio->begin();
     _radio->setChannel(RADIO_CHANNEL);
     _radio->setDataRate(RF24_250KBPS);
     _radio->setPALevel(RF24_PA_MIN);
-    _radio->openWritingPipe(RADIO_ADDRESS);
-    _radio->openReadingPipe(0, RADIO_ADDRESS);
+    _radio->openWritingPipe((const uint8_t *) RADIO_ADDRESS);
+    _radio->openReadingPipe(0, (const uint8_t *) RADIO_ADDRESS);
     _radio->setAutoAck(true);
     _radio->startListening();
 }
 
-bool RadioManager::send(StaticJsonDocument<MSG_SIZE> &jsonBuffer) {
+bool RadioTransmitter::send(StaticJsonDocument<MSG_SIZE> &jsonBuffer) {
     _radio->stopListening();
 
 #if DEBUG
@@ -79,31 +64,20 @@ bool RadioManager::send(StaticJsonDocument<MSG_SIZE> &jsonBuffer) {
     char buffer[MSG_SIZE];
     serializeJson(jsonBuffer, buffer);
 
-#if ENCRYPT
-#if DEBUG
-    Serial.println("Start encryption...");
-#endif
-    for (unsigned int i = 0; i < MSG_SIZE; i += _aes128->blockSize()) {
-        _aes128->clear();
-        _aes128->setKey(aue128_key, _aes128->keySize());
-        _aes128->encryptBlock(&buffer[i], &buffer[i]);
-    }
-#endif
-
 #if DEBUG
     Serial.print("Buffer for sending: ");
     Serial.println(buffer);
 #endif
 
     for (unsigned int i = 0; i < MSG_SIZE; i += BLOCK_SIZE) {
-//        bool isLastBlock = false;
-//
-//        for (unsigned int j = i; j < i + BLOCK_SIZE; ++j) {
-//            if (buffer[j] == '\0') {
-//                isLastBlock = true;
-//                break;
-//            }
-//        }
+        bool isLastBlock = false;
+
+        for (unsigned int j = i; j < i + BLOCK_SIZE; ++j) {
+            if (buffer[j] == '\0') {
+                isLastBlock = true;
+                break;
+            }
+        }
 
 #if DEBUG
         Serial.print("Block for process:");
@@ -119,12 +93,12 @@ bool RadioManager::send(StaticJsonDocument<MSG_SIZE> &jsonBuffer) {
 
         delay(MSG_DELAY);
 
-//        if (isLastBlock) {
-//#if DEBUG
-//            Serial.println("Was the last block.");
-//#endif
-//            break;
-//        }
+        if (isLastBlock) {
+#if DEBUG
+            Serial.println("Was the last block.");
+#endif
+            break;
+        }
     }
 
 #if DEBUG
@@ -153,7 +127,7 @@ bool RadioManager::send(StaticJsonDocument<MSG_SIZE> &jsonBuffer) {
     return true;
 }
 
-bool RadioManager::read(StaticJsonDocument<MSG_SIZE> &jsonBuffer) {
+bool RadioTransmitter::read(StaticJsonDocument<MSG_SIZE> &jsonBuffer) {
     char buffer[MSG_SIZE];
     char blockBuffer[BLOCK_SIZE];
 
@@ -201,17 +175,6 @@ bool RadioManager::read(StaticJsonDocument<MSG_SIZE> &jsonBuffer) {
 #if DEBUG
             Serial.println("Got finished bytes.");
 #endif
-
-#if ENCRYPT
-#if DEBUG
-            Serial.println("Start decryption...");
-#endif
-            for (unsigned int i = 0; i < MSG_SIZE; i += _aes128->blockSize()) {
-                _aes128->clear();
-                _aes128->setKey(aue128_key, _aes128->keySize());
-                _aes128->decryptBlock(&buffer[i], &buffer[i]);
-            }
-#endif
             deserializeJson(jsonBuffer, buffer);
             return true;
         }
@@ -242,6 +205,22 @@ bool RadioManager::read(StaticJsonDocument<MSG_SIZE> &jsonBuffer) {
 }
 
 
-bool RadioManager::hasInputData() {
+bool RadioTransmitter::hasInputData() {
     return _radio->available();
 }
+
+void RadioTransmitter::powerUp() {
+    _radio->powerUp();
+    delay(5);
+}
+
+void RadioTransmitter::powerDown() {
+    _radio->powerDown();
+    delay(5);
+}
+
+bool RadioTransmitter::ping() {
+    const char text[] = "ping";
+    return _radio->write("ping", sizeof(text));
+}
+

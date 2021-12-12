@@ -13,7 +13,6 @@ from ...common.utils import create_plot, synchronized_method
 from ...core import events
 from ...core.constants import PHOTO, SECURITY_IS_ENABLED, USE_CAMERA
 from ...signals.models import Signal
-from ...signals.utils import downgrade_signals
 from ...task_queue import IntervalTask, TaskPriorities
 
 
@@ -171,6 +170,12 @@ class Arduino(BaseModule):
 
     @synchronized_method
     def _process_new_arduino_logs(self, signals: typing.List[Signal]) -> None:
+        if self.state[SECURITY_IS_ENABLED]:
+            # Recheck logic related to the user connection.
+            events.check_if_user_is_at_home.send(force=True)
+        else:
+            return
+
         if self.state[SECURITY_IS_ENABLED]:
             last_movement = None
 

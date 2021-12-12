@@ -50,12 +50,13 @@ class Router(BaseModule):
         return (
             *super().subscribe_to_events(),
             events.request_for_statistics.connect(self._create_router_stats),
+            events.check_if_user_is_at_home.connect(self._check_user_status),
         )
 
     def init_repeatable_tasks(self) -> tuple:
         return (
             IntervalTask(
-                target=self._check_user_status,
+                target=events.check_if_user_is_at_home.send,
                 priority=TaskPriorities.HIGH,
                 interval=datetime.timedelta(seconds=5),
             ),
@@ -69,15 +70,18 @@ class Router(BaseModule):
         return False
 
     @synchronized_method
-    def _check_user_status(self) -> None:
+    def _check_user_status(self, *, force: bool = False) -> None:
         now = datetime.datetime.now()
 
-        timedelta_for_checking = self._timedelta_for_checking
+        if force:
+            need_to_recheck = True
+        else:
+            timedelta_for_checking = self._timedelta_for_checking
 
-        if self._user_was_connected and is_sleep_hours(now):
-            timedelta_for_checking *= 5
+            if self._user_was_connected and is_sleep_hours(now):
+                timedelta_for_checking *= 10
 
-        need_to_recheck = not self._user_was_connected or now - self._last_checking >= timedelta_for_checking
+            need_to_recheck = not self._user_was_connected or now - self._last_checking >= timedelta_for_checking
 
         if not need_to_recheck:
             return

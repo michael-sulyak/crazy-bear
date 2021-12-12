@@ -10,6 +10,7 @@ from ..constants import BotCommands
 from ... import db
 from ...arduino.constants import ArduinoSensorTypes
 from ...common.utils import current_time
+from ...messengers.utils import ProgressBar
 from ...signals.models import Signal
 from ...task_queue import IntervalTask, ScheduledTask, TaskPriorities
 
@@ -29,10 +30,20 @@ class Signals(BaseModule):
                 run_immediately=False,
             ),
             IntervalTask(
-                target=Signal.backup,
+                target=lambda: Signal.backup(
+                    datetime_range=(
+                        current_time() - datetime.timedelta(days=1),
+                        current_time(),
+                    ),
+                ),
                 priority=TaskPriorities.LOW,
                 interval=datetime.timedelta(hours=2),
                 run_immediately=False,
+            ),
+            ScheduledTask(
+                target=Signal.backup,
+                priority=TaskPriorities.LOW,
+                crontab=CronTab('0 5 * * *'),
             ),
             ScheduledTask(
                 target=db.vacuum,
@@ -43,17 +54,21 @@ class Signals(BaseModule):
 
     def process_command(self, command: Command) -> typing.Any:
         if command.name == BotCommands.CHECK_DB:
-            self._check_db()
-            self.messenger.send_message('Checked. Run `VACUUM FULL`')
-            self.messenger.start_typing()
-            db.vacuum()
-            self.messenger.send_message('`VACUUM FULL` is finished')
+            with ProgressBar(self.messenger, title='Checking DB...') as progress_bar:
+                self._check_db()
+                progress_bar.set(0.5, title='Run `VACUUM FULL`...')
+                db.vacuum()
+                progress_bar.set(1)
+                self.messenger.send_message('Checking DB is finished')
+
             return True
 
         return False
 
     @staticmethod
     def _check_db() -> None:
+        now = current_time()
+
         for_compress = (
             constants.USER_IS_CONNECTED_TO_ROUTER,
             constants.TASK_QUEUE_DELAY,
@@ -73,10 +88,14 @@ class Signals(BaseModule):
 
         Signal.clear(all_signals)
 
-        now = current_time()
+        with db.db_session().begin():
+            db.db_session().query(Signal).filter(
+                Signal.type == constants.TASK_QUEUE_DELAY,
+                Signal.received_at <= now - datetime.timedelta(days=2),
+            ).delete()
 
         datetime_range = (
-            now - datetime.timedelta(hours=6),
+            now - datetime.timedelta(hours=3),
             now - datetime.timedelta(minutes=5),
         )
 
@@ -103,7 +122,11 @@ class Signals(BaseModule):
 
         for item in for_compress_by_time:
             Signal.compress_by_time(item, datetime_range=datetime_range)
-            Signal.compress(item, datetime_range=datetime_range)
+            Signal.compress(
+                item,
+                datetime_range=datetime_range,
+                approximation_time=datetime.timedelta(hours=1),
+            )
 
         db.db_session().query(Signal).filter(
             Signal.type.notin_(all_signals),

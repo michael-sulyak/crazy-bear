@@ -199,7 +199,7 @@ def is_sleep_hours(timestamp: typing.Optional[datetime.datetime] = None) -> bool
     assert config.SLEEP_HOURS[0] != config.SLEEP_HOURS[1]
 
     if timestamp is None:
-        timestamp = current_time()
+        timestamp = datetime.datetime.now()
 
     if config.SLEEP_HOURS[0] > config.SLEEP_HOURS[1]:
         return timestamp.hour >= config.SLEEP_HOURS[0] or timestamp.hour <= config.SLEEP_HOURS[1]

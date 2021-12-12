@@ -1,4 +1,3 @@
-import datetime
 import logging
 import queue
 import time
@@ -8,7 +7,7 @@ from . import events as core_events
 from .base import BaseModule, ModuleContext
 from ..common.exceptions import Shutdown
 from ..common.state import State
-from ..common.utils import current_time, is_sleep_hours, log_performance
+from ..common.utils import is_sleep_hours, log_performance
 from ..db import close_db_session
 from ..messengers import events
 from ..messengers.base import BaseMessenger

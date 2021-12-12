@@ -146,3 +146,4 @@ cython_debug/
 main.db
 .dev/
 certificate/
+hardware/arduino/radio_transmitter/config.hh

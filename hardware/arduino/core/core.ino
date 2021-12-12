@@ -3,24 +3,18 @@
 #include <ArduinoJson.h>  // https://arduinojson.org/
 
 // For radio
-#include "radio_manager/radio_manager.cpp"
-#include <RF24.h>  // https://nrf24.github.io/RF24/
-
-// For crypto
-#include <Crypto.h>  // https://rweather.github.io/arduinolibs/crypto.html
-#include <AES.h>  // https://rweather.github.io/arduinolibs/crypto.html
+#include "radio_transmitter/radio_transmitter.cpp"
 
 
 #define PIN_CE 7
 #define PIN_CSN 8
-#define RADIO_ADDRESS 0xF0F0F0F066
 
 #define PIR_SENSOR_PIN A0
 #define DHT_SENSOR_PIN 2
 
 
 RF24 radio(PIN_CE, PIN_CSN);
-RadioManager radioManager(radio);
+RadioTransmitter radioTransmitter(radio);
 
 
 #define typeSetSettings "set_settings"
@@ -30,9 +24,12 @@ RadioManager radioManager(radio);
 
 const unsigned short sendingDelay = 10 * 1000;
 const unsigned short detectionDelay = 1 * 1000;
-const unsigned short radioDelay = 10 * 1000;
+const unsigned short radioDelay = 20 * 1000;
 unsigned long lastSentAt = 0;
 unsigned long lastRadioAt = 0;
+
+bool isSilentMode = true;
+bool isSilentModeInViewer = false;
 
 StaticJsonDocument<MSG_SIZE> jsonBuffer;
 
@@ -42,7 +39,7 @@ DHT dhtSensor(DHT_SENSOR_PIN, DHT22);
 void setup() {
     Serial.begin(9600);
     dhtSensor.begin();
-    radioManager.initRadio();
+    radioTransmitter.init();
 }
 
 void loop() {
@@ -72,14 +69,16 @@ void loop() {
         jsonBuffer["p"]["t"] = dhtSensor.readTemperature();
         sendJsonBuffer();
 
-        if (millis() - lastRadioAt >= lastRadioAt) {
+        if (millis() - lastRadioAt >= radioDelay) {
             sendJsonBuffer();
-            radioManager.send(jsonBuffer);
+            radioTransmitter.powerUp();
+            radioTransmitter.send(jsonBuffer);
+            radioTransmitter.powerDown();
             lastRadioAt = millis();
 
-            Serial.print("Available memory: ");
-            Serial.print(availableMemory());
-            Serial.println(" b.");
+//            Serial.print("Available memory: ");
+//            Serial.print(availableMemory());
+//            Serial.println("b");
         }
 
         jsonBuffer.clear();
@@ -87,10 +86,60 @@ void loop() {
         lastSentAt = millis();
     }
 
+//    if (isSilentMode && !isSilentModeInViewer) {
+//        isSilentModeInViewer = turnOnSilentModeForViewer();
+//
+//        if (isSilentModeInViewer) {
+//            isSilentModeInViewer = !pingViewer();
+//        }
+//    }
+//
+//    if (!isSilentMode && isSilentModeInViewer) {
+//        isSilentModeInViewer = !turnOffSilentModeForViewer();
+//
+//        if (!isSilentModeInViewer) {
+//            isSilentModeInViewer = pingViewer();
+//        }
+//    }
+
     delay(200);
 }
 
 void sendJsonBuffer() {
     serializeJson(jsonBuffer, Serial);
     Serial.println();
+}
+
+bool pingViewer() {
+    radioTransmitter.powerUp();
+    const bool result = radioTransmitter.ping();
+    radioTransmitter.powerDown();
+    return result;
+}
+
+bool turnOnSilentModeForViewer() {
+    jsonBuffer["t"] = "sm";
+    jsonBuffer["v"] = "on";
+    jsonBuffer["s"] = 1;
+
+    radioTransmitter.powerUp();
+    const bool result = radioTransmitter.send(jsonBuffer);
+    radioTransmitter.powerDown();
+
+    jsonBuffer.clear();
+
+    return result;
+}
+
+bool turnOffSilentModeForViewer() {
+    jsonBuffer["t"] = "sm";
+    jsonBuffer["v"] = "on";
+
+    radioTransmitter.powerUp();
+    const bool result = radioTransmitter.send(jsonBuffer);
+    radioTransmitter.powerDown();
+
+    jsonBuffer.clear();
+
+    return result;
 }

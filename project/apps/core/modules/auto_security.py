@@ -25,12 +25,6 @@ class AutoSecurity(BaseModule):
     _last_movement_at: typing.Optional[datetime.datetime] = None
     _camera_was_not_used: bool = False
     _twenty_minutes: datetime.timedelta = datetime.timedelta(minutes=20)
-    _lock_for_last_movement_at: threading.RLock
-
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-
-        self._lock_for_last_movement_at = threading.RLock()
 
     def init_repeatable_tasks(self) -> tuple:
         return (
@@ -106,8 +100,7 @@ class AutoSecurity(BaseModule):
 
     @synchronized_method
     def _update_last_movement_at(self) -> None:
-        with self._lock_for_last_movement_at:
-            self._last_movement_at = datetime.datetime.now()
+        self._last_movement_at = datetime.datetime.now()
 
         if (not self.state[USER_IS_CONNECTED_TO_ROUTER]
                 and not self.state[USE_CAMERA]
@@ -136,23 +129,10 @@ class AutoSecurity(BaseModule):
         if not self.state[AUTO_SECURITY_IS_ENABLED]:
             return
 
+        now = datetime.datetime.now()
+        has_movement = self._last_movement_at and now - self._last_movement_at <= self._twenty_minutes
+
         user_is_connected: bool = self.state[USER_IS_CONNECTED_TO_ROUTER]
-        # security_is_enabled: bool = self.state[SECURITY_IS_ENABLED]
-
-        # if user_is_connected and security_is_enabled:
-        #     self.messenger.send_message('The owner is found')
-        #     self._run_command(BotCommands.SECURITY, OFF)
-        #     return
-        #
-        # if not user_is_connected and not security_is_enabled:
-        #     self.messenger.send_message('The owner is not found')
-        #     self._run_command(BotCommands.SECURITY, ON)
-        #     return
-
-        with self._lock_for_last_movement_at:
-            now = datetime.datetime.now()
-            has_movement = self._last_movement_at and now - self._last_movement_at <= self._twenty_minutes
-
         use_camera: bool = self.state[USE_CAMERA]
 
         if (user_is_connected or not has_movement) and self._camera_was_not_used and use_camera:

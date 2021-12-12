@@ -88,7 +88,7 @@ class Report(BaseModule):
             events.request_for_statistics.connect(self._create_ram_stats),
         )
 
-    def _pipe(self, receivers, kwargs):
+    def _pipe_for_stats(self, receivers: typing.Sequence, kwargs: dict) -> None:
         with ProgressBar(self.messenger, title='Collecting stats...') as progress_bar:
             count = len(receivers)
             plots = []
@@ -153,7 +153,7 @@ class Report(BaseModule):
                 flags = {'a', 'e', 'r'}
 
             events.request_for_statistics.pipe(
-                self._pipe,
+                self._pipe_for_stats,
                 date_range=date_range,
                 components={self._stats_flags_map[flag] for flag in flags},
             )
@@ -189,6 +189,7 @@ class Report(BaseModule):
         Signal.add(signal_type=constants.TASK_QUEUE_DELAY, value=diff.total_seconds(), received_at=now)
 
         now = datetime.datetime.now()
+
         self.task_queue.put(
             self._ping_task_queue,
             kwargs={'sent_at': now},
@@ -197,19 +198,33 @@ class Report(BaseModule):
         )
 
     def _send_status(self) -> None:
-        yes, no, nothing = emojize(":check_mark_button:"), emojize(":multiply:"), emojize(':multiply:')
+        yes, no, nothing = emojize(':check_mark_button:'), emojize(':multiply:'), emojize(':multiply:')
         humidity = Signal.last_aggregated(ArduinoSensorTypes.HUMIDITY)
         temperature = Signal.last_aggregated(ArduinoSensorTypes.TEMPERATURE)
 
-        if humidity is not None:
-            humidity = f'{round(humidity, 2)}%'
-        else:
+        if humidity is None:
             humidity = nothing
-
-        if temperature is not None:
-            temperature = f'{round(temperature, 2)}℃'
         else:
+            humidity_is_not_good = not (40 <= humidity <= 60)
+            humidity_is_bad = not (30 <= humidity <= 60)
+            humidity = f'{round(humidity, 2)}%'
+
+            if humidity_is_bad:
+                humidity += emojize(':red_exclamation_mark:')
+            elif humidity_is_not_good:
+                humidity += emojize(':white_exclamation_mark:')
+
+        if temperature is None:
             temperature = nothing
+        else:
+            temperature_is_not_good = not (19 <= temperature <= 22)
+            temperature_is_bad = not (18 <= temperature <= 25)
+            temperature = f'{round(temperature, 2)}℃'
+
+            if temperature_is_bad:
+                temperature += emojize(':red_exclamation_mark:')
+            elif temperature_is_not_good:
+                temperature += emojize(':white_exclamation_mark:')
 
         if self.state[CURRENT_FPS] is None:
             current_fps = nothing
@@ -217,7 +232,12 @@ class Report(BaseModule):
             current_fps = round(self.state[CURRENT_FPS], 2)
 
         try:
-            cpu_temperature = f'{round(get_cpu_temp(), 2)}℃'
+            cpu_temp = get_cpu_temp()
+            cpu_temp_is_good = cpu_temp <= 60
+            cpu_temperature = (
+                f'{round(get_cpu_temp(), 2)}℃'
+                f'{"" if cpu_temp_is_good else emojize(":red_exclamation_mark:")}'
+            )
         except RuntimeError:
             cpu_temperature = nothing
 
