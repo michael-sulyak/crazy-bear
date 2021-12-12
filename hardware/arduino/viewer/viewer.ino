@@ -16,18 +16,19 @@
 #define LCD_WIDTH 20
 #define LCD_HEIGHT 3
 
+#define typeSensors "sensors"
+
 
 LiquidCrystal_I2C lcd(0x27, LCD_WIDTH, LCD_HEIGHT);
 
 RF24 radio(PIN_CE, PIN_CSN);
 RadioManager radioManager(radio);
-StaticJsonDocument<64> jsonBuffer;
+StaticJsonDocument<MSG_SIZE> jsonBuffer;
 
 void initLcd() {
     lcd.init();
     lcd.backlight();
     lcd.setCursor(0, 0);
-    printInCenter("Initialization ...");
 }
 
 void printInCenter(String text) {
@@ -36,39 +37,46 @@ void printInCenter(String text) {
     lcd.print(text);
 }
 
+void printSensorsData() {
+    lcd.clear();
+    lcd.setCursor(1, 1);
+    lcd.print("Temperature: ");
+    lcd.print(jsonBuffer["p"]["t"].as<String>());
+    lcd.print("C");
+    lcd.setCursor(1, 2);
+    lcd.print("Humidity: ");
+    lcd.print(jsonBuffer["p"]["h"].as<String>());
+    lcd.print("%");
+}
+
 void setup() {
     Serial.begin(9600);
     initLcd();
-//   initRadio();
     radioManager.initRadio();
-    delay(1000);
-    Serial.println("Staring...");
+    printInCenter("Waiting data...");
 }
 
 void loop() {
     //  lcd.backlight();
-    printInCenter("Sending data...");
-    delay(2000);
 
-    //  lcd.noBacklight();
-    jsonBuffer["1"] = "a";
-    jsonBuffer["2"] = "b";
-    jsonBuffer["3"] = "c";
-    jsonBuffer["4"] = "d";
-    radioManager.send(jsonBuffer);
-//  char buffer[64];
-//  serializeJson(jsonBuffer, buffer);
-//  radio.write(&buffer, sizeof(buffer));
+    if (radioManager.hasInputData()) {
+        Serial.println("Has something");
 
-    printInCenter("Done");
-    delay(5000);
+        if (radioManager.read(jsonBuffer)) {
+            serializeJson(jsonBuffer, Serial);
+            Serial.println();
+
+            if (jsonBuffer["t"].as<String>() == typeSensors) {
+                printSensorsData();
+            }
+
+            jsonBuffer.clear();
+        }
+
+        Serial.print("Available memory: ");
+        Serial.print(availableMemory());
+        Serial.println(" b.");
+    }
+
+    delay(200);
 }
-
-
-//void initRadio() {
-//    radio.begin();
-//    radio.setChannel(115);
-//    radio.setDataRate(RF24_250KBPS);
-//    radio.setPALevel(RF24_PA_MIN);
-//    radio.openWritingPipe(RADIO_ADDRESS);
-//}

@@ -1,10 +1,14 @@
+#include "config.hh"
+
 #include <ArduinoJson.h>
 
 // For radio
 #include <RF24.h>  // https://nrf24.github.io/RF24/
 
 // For crypto
+#if ENCRYPT
 #include <AES.h>  // https://rweather.github.io/arduinolibs/crypto.html
+#endif
 
 
 #define BLOCK_SIZE 32
@@ -29,7 +33,9 @@ public:
 
 private:
     RF24 *_radio;
+#if ENCRYPT
     AES128 *_aes128;
+#endif
     const char startedBytes[14] = "#~~~START~~~#";
     const char finishedBytes[12] = "#~~~END~~~#";
 };

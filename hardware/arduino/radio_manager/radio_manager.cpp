@@ -7,15 +7,14 @@
 #include <nRF24L01.h>  // https://nrf24.github.io/RF24/
 #include <RF24.h>  // https://nrf24.github.io/RF24/
 
-// For crypto
+
+#if ENCRYPT
+
 #include <Crypto.h>  // https://rweather.github.io/arduinolibs/crypto.html
 #include <AES.h>  // https://rweather.github.io/arduinolibs/crypto.html
 
-#define RADIO_ADDRESS 0xF0F0F0F066
-#define MSG_DELAY 50
-#define AES128_KEY {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F}
-#define ENCRYPT true
-#define DEBUG true
+#endif
+
 
 #if ENCRYPT
 const uint8_t aue128_key[16] = AES128_KEY;
@@ -32,8 +31,7 @@ void rawRadioRead(RF24 &radio) {
 }
 
 int availableMemory() {
-    // Use 1024 with ATmega168
-    int size = 2048;
+    int size = 2048;// For ATmega328
     byte *buf;
     while ((buf = (byte *) malloc(--size)) == NULL);
     free(buf);
@@ -42,12 +40,14 @@ int availableMemory() {
 
 RadioManager::RadioManager(RF24 &radio) {
     _radio = &radio;
+#if ENCRYPT
     _aes128 = new AES128;
+#endif
 }
 
 void RadioManager::initRadio() {
     _radio->begin();
-    _radio->setChannel(115);
+    _radio->setChannel(RADIO_CHANNEL);
     _radio->setDataRate(RF24_250KBPS);
     _radio->setPALevel(RF24_PA_MIN);
     _radio->openWritingPipe(RADIO_ADDRESS);

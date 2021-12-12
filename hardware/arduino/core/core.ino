@@ -28,16 +28,13 @@ RadioManager radioManager(radio);
 #define typeSettings "settings"
 #define typeSensors "sensors"
 
-//const char typeSetSettings[] = "set_settings";
-//const char typeGetSettings[] = "get_settings";
-//const char typeSettings[] = "settings";
-//const char typeSensors[] = "sensors";
-
 const unsigned short sendingDelay = 10 * 1000;
 const unsigned short detectionDelay = 1 * 1000;
+const unsigned short radioDelay = 10 * 1000;
 unsigned long lastSentAt = 0;
+unsigned long lastRadioAt = 0;
 
-StaticJsonDocument<64> jsonBuffer;
+StaticJsonDocument<MSG_SIZE> jsonBuffer;
 
 DHT dhtSensor(DHT_SENSOR_PIN, DHT22);
 
@@ -65,37 +62,35 @@ void loop() {
 //     }
 
     const int pirSensor = analogRead(PIR_SENSOR_PIN);
-    const unsigned short diff = millis() - lastSentAt;
+    const unsigned long diff = millis() - lastSentAt;
     const bool needToSend = (pirSensor > 20 && diff >= detectionDelay) || (diff >= sendingDelay);
 
     if (needToSend) {
-      jsonBuffer["type"] = typeSensors;
-      jsonBuffer["payload"]["pir_sensor"] = pirSensor;
-      jsonBuffer["payload"]["humidity"] = dhtSensor.readHumidity();
-      jsonBuffer["payload"]["temperature"] = dhtSensor.readTemperature();
-      sendJsonBuffer();
-      jsonBuffer.clear();
+        jsonBuffer["t"] = typeSensors;
+        jsonBuffer["p"]["p"] = pirSensor;
+        jsonBuffer["p"]["h"] = dhtSensor.readHumidity();
+        jsonBuffer["p"]["t"] = dhtSensor.readTemperature();
+        sendJsonBuffer();
 
-      lastSentAt = millis();
+        if (millis() - lastRadioAt >= lastRadioAt) {
+            sendJsonBuffer();
+            radioManager.send(jsonBuffer);
+            lastRadioAt = millis();
+
+            Serial.print("Available memory: ");
+            Serial.print(availableMemory());
+            Serial.println(" b.");
+        }
+
+        jsonBuffer.clear();
+
+        lastSentAt = millis();
     }
-
-//     if (radioManager.hasInputData()) {
-//         Serial.println("Has something");
-//
-//         if (radioManager.read(jsonBuffer)) {
-//             Serial.println("Result:");
-//             serializeJson(jsonBuffer, Serial);
-//             Serial.println();
-//             Serial.println("----");
-//             jsonBuffer.clear();
-//         }
-//     }
 
     delay(200);
 }
 
 void sendJsonBuffer() {
-    jsonBuffer["sent_at"] = millis();
     serializeJson(jsonBuffer, Serial);
     Serial.println();
 }
