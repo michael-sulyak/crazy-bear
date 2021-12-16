@@ -207,7 +207,7 @@ class Report(BaseModule):
         else:
             humidity_is_not_good = not (40 <= humidity <= 60)
             humidity_is_bad = not (30 <= humidity <= 60)
-            humidity = f'{round(humidity, 2)}%'
+            humidity = f'{round(humidity, 1)}%'
 
             if humidity_is_bad:
                 humidity += emojize(':red_exclamation_mark:')
@@ -217,9 +217,9 @@ class Report(BaseModule):
         if temperature is None:
             temperature = nothing
         else:
-            temperature_is_not_good = not (19 <= temperature <= 22)
-            temperature_is_bad = not (18 <= temperature <= 25)
-            temperature = f'{round(temperature, 2)}℃'
+            temperature_is_not_good = not (19 <= temperature <= 22.5)
+            temperature_is_bad = not (18 <= temperature <= 25.5)
+            temperature = f'{round(temperature, 1)}℃'
 
             if temperature_is_bad:
                 temperature += emojize(':red_exclamation_mark:')
@@ -233,11 +233,14 @@ class Report(BaseModule):
 
         try:
             cpu_temp = get_cpu_temp()
-            cpu_temp_is_good = cpu_temp <= 60
-            cpu_temperature = (
-                f'{round(get_cpu_temp(), 2)}℃'
-                f'{"" if cpu_temp_is_good else emojize(":red_exclamation_mark:")}'
-            )
+            cpu_temp_is_not_good = not (cpu_temp <= 60)
+            cpu_temp_is_bad = not (cpu_temp <= 80)
+            cpu_temperature = f'{round(get_cpu_temp(), 1)}℃'
+
+            if cpu_temp_is_bad:
+                cpu_temperature += emojize(':red_exclamation_mark:')
+            elif cpu_temp_is_not_good:
+                cpu_temperature += emojize(':white_exclamation_mark:')
         except RuntimeError:
             cpu_temperature = nothing
 

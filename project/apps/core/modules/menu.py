@@ -66,7 +66,7 @@ class TelegramMenu:
 
         if use_camera:
             second_line.append(f'{BotCommands.CAMERA} photo')
-            second_line.append(f'{BotCommands.CAMERA} video {OFF if self.state[VIDEO_RECORDING_IS_ENABLED] else ON}')
+            second_line.append(f'{BotCommands.CAMERA} record {OFF if self.state[VIDEO_RECORDING_IS_ENABLED] else ON}')
 
         third_line = (
             BotCommands.STATUS,

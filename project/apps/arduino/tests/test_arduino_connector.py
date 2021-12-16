@@ -50,10 +50,7 @@ def test_process_updates(test_db):
     arduino_connector.open()
     assert ser._is_open is True
 
-    ser._write_message(
-        b'{"type": "sensors", "sent_at": 0, '
-        b'"payload": {"pir_sensor": 100, "humidity": 20, "temperature": 30}}' + arduino_connector.terminator
-    )
+    ser._write_message(b'{"t":"sensors","p":{"p": 100,"h": 20,"t":30}}' + arduino_connector.terminator)
     arduino_connector.process_updates()
 
     humidity = Signal.last_aggregated(ArduinoSensorTypes.HUMIDITY)

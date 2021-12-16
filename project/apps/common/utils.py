@@ -10,6 +10,7 @@ import cv2
 import matplotlib
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import requests
 import seaborn as sns
@@ -18,7 +19,6 @@ from matplotlib.dates import DateFormatter
 from matplotlib.ticker import AutoLocator, MaxNLocator
 
 from ... import config
-from ...config import PY_TIME_ZONE
 
 
 def timer(func: typing.Callable) -> typing.Callable:
@@ -115,27 +115,27 @@ def create_plot(*,
             postfix = ''
 
         if diff < datetime.timedelta(seconds=10):
-            ax.xaxis.set_major_formatter(DateFormatter('%H:%M:%S', tz=PY_TIME_ZONE))
+            ax.xaxis.set_major_formatter(DateFormatter('%H:%M:%S', tz=config.PY_TIME_ZONE))
             ax.xaxis.set_major_locator(mdates.SecondLocator(interval=1))
             plt.xlabel(f'Time {postfix}')
         elif diff < datetime.timedelta(minutes=20):
-            ax.xaxis.set_major_formatter(DateFormatter('%H:%M', tz=PY_TIME_ZONE))
+            ax.xaxis.set_major_formatter(DateFormatter('%H:%M', tz=config.PY_TIME_ZONE))
             ax.xaxis.set_major_locator(mdates.MinuteLocator(interval=1))
             plt.xlabel(f'Time {postfix}')
         elif diff <= datetime.timedelta(hours=24):
-            ax.xaxis.set_major_formatter(DateFormatter('%H', tz=PY_TIME_ZONE))
+            ax.xaxis.set_major_formatter(DateFormatter('%H', tz=config.PY_TIME_ZONE))
             ax.xaxis.set_major_locator(mdates.HourLocator(interval=1))
             plt.xlabel(f'Hours {postfix}')
         elif diff < datetime.timedelta(days=30):
-            ax.xaxis.set_major_formatter(DateFormatter('%d', tz=PY_TIME_ZONE))
+            ax.xaxis.set_major_formatter(DateFormatter('%d', tz=config.PY_TIME_ZONE))
             ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
             plt.xlabel(f'Days {postfix}')
         elif diff < datetime.timedelta(days=30 * 15):
-            ax.xaxis.set_major_formatter(DateFormatter('%m', tz=PY_TIME_ZONE))
+            ax.xaxis.set_major_formatter(DateFormatter('%m', tz=config.PY_TIME_ZONE))
             ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
             plt.xlabel(f'Months {postfix}')
         else:
-            ax.xaxis.set_major_formatter(DateFormatter('%y', tz=PY_TIME_ZONE))
+            ax.xaxis.set_major_formatter(DateFormatter('%y', tz=config.PY_TIME_ZONE))
             ax.xaxis.set_major_locator(mdates.YearLocator())
             plt.xlabel(f'Years {postfix}')
     else:
@@ -268,3 +268,15 @@ def log_func_performance(operation_type: str) -> typing.Callable:
 
 def current_time() -> datetime.datetime:
     return datetime.datetime.now().astimezone()
+
+
+def add_timestamp_in_frame(frame: np.array) -> None:
+    cv2.putText(
+        img=frame,
+        text=datetime.datetime.now().strftime('%d.%m.%Y, %H:%M:%S'),
+        org=(10, frame.shape[0] - 10,),
+        fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+        fontScale=0.5,
+        color=(0, 0, 255,),
+        thickness=1,
+    )

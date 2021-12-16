@@ -17,7 +17,6 @@ class ProgressBar:
             f'{self.title}{self._generate_bar(0)}',
             reply_markup=None,
         )
-        self.messenger.start_typing()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -35,7 +34,6 @@ class ProgressBar:
             message_id=self.message_id,
             reply_markup=None,
         )
-        self.messenger.start_typing()
 
     @staticmethod
     def _generate_bar(progress: float) -> str:

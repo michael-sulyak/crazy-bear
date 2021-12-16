@@ -88,8 +88,6 @@ class Commander:
             except queue.Empty:
                 break
 
-            self.messenger.start_typing()
-
             if not message.command:
                 continue
 

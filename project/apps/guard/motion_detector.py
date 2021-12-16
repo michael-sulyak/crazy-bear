@@ -1,5 +1,4 @@
 import datetime
-import time
 import typing
 
 import cv2
@@ -7,58 +6,26 @@ import imutils
 import imutils.video
 import numpy as np
 
-from ..common.fps import FPSTracker
-
 
 class MotionDetector:
-    video_stream: imutils.video.VideoStream
-    target_frame: np.array = None
-    current_frame: np.array = None
-    marked_frame: np.array = None
-    fps_tracker: FPSTracker
+    target_frame: typing.Optional[np.array] = None
+    marked_frame: typing.Optional[np.array] = None
     max_fps: int
     min_area: int = 500
     movement_ttl = datetime.timedelta(seconds=20)
     is_occupied: bool = False
-    last_change_timestamp = None
+    last_change_timestamp: typing.Optional[datetime.datetime] = None
     imshow: bool
 
-    def __init__(self, *, video_stream: imutils.video.VideoStream, max_fps: int, imshow: bool) -> None:
-        self.fps_tracker = FPSTracker()
-        self.video_stream = video_stream
-        self.max_fps = max_fps
+    def __init__(self, *, imshow: bool, max_fps: int) -> None:
         self.imshow = imshow
+        self.max_fps = max_fps
 
-    def run(self) -> typing.Iterator:
-        self.fps_tracker.start()
-
-        while True:
-            start_time = datetime.datetime.now()
-            self.current_frame = self.video_stream.read()
-
-            # If the frame could not be grabbed, then we have reached the end of the video
-            if self.current_frame is None:
-                break
-
-            self._process_current_frame()
-            yield self
-
-            end_time = datetime.datetime.now()
-
-            self.fps_tracker.update()
-
-            time_to_sleep = 1 / self.max_fps - (end_time - start_time).total_seconds()
-
-            if time_to_sleep > 0:
-                time.sleep(time_to_sleep)
-
-        self.realese()
-
-    def _process_current_frame(self) -> None:
+    def process_new_frame(self, frame: np.array, *, fps: float) -> None:
         now = datetime.datetime.now()
 
         # Convert frame to grayscale, and blur it
-        gray = cv2.cvtColor(self.current_frame, cv2.COLOR_BGR2GRAY)
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         gray = cv2.GaussianBlur(gray, (21, 21,), 0)
         self.is_occupied = False
 
@@ -91,17 +58,20 @@ class MotionDetector:
             # Compute the bounding box for the contour, draw it on the frame,
             # and update the text
             x, y, w, h = cv2.boundingRect(contour)
-            cv2.rectangle(self.current_frame, (x, y,), (x + w, y + h,), (0, 0, 255,), 1)
+            cv2.rectangle(frame, (x, y,), (x + w, y + h,), (0, 0, 255,), 1)
             self.is_occupied = True
 
-        self._draw_result(thresh=thresh, frame_delta=frame_delta)
+        self._draw_result(frame=frame, thresh=thresh, frame_delta=frame_delta, fps=fps)
+
+        if self.imshow:
+            cv2.waitKey(1)
 
     def realese(self) -> None:
         if self.imshow:
             cv2.destroyAllWindows()
 
-    def _draw_result(self, thresh: np.array, frame_delta: np.array) -> None:
-        self.marked_frame = np.copy(self.current_frame)
+    def _draw_result(self, *, frame: np.array, thresh: np.array, frame_delta: np.array, fps: float) -> None:
+        self.marked_frame = np.copy(frame)
 
         cv2.putText(
             img=self.marked_frame,
@@ -112,7 +82,7 @@ class MotionDetector:
             color=(0, 0, 255,) if self.is_occupied else (0, 255, 0,),
             thickness=1,
         )
-        current_fps = round(self.fps_tracker.fps(), 2)
+        current_fps = round(fps, 2)
         cv2.putText(
             img=self.marked_frame,
             text=f'FPS: {current_fps}',
@@ -125,7 +95,7 @@ class MotionDetector:
         cv2.putText(
             img=self.marked_frame,
             text=datetime.datetime.now().strftime('%d.%m.%Y, %H:%M:%S'),
-            org=(10, self.current_frame.shape[0] - 10,),
+            org=(10, frame.shape[0] - 10,),
             fontFace=cv2.FONT_HERSHEY_SIMPLEX,
             fontScale=0.5,
             color=(0, 0, 255,),

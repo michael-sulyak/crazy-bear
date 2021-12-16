@@ -1,14 +1,17 @@
 import datetime
+import logging
 import typing
 
+import numpy as np
 from imutils.video import VideoStream
 
 from ..base import BaseModule, Command
 from ..constants import BotCommands
 from ... import task_queue
+from ...common.camera import VideoCamera
 from ...common.constants import OFF, ON
 from ...common.storage import file_storage
-from ...common.utils import camera_is_available, synchronized_method
+from ...common.utils import add_timestamp_in_frame, camera_is_available, synchronized_method
 from ...core import events
 from ...core.constants import (
     CAMERA_IS_AVAILABLE, CURRENT_FPS, SECURITY_IS_ENABLED, USE_CAMERA, VIDEO_RECORDING_IS_ENABLED, VIDEO_SECURITY,
@@ -33,12 +36,15 @@ class Camera(BaseModule):
         VIDEO_RECORDING_IS_ENABLED: False,
     }
     _video_stream: typing.Optional[VideoStream] = None
+    _video_camera: typing.Optional[VideoCamera] = None
     _camera_is_available: bool = True
+    _video_frames: list
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
         self._update_camera_status()
+        self._video_frames = []
 
     def init_repeatable_tasks(self) -> tuple:
         return (
@@ -65,6 +71,12 @@ class Camera(BaseModule):
             ),
         )
 
+    def subscribe_to_events(self) -> tuple:
+        return (
+            *super().subscribe_to_events(),
+            events.frame_from_video_camera.connect(self._process_frame),
+        )
+
     def process_command(self, command: Command) -> typing.Any:
         if command.name == BotCommands.CAMERA:
             if command.first_arg == ON:
@@ -73,7 +85,7 @@ class Camera(BaseModule):
                 self._disable_camera()
             elif command.first_arg == 'photo':
                 self._take_photo()
-            elif command.first_arg == 'video':
+            elif command.first_arg == 'record':
                 if command.second_arg == ON:
                     self._start_video_recording()
                 elif command.second_arg == OFF:
@@ -103,16 +115,15 @@ class Camera(BaseModule):
         use_camera: bool = self.state[USE_CAMERA]
         security_is_enabled: bool = self.state[SECURITY_IS_ENABLED]
 
-        if video_guard and (video_guard.is_stopped or not use_camera or not security_is_enabled):
+        if video_guard and (not self._video_camera.is_run or not use_camera or not security_is_enabled):
             self._disable_security()
             video_guard = None
 
         if not video_guard and use_camera and security_is_enabled and self.state[CAMERA_IS_AVAILABLE]:
             self._enable_security()
-            video_guard = self.state[VIDEO_SECURITY]
 
-        if video_guard:
-            self.state[CURRENT_FPS] = video_guard.motion_detector.fps_tracker.fps()
+        if self._video_camera:
+            self.state[CURRENT_FPS] = self._video_camera.fps
         else:
             self.state[CURRENT_FPS] = None
 
@@ -139,9 +150,15 @@ class Camera(BaseModule):
 
         self.state[USE_CAMERA] = True
 
-        if not self._video_stream:
+        if self._video_camera is None:
             self._video_stream = VideoStream(src=config.VIDEO_SRC, resolution=config.IMAGE_RESOLUTION)
             self._video_stream.start()
+            self._video_camera = VideoCamera(
+                video_stream=self._video_stream,
+                callback=events.frame_from_video_camera.send,
+                max_fps=config.FPS,
+            )
+            self._video_camera.start()
 
         self.messenger.send_message('The camera is on')
 
@@ -156,6 +173,8 @@ class Camera(BaseModule):
             self._disable_security()
 
         if self._video_stream:
+            self._video_camera.stop()
+            self._video_camera = None
             self._video_stream.stop()
             self._video_stream.stream.stream.release()
             self._video_stream = None
@@ -181,7 +200,6 @@ class Camera(BaseModule):
         if self._video_stream:
             video_guard = VideoGuard(
                 messenger=self.messenger,
-                video_stream=self._video_stream,
                 task_queue=self.task_queue,
                 motion_detected_callback=events.motion_detected.send,
             )
@@ -226,20 +244,24 @@ class Camera(BaseModule):
         if not self._can_use_camera():
             return
 
-        # TODO: Implement
-
         self.state[VIDEO_RECORDING_IS_ENABLED] = True
-        self.messenger.send_message('Not implemented')
+        self.messenger.send_message('Start recording...')
 
     @synchronized_method
     def _stop_video_recording(self) -> None:
         if not self._can_use_camera():
             return
 
-        # TODO: Implement
-
         self.state[VIDEO_RECORDING_IS_ENABLED] = False
-        self.messenger.send_message('Not implemented')
+        video_frames = self._video_frames
+        self._video_frames = []
+
+        self.messenger.send_message('Sending the video...')
+        self.task_queue.put(lambda: self.messenger.send_frames_as_video(
+            frames=video_frames,
+            fps=config.FPS,
+            caption='Recorded video',
+        ))
 
     def _can_use_camera(self) -> bool:
         use_camera: bool = self.state[USE_CAMERA]
@@ -280,3 +302,20 @@ class Camera(BaseModule):
             return
 
         self.state[CAMERA_IS_AVAILABLE] = camera_is_available(config.VIDEO_SRC)
+
+    @synchronized_method
+    def _process_frame(self, frame, fps: float) -> None:
+        video_guard: VideoGuard = self.state[VIDEO_SECURITY]
+
+        if video_guard:
+            try:
+                video_guard.process_frame.send((frame, fps,))
+            except Exception as e:
+                logging.exception(e)
+                self.messenger.send_message('Can\'t process the frame')
+                self._disable_camera()
+
+        if self.state[VIDEO_RECORDING_IS_ENABLED]:
+            new_frame = np.copy(frame)
+            add_timestamp_in_frame(new_frame)
+            self._video_frames.append(new_frame)

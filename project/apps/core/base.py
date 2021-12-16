@@ -1,4 +1,5 @@
 import abc
+import logging
 import threading
 import typing
 from dataclasses import dataclass, field
@@ -59,6 +60,8 @@ class BaseModule(abc.ABC):
         pass
 
     def disable(self) -> None:
+        logging.info('[shutdown] Disable module "%s"...', self.__class__.__name__)
+
         for subscriber in self._subscribers_to_events:
             subscriber.disconnect()
 
