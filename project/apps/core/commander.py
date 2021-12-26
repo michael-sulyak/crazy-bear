@@ -1,16 +1,17 @@
 import logging
 import queue
-import time
 import typing
 
 from . import events as core_events
 from .base import BaseModule, ModuleContext
+from ..common.events import Receiver
 from ..common.exceptions import Shutdown
 from ..common.state import State
-from ..common.utils import is_sleep_hours, log_performance
+from ..common.utils import log_performance
 from ..db import close_db_session
 from ..messengers import events
 from ..messengers.base import BaseMessenger
+from ..messengers.events import new_message
 from ..task_queue import BaseTaskQueue, BaseWorker, MemTaskQueue, ThreadWorker
 
 
@@ -21,6 +22,7 @@ class Commander:
     message_queue: queue.Queue
     task_queue: BaseTaskQueue
     task_worker: BaseWorker
+    _receivers: typing.Tuple[Receiver, ...]
 
     def __init__(self, *,
                  messenger: BaseMessenger,
@@ -43,6 +45,10 @@ class Commander:
             for module_class in module_classes
         )
 
+        self._receivers = (
+            new_message.connect(lambda message: self.message_queue.put(message)),
+        )
+
     def run(self) -> typing.NoReturn:
         self.task_worker.run()
 
@@ -50,56 +56,37 @@ class Commander:
 
         while True:
             try:
-                self.tick()
-
-                if is_sleep_hours():
-                    time.sleep(1)
-                else:
-                    time.sleep(0.1)
+                self.process_updates()
             except Shutdown:
                 break
+            except Exception as e:
+                logging.exception(e)
+                self.messenger.exception(e)
 
         self.close()
 
-    def tick(self) -> None:
-        try:
-            self.process_updates()
-        except Shutdown:
-            raise
-        except Exception as e:
-            logging.exception(e)
-            self.messenger.exception(e)
-
     def process_updates(self) -> None:
-        for message in self.messenger.get_updates():
-            if message.command:
-                logging.info(
-                    'Command: %s args=%s kwargs=%s',
-                    message.command.name,
-                    message.command.args,
-                    message.command.kwargs,
-                )
+        message = self.message_queue.get()
 
-            self.message_queue.put(message)
+        if not message.command:
+            return
 
-        while True:
-            try:
-                message = self.message_queue.get(block=False)
-            except queue.Empty:
-                break
+        logging.info(
+            'Command: %s args=%s kwargs=%s',
+            message.command.name,
+            message.command.args,
+            message.command.kwargs,
+        )
 
-            if not message.command:
-                continue
+        with log_performance('cmd', str(message.command)):
+            results, exceptions = events.input_command.process(command=message.command)
+            is_processed = exceptions or any(map(lambda x: x is True, results))
 
-            with log_performance('cmd', str(message.command)):
-                results, exceptions = events.input_command.process(command=message.command)
-                is_processed = exceptions or any(map(lambda x: x is True, results))
+            for exception in exceptions:
+                self.messenger.exception(exception)
 
-                for exception in exceptions:
-                    self.messenger.exception(exception)
-
-                if not is_processed and not exceptions:
-                    self.messenger.send_message('Unknown command')
+            if not is_processed and not exceptions:
+                self.messenger.send_message('Unknown command')
 
     def close(self) -> None:
         logging.info('Home assistant is stopping...')
@@ -112,5 +99,9 @@ class Commander:
 
         logging.info('[shutdown] Closing messenger...')
         self.messenger.close()
+
+        logging.info('[shutdown] Disconnecting receivers...')
+        for receiver in self._receivers:
+            receiver.disconnect()
 
         self.messenger.send_message('Goodbye!')

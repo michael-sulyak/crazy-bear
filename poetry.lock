@@ -266,6 +266,19 @@ test = ["pytest (>=4.0.2)", "pytest-xdist", "hypothesis (>=3.58)"]
 
 [[package]]
 category = "main"
+description = "Pika Python AMQP Client Library"
+name = "pika"
+optional = false
+python-versions = "*"
+version = "1.2.0"
+
+[package.extras]
+gevent = ["gevent"]
+tornado = ["tornado"]
+twisted = ["twisted"]
+
+[[package]]
+category = "main"
 description = "Python Imaging Library (Fork)"
 name = "pillow"
 optional = false
@@ -631,7 +644,7 @@ test = ["pytest (>=3.0.0)", "pytest-cov"]
 heavy = ["numpy", "matplotlib", "pandas", "scipy", "psycopg2-binary"]
 
 [metadata]
-content-hash = "fe0b3cae8da655b772f515061ebc581fd6d60c399a0a3b786d8d90ae1554b66d"
+content-hash = "8790770abcfa37f5b2d742297c80b2a125d257e15afa5c0c64015ff2e29dda6b"
 python-versions = "^3.8"
 
 [metadata.files]
@@ -883,6 +896,10 @@ pandas = [
     {file = "pandas-1.0.5-cp38-cp38-win32.whl", hash = "sha256:f69e0f7b7c09f1f612b1f8f59e2df72faa8a6b41c5a436dde5b615aaf948f107"},
     {file = "pandas-1.0.5-cp38-cp38-win_amd64.whl", hash = "sha256:4c73f373b0800eb3062ffd13d4a7a2a6d522792fa6eb204d67a4fad0a40f03dc"},
     {file = "pandas-1.0.5.tar.gz", hash = "sha256:69c5d920a0b2a9838e677f78f4dde506b95ea8e4d30da25859db6469ded84fa8"},
+]
+pika = [
+    {file = "pika-1.2.0-py2.py3-none-any.whl", hash = "sha256:59da6701da1aeaf7e5e93bb521cc03129867f6e54b7dd352c4b3ecb2bd7ec624"},
+    {file = "pika-1.2.0.tar.gz", hash = "sha256:f023d6ac581086b124190cb3dc81dd581a149d216fa4540ac34f9be1e3970b89"},
 ]
 pillow = [
     {file = "Pillow-8.4.0-cp310-cp310-macosx_10_10_universal2.whl", hash = "sha256:81f8d5c81e483a9442d72d182e1fb6dcb9723f289a57e8030811bac9ea3fef8d"},

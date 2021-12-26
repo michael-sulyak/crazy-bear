@@ -22,6 +22,7 @@ numpy==1.18.4
 openpyxl==3.0.9
 packaging==21.3
 pandas==1.0.5
+pika==1.2.0
 pillow==8.4.0
 pluggy==1.0.0
 ply==3.11

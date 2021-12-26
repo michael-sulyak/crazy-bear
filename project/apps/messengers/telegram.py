@@ -1,24 +1,24 @@
+import json
 import logging
-import os
 import queue
-import ssl
 import threading
 import traceback
 import typing
-import uuid
 from functools import partial
 from time import sleep
 
+import pika
 import telegram
 from emoji import emojize
 from telegram import ReplyMarkup, Update as TelegramUpdate
 from telegram.error import NetworkError as TelegramNetworkError, TimedOut as TelegramTimedOut
-from telegram.ext.utils.webhookhandler import WebhookAppClass, WebhookServer
+from telegram.ext.utils.webhookhandler import WebhookServer
 from telegram.utils.request import Request as TelegramRequest
 
+from . import events
 from .base import BaseMessenger
 from .mixins import CVMixin
-from ..common.utils import get_my_ip, synchronized_method
+from ..common.utils import synchronized_method
 from ..core.base import Command, Message
 from ... import config
 
@@ -44,68 +44,53 @@ class TelegramMessenger(CVMixin, BaseMessenger):
     _lock: threading.RLock
     _update_queue: queue.Queue
     _webhook_server: WebhookServer
-    _server_worker: threading.Thread
+    _worker: threading.Thread
 
     def __init__(self, *,
                  request: typing.Optional[TelegramRequest] = None,
                  default_reply_markup: typing.Optional = None) -> None:
+        self.default_reply_markup = default_reply_markup
         self._bot = telegram.Bot(
             token=config.TELEGRAM_TOKEN,
             request=request,
         )
         self._lock = threading.RLock()
-        self.default_reply_markup = default_reply_markup
         self._update_queue = queue.Queue()
-        self._start_webhook_server()
+        self._run_worker()
 
-    def _start_webhook_server(self) -> None:
-        ip = get_my_ip()
-        endpoint_for_webhook = str(uuid.uuid4())
-
-        os.system(
-            f'openssl req -newkey rsa:2048 -sha256 -nodes -keyout {WEBHOOK_SSL_KEY} -x509 -days 365 '
-            f'-out {WEBHOOK_SSL_PEM} -subj "/C=US/ST=New York/L=Brooklyn/O=Example Brooklyn Company/CN={ip}" '
-            f'v>/dev/null 2>&1'
-        )
-
-        webhook_url = f'https://{ip}:{WEBHOOK_PORT}/{endpoint_for_webhook}'
-
-        logging.info('Starting webhook on %s...', webhook_url)
-
+    def _run_worker(self) -> None:
         def _worker() -> typing.NoReturn:
-            webhook_app = WebhookAppClass(
-                webhook_path=f'/{endpoint_for_webhook}',
-                bot=self._bot,
-                update_queue=self._update_queue,
-            )
+            connection = pika.BlockingConnection(pika.ConnectionParameters(host='mq', heartbeat=600))
+            channel = connection.channel()
 
-            ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-            ssl_ctx.load_cert_chain(certfile=WEBHOOK_SSL_PEM, keyfile=WEBHOOK_SSL_KEY)
-
-            self._webhook_server = WebhookServer(
-                listen='0.0.0.0',
-                port=WEBHOOK_PORT,
-                webhook_app=webhook_app,
-                ssl_ctx=ssl_ctx,
-            )
-
-            with open(WEBHOOK_SSL_PEM, 'rb') as cert_file:
-                self._bot.set_webhook(
-                    url=webhook_url,
-                    certificate=cert_file,
-                    ip_address=ip,
-                    drop_pending_updates=True,
-                    max_connections=40,
+            def _callback(ch, method, properties, body: bytes):
+                telegram_update = TelegramUpdate.de_json(
+                    data=json.loads(body.decode('utf-8')),
+                    bot=self._bot,
                 )
+                self._process_telegram_message(telegram_update)
 
-            self._webhook_server.serve_forever()
+            channel.queue_declare(queue=config.TELEGRAM_QUEUE_NAME)
+            channel.basic_consume(queue=config.TELEGRAM_QUEUE_NAME, on_message_callback=_callback, auto_ack=True)
+            channel.start_consuming()
 
-        self._server_worker = threading.Thread(target=_worker)
-        self._server_worker.start()
+        self._worker = threading.Thread(target=_worker)
+        self._worker.start()
+
+    def _process_telegram_message(self, update: TelegramUpdate) -> None:
+        if update.message.from_user.username != config.TELEGRAM_USERNAME:
+            text = update.message.text.replace("`", "\\`")
+            self.error(
+                f'User "{update.effective_user.name}" (@{update.effective_user.username}) sent '
+                f'in chat #{update.effective_chat.id}:\n'
+                f'```\n{text}\n```'
+            )
+            return
+
+        events.new_message.send(message=self._parse_update(update))
 
     def close(self) -> None:
-        self._webhook_server.shutdown()
-        self._server_worker.join()
+        self._worker.join(0)
 
     @synchronized_method
     def send_message(self, text: str, *,

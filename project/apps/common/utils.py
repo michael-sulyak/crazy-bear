@@ -2,6 +2,7 @@ import datetime
 import functools
 import io
 import logging
+import os
 import threading
 import typing
 from contextlib import contextmanager
@@ -115,27 +116,27 @@ def create_plot(*,
             postfix = ''
 
         if diff < datetime.timedelta(seconds=10):
-            ax.xaxis.set_major_formatter(DateFormatter('%H:%M:%S', tz=config.PY_TIME_ZONE))
+            ax.xaxis.set_major_formatter(DateFormatter('%H:%M:%S', tz=config.PY_TZ))
             ax.xaxis.set_major_locator(mdates.SecondLocator(interval=1))
             plt.xlabel(f'Time {postfix}')
         elif diff < datetime.timedelta(minutes=20):
-            ax.xaxis.set_major_formatter(DateFormatter('%H:%M', tz=config.PY_TIME_ZONE))
+            ax.xaxis.set_major_formatter(DateFormatter('%H:%M', tz=config.PY_TZ))
             ax.xaxis.set_major_locator(mdates.MinuteLocator(interval=1))
             plt.xlabel(f'Time {postfix}')
         elif diff <= datetime.timedelta(hours=24):
-            ax.xaxis.set_major_formatter(DateFormatter('%H', tz=config.PY_TIME_ZONE))
+            ax.xaxis.set_major_formatter(DateFormatter('%H', tz=config.PY_TZ))
             ax.xaxis.set_major_locator(mdates.HourLocator(interval=1))
             plt.xlabel(f'Hours {postfix}')
         elif diff < datetime.timedelta(days=30):
-            ax.xaxis.set_major_formatter(DateFormatter('%d', tz=config.PY_TIME_ZONE))
+            ax.xaxis.set_major_formatter(DateFormatter('%d', tz=config.PY_TZ))
             ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
             plt.xlabel(f'Days {postfix}')
         elif diff < datetime.timedelta(days=30 * 15):
-            ax.xaxis.set_major_formatter(DateFormatter('%m', tz=config.PY_TIME_ZONE))
+            ax.xaxis.set_major_formatter(DateFormatter('%m', tz=config.PY_TZ))
             ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
             plt.xlabel(f'Months {postfix}')
         else:
-            ax.xaxis.set_major_formatter(DateFormatter('%y', tz=config.PY_TIME_ZONE))
+            ax.xaxis.set_major_formatter(DateFormatter('%y', tz=config.PY_TZ))
             ax.xaxis.set_major_locator(mdates.YearLocator())
             plt.xlabel(f'Years {postfix}')
     else:
@@ -280,3 +281,8 @@ def add_timestamp_in_frame(frame: np.array) -> None:
         color=(0, 0, 255,),
         thickness=1,
     )
+
+
+def get_ram_usage() -> float:
+    total, used, free = map(int, os.popen('free -t -m').readlines()[1].split()[1:4])
+    return 1 - free / total

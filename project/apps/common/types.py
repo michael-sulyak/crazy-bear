@@ -7,6 +7,9 @@ class FrozenDict(collections.Mapping):
         self._d = dict(*args, **kwargs)
         self._hash = None
 
+    def __repr__(self) -> str:
+        return repr(self._d)
+
     def __iter__(self) -> typing.Iterator:
         return iter(self._d)
 

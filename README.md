@@ -29,5 +29,5 @@ docker-compose up -d
 
 4. If you want to use Arduino then you need to upload `arduino_core`. Libs:
 ```bash
-arduino-cli lib install RF24 "DHT sensor library" Crypto ArduinoJson
+arduino-cli lib install RF24 "DHT sensor library" ArduinoJson
 ```

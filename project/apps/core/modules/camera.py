@@ -183,8 +183,6 @@ class Camera(BaseModule):
 
     @synchronized_method
     def _enable_security(self) -> None:
-        # TODO: Fix camera usage. Lack of power or overheating of the processor.
-
         if not self.state[USE_CAMERA]:
             return
 
@@ -193,9 +191,6 @@ class Camera(BaseModule):
         if video_guard:
             self.messenger.send_message('Video security is already enabled')
             return
-
-        # if not self._video_stream:
-        #     self._enable_camera()
 
         if self._video_stream:
             video_guard = VideoGuard(

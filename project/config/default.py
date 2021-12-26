@@ -23,6 +23,7 @@ DEBUG = env.bool('DEBUG')
 TELEGRAM_CHAT_ID = env('TELEGRAM_CHAT_ID')
 TELEGRAM_TOKEN = env('TELEGRAM_TOKEN')
 TELEGRAM_USERNAME = env('TELEGRAM_USERNAME')
+TELEGRAM_QUEUE_NAME = env('TELEGRAM_QUEUE_NAME')
 
 # Services
 OPENWEATHERMAP_URL = env('OPENWEATHERMAP_URL')
@@ -43,7 +44,7 @@ STORAGE_TIME = env.timedelta('STORAGE_TIME')
 
 # Time
 TZ = env('TZ')
-PY_TIME_ZONE = pytz.timezone(TZ)
+PY_TZ = pytz.timezone(TZ)
 time.tzset()
 
 # Sentry

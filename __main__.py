@@ -88,7 +88,7 @@ def main():
     init_settings_for_plt()
 
     logging.info('Creating database...')
-    db.Base.metadata.create_all(db.db_engine)
+    db.Base.metadata.create_all(db.db_engine, checkfirst=True)
 
     state = State({
         INITED_AT: datetime.datetime.now(),
@@ -120,7 +120,7 @@ def main():
         DelayedTask(
             target=file_storage.remove_old_folders,
             priority=TaskPriorities.LOW,
-            delay=datetime.timedelta(seconds=10),
+            delay=datetime.timedelta(seconds=30),
         ),
         ScheduledTask(
             target=file_storage.remove_old_folders,

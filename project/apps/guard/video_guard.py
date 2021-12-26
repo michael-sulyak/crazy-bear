@@ -1,14 +1,11 @@
 import datetime
-import threading
 import typing
 
-import cv2
 import numpy as np
-from imutils.video import VideoStream
 
 from .motion_detector import MotionDetector
-from ..common.storage import file_storage
 from .. import task_queue as tq
+from ..common.storage import file_storage
 from ..messengers.base import BaseMessenger
 from ... import config
 
@@ -24,7 +21,7 @@ class VideoGuard:
                  messenger: BaseMessenger,
                  task_queue: tq.BaseTaskQueue,
                  motion_detected_callback: typing.Optional[typing.Callable] = None) -> None:
-        self.motion_detector = MotionDetector(imshow=config.IMSHOW, max_fps=config.FPS)
+        self.motion_detector = MotionDetector(show_frames=config.IMSHOW, max_fps=config.FPS)
         self.messenger = messenger
         self.task_queue = task_queue
         self.motion_detected_callback = motion_detected_callback
@@ -92,6 +89,13 @@ class VideoGuard:
                 min_frames_for_send_video = len(frames) + config.FPS * 5
 
             frames.append(self.motion_detector.marked_frame)
+
+            if len(frames) > config.FPS * 60 * 10:
+                if self.motion_detector.is_occupied:
+                    send_video = True
+                    min_frames_for_send_video = 0
+                else:
+                    frames = frames[-self.motion_detector.is_occupied * 60 * 5:]
 
             if send_video and len(frames) >= min_frames_for_send_video:
                 send_video = False

@@ -11,11 +11,11 @@ services:
     privileged: true
     volumes:
       - .:/app
-      - /dev:/dev
-    ports:
-      - "8443:8443"
     depends_on:
       - postgres
+    networks:
+      - default
+      - telehooks_mq
     command: python3 __main__.py
 
   postgres:
@@ -30,3 +30,7 @@ services:
 
 volumes:
   postgres_data: { }
+
+networks:
+  telehooks_mq:
+    external: true

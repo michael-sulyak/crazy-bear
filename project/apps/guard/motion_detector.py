@@ -15,10 +15,10 @@ class MotionDetector:
     movement_ttl = datetime.timedelta(seconds=20)
     is_occupied: bool = False
     last_change_timestamp: typing.Optional[datetime.datetime] = None
-    imshow: bool
+    show_frames: bool
 
-    def __init__(self, *, imshow: bool, max_fps: int) -> None:
-        self.imshow = imshow
+    def __init__(self, *, show_frames: bool, max_fps: int) -> None:
+        self.show_frames = show_frames
         self.max_fps = max_fps
 
     def process_new_frame(self, frame: np.array, *, fps: float) -> None:
@@ -63,11 +63,11 @@ class MotionDetector:
 
         self._draw_result(frame=frame, thresh=thresh, frame_delta=frame_delta, fps=fps)
 
-        if self.imshow:
+        if self.show_frames:
             cv2.waitKey(1)
 
     def realese(self) -> None:
-        if self.imshow:
+        if self.show_frames:
             cv2.destroyAllWindows()
 
     def _draw_result(self, *, frame: np.array, thresh: np.array, frame_delta: np.array, fps: float) -> None:
@@ -102,7 +102,7 @@ class MotionDetector:
             thickness=1,
         )
 
-        if self.imshow:
+        if self.show_frames:
             cv2.imshow('Security Feed', self.marked_frame)
             cv2.imshow('Thresh', thresh)
             cv2.imshow('Frame Delta', frame_delta)

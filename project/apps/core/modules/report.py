@@ -1,7 +1,6 @@
 import datetime
 import io
 import logging
-import os
 import typing
 
 from emoji import emojize
@@ -17,7 +16,7 @@ from ...arduino.constants import ArduinoSensorTypes
 from ...common.constants import INITED_AT
 from ...common.utils import (
     convert_params_to_date_range, create_plot, get_cpu_temp,
-    get_weather, synchronized_method,
+    get_ram_usage, get_weather, synchronized_method,
 )
 from ...core import constants
 from ...core.constants import (
@@ -41,6 +40,7 @@ class Report(BaseModule):
     )
     _timedelta_for_ping: datetime.timedelta = datetime.timedelta(seconds=30)
     _last_cpu_notification: datetime.datetime
+    _last_ram_notification: datetime.datetime
     _stats_flags_map = {
         'a': 'arduino',
         'e': 'extra_data',
@@ -53,6 +53,7 @@ class Report(BaseModule):
 
         now = datetime.datetime.now()
         self._last_cpu_notification = now
+        self._last_ram_notification = now
 
         self.task_queue.put_task(RepeatableTask(
             target=self._ping_task_queue,
@@ -202,29 +203,27 @@ class Report(BaseModule):
         humidity = Signal.last_aggregated(ArduinoSensorTypes.HUMIDITY)
         temperature = Signal.last_aggregated(ArduinoSensorTypes.TEMPERATURE)
 
+        def _get_mark(value: float, range_1: typing.Tuple[float, float], range_2: typing.Tuple[float, float]) -> str:
+            is_not_good = not (range_1[0] <= value <= range_1[1])
+            is_bad = not (range_2[0] <= value <= range_2[1])
+
+            if is_bad:
+                return emojize(':red_exclamation_mark:')
+
+            if is_not_good:
+                return emojize(':white_exclamation_mark:')
+
+            return ''
+
         if humidity is None:
             humidity = nothing
         else:
-            humidity_is_not_good = not (40 <= humidity <= 60)
-            humidity_is_bad = not (30 <= humidity <= 60)
-            humidity = f'{round(humidity, 1)}%'
-
-            if humidity_is_bad:
-                humidity += emojize(':red_exclamation_mark:')
-            elif humidity_is_not_good:
-                humidity += emojize(':white_exclamation_mark:')
+            humidity = f'{round(humidity, 1)}%{ _get_mark(humidity, (40, 60,), (30, 60,))}'
 
         if temperature is None:
             temperature = nothing
         else:
-            temperature_is_not_good = not (19 <= temperature <= 22.5)
-            temperature_is_bad = not (18 <= temperature <= 25.5)
-            temperature = f'{round(temperature, 1)}℃'
-
-            if temperature_is_bad:
-                temperature += emojize(':red_exclamation_mark:')
-            elif temperature_is_not_good:
-                temperature += emojize(':white_exclamation_mark:')
+            temperature = f'{round(temperature, 1)}℃{ _get_mark(temperature, (19, 22.5,), (18, 25.5,))}'
 
         if self.state[CURRENT_FPS] is None:
             current_fps = nothing
@@ -232,17 +231,13 @@ class Report(BaseModule):
             current_fps = round(self.state[CURRENT_FPS], 2)
 
         try:
-            cpu_temp = get_cpu_temp()
-            cpu_temp_is_not_good = not (cpu_temp <= 60)
-            cpu_temp_is_bad = not (cpu_temp <= 80)
-            cpu_temperature = f'{round(get_cpu_temp(), 1)}℃'
-
-            if cpu_temp_is_bad:
-                cpu_temperature += emojize(':red_exclamation_mark:')
-            elif cpu_temp_is_not_good:
-                cpu_temperature += emojize(':white_exclamation_mark:')
+            cpu_temperature = get_cpu_temp()
+            cpu_temperature = f'{round(cpu_temperature, 1)}℃{ _get_mark(cpu_temperature, (0, 60,), (0, 80,))}'
         except RuntimeError:
             cpu_temperature = nothing
+
+        ram_usage = get_ram_usage() * 100
+        ram_usage = f'{round(ram_usage, 1)}%{ _get_mark(ram_usage, (0, 60,), (0, 80,))}'
 
         connected_devices = get_connected_devices_to_router()
         connected_devices_str = ', '.join(
@@ -271,7 +266,8 @@ class Report(BaseModule):
             f'{emojize(":bar_chart:")} *Sensors*\n'
             f'Humidity: `{humidity}`\n'
             f'Temperature: `{temperature}`\n'
-            f'CPU Temperature: `{cpu_temperature}`\n\n'
+            f'CPU Temperature: `{cpu_temperature}`\n'
+            f'RAM usage: `{ram_usage}`\n\n'
 
             f'{emojize(":clipboard:")} *Other info*\n'
             f'Recommendation system: {yes if self.state[RECOMMENDATION_SYSTEM_IS_ENABLED] else no}\n'
@@ -353,17 +349,24 @@ class Report(BaseModule):
             if now - self._last_cpu_notification > datetime.timedelta(minutes=30):
                 if cpu_temperature > 70:
                     self.messenger.send_message('CPU temperature is very high!')
-                    self._last_cpu_notification = now - datetime.timedelta(minutes=28)
+                    self._last_cpu_notification = now - datetime.timedelta(minutes=20)
                 elif cpu_temperature > 60:
                     self.messenger.send_message('CPU temperature is high!')
                     self._last_cpu_notification = now
 
-    @staticmethod
-    def _save_ram_usage():
-        tot_m, used_m, free_m = map(int, os.popen('free -t -m').readlines()[1].split()[1:4])
-        value = round(used_m / tot_m * 100, 2)
+    def _save_ram_usage(self) -> None:
+        ram_usage = round(get_ram_usage() * 100, 2)
+        Signal.add(signal_type=constants.RAM_USAGE, value=ram_usage)
 
-        Signal.add(signal_type=constants.RAM_USAGE, value=value)
+        now = datetime.datetime.now()
+
+        if now - self._last_ram_notification > datetime.timedelta(minutes=30):
+            if ram_usage > 80:
+                self.messenger.send_message('Running out of RAM!!!')
+                self._last_ram_notification = now - datetime.timedelta(minutes=20)
+            elif ram_usage > 60:
+                self.messenger.send_message('Running out of RAM!')
+                self._last_ram_notification = now
 
     def _send_report(self) -> None:
         now = datetime.datetime.now()

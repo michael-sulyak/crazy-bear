@@ -30,7 +30,6 @@ class RecommendationSystem(BaseModule):
             events.new_arduino_data.connect(self._process_new_arduino_logs),
         )
 
-    @synchronized_method
     def process_command(self, command: Command) -> typing.Any:
         if command.name == BotCommands.RECOMMENDATION_SYSTEM:
             if command.first_arg == ON:
