@@ -10,6 +10,7 @@ from time import sleep
 import pika
 import telegram
 from emoji import emojize
+from pika.exceptions import AMQPConnectionError
 from telegram import ReplyMarkup, Update as TelegramUpdate
 from telegram.error import NetworkError as TelegramNetworkError, TimedOut as TelegramTimedOut
 from telegram.ext.utils.webhookhandler import WebhookServer
@@ -60,7 +61,15 @@ class TelegramMessenger(CVMixin, BaseMessenger):
 
     def _run_worker(self) -> None:
         def _worker() -> typing.NoReturn:
-            connection = pika.BlockingConnection(pika.ConnectionParameters(host='mq', heartbeat=600))
+            connection = None
+            while connection is None:
+                try:
+                    connection = pika.BlockingConnection(pika.ConnectionParameters(host='mq', heartbeat=600))
+                except AMQPConnectionError as e:
+                    logging.error(e)
+                    logging.info('Waiting AMQP...')
+                    sleep(1)
+
             channel = connection.channel()
 
             def _callback(ch, method, properties, body: bytes):
@@ -78,7 +87,9 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         self._worker.start()
 
     def _process_telegram_message(self, update: TelegramUpdate) -> None:
-        if update.message.from_user.username != config.TELEGRAM_USERNAME:
+        username = update.message.from_user and update.message.from_user.username
+
+        if username != config.TELEGRAM_USERNAME:
             text = update.message.text.replace("`", "\\`")
             self.error(
                 f'User "{update.effective_user.name}" (@{update.effective_user.username}) sent '
@@ -177,33 +188,33 @@ class TelegramMessenger(CVMixin, BaseMessenger):
             logging.warning(e, exc_info=True)
             sleep(1)
 
-    @synchronized_method
-    def get_updates(self) -> typing.Iterator[Message]:
-        # now = datetime.datetime.now()
-
-        while True:
-            try:
-                update = self._update_queue.get(block=False)
-            except queue.Empty:
-                break
-
-            if update.message.from_user.username != config.TELEGRAM_USERNAME:
-                text = update.message.text.replace("`", "\\`")
-                self.error(
-                    f'User "{update.effective_user.name}" (@{update.effective_user.username}) sent '
-                    f'in chat #{update.effective_chat.id}:\n'
-                    f'```\n{text}\n```'
-                )
-                continue
-
-            # See drop_pending_updates=True,
-            # sent_at = update.message.date.astimezone(config.PY_TIME_ZONE).replace(tzinfo=None)
-            #
-            # if now - sent_at < datetime.timedelta(seconds=30):
-            #     yield self._parse_update(update)
-            # else:
-            #     logging.debug(f'Skip telegram message: {update.message.text}')
-            yield self._parse_update(update)
+    # @synchronized_method
+    # def get_updates(self) -> typing.Iterator[Message]:
+    #     # now = datetime.datetime.now()
+    #
+    #     while True:
+    #         try:
+    #             update = self._update_queue.get(block=False)
+    #         except queue.Empty:
+    #             break
+    #
+    #         if update.message.from_user.username != config.TELEGRAM_USERNAME:
+    #             text = update.message.text.replace("`", "\\`")
+    #             self.error(
+    #                 f'User "{update.effective_user.name}" (@{update.effective_user.username}) sent '
+    #                 f'in chat #{update.effective_chat.id}:\n'
+    #                 f'```\n{text}\n```'
+    #             )
+    #             continue
+    #
+    #         # See drop_pending_updates=True,
+    #         # sent_at = update.message.date.astimezone(config.PY_TIME_ZONE).replace(tzinfo=None)
+    #         #
+    #         # if now - sent_at < datetime.timedelta(seconds=30):
+    #         #     yield self._parse_update(update)
+    #         # else:
+    #         #     logging.debug(f'Skip telegram message: {update.message.text}')
+    #         yield self._parse_update(update)
 
     @staticmethod
     def _parse_update(update: TelegramUpdate) -> Message:

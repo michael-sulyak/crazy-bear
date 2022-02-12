@@ -21,7 +21,7 @@ __all__ = (
 
 class Router(BaseModule):
     _last_connected_at: datetime.datetime
-    _timedelta_for_connection: datetime.timedelta = datetime.timedelta(seconds=30)
+    _timedelta_for_connection: datetime.timedelta = datetime.timedelta(seconds=10)
     _user_was_connected: typing.Optional[bool] = None
     _last_saving: datetime.datetime
     _timedelta_for_saving: datetime.timedelta = datetime.timedelta(minutes=1)
