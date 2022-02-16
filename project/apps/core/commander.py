@@ -13,6 +13,7 @@ from ..messengers import events
 from ..messengers.base import BaseMessenger
 from ..messengers.events import new_message
 from ..task_queue import BaseTaskQueue, BaseWorker, MemTaskQueue, ThreadWorker
+from ..zigbee.base import ZigBee
 
 
 class Commander:
@@ -22,6 +23,7 @@ class Commander:
     message_queue: queue.Queue
     task_queue: BaseTaskQueue
     task_worker: BaseWorker
+    zig_bee: ZigBee
     _receivers: typing.Tuple[Receiver, ...]
 
     def __init__(self, *,
@@ -33,11 +35,13 @@ class Commander:
         self.task_worker = ThreadWorker(task_queue=self.task_queue, on_close=close_db_session)
         self.messenger = messenger
         self.state = state
+        self.zig_bee = ZigBee()
 
         module_context = ModuleContext(
             messenger=self.messenger,
             state=self.state,
             task_queue=self.task_queue,
+            zig_bee=self.zig_bee,
         )
 
         self.command_handlers = tuple(
@@ -50,6 +54,7 @@ class Commander:
         )
 
     def run(self) -> typing.NoReturn:
+        self.zig_bee.open()
         self.task_worker.run()
 
         logging.info('Commander is started.')
@@ -103,5 +108,8 @@ class Commander:
         logging.info('[shutdown] Disconnecting receivers...')
         for receiver in self._receivers:
             receiver.disconnect()
+
+        logging.info('[shutdown] Closing ZigBee...')
+        self.zig_bee.close()
 
         self.messenger.send_message('Goodbye!')

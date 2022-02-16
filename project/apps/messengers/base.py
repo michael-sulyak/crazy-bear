@@ -5,6 +5,8 @@ from . import mixins
 
 
 class BaseMessenger(mixins.BaseCVMixin, abc.ABC):
+    last_message_id: typing.Any
+
     @abc.abstractmethod
     def send_message(self, text: str, *args, **kwargs) -> typing.Any:
         pass
@@ -32,10 +34,6 @@ class BaseMessenger(mixins.BaseCVMixin, abc.ABC):
     @abc.abstractmethod
     def start_typing(self, *args, **kwargs) -> None:
         pass
-
-    # @abc.abstractmethod
-    # def get_updates(self) -> typing.Iterator['Message']:
-    #     pass
 
     def close(self) -> None:
         pass

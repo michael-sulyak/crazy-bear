@@ -6,4 +6,5 @@ from .auto_security import *
 from .router import *
 from .recommendation_system import *
 from .signals import *
-from .devices import *
+from .wifi_devices import *
+from .smart_alarm_clock import *

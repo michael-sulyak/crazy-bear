@@ -47,7 +47,7 @@ class ThreadWorker(BaseWorker):
     _is_run: threading.Event
     _thread: threading.Thread
     _on_close: typing.Optional[typing.Callable]
-    _getting_delay: int = 1
+    _getting_delay: float = 0.2
 
     def __init__(self, *,
                  task_queue: BaseTaskQueue,

@@ -105,13 +105,14 @@ def main():
         module_classes=(
             modules.Camera,
             modules.Arduino,
-            modules.Menu,
+            modules.MenuModule,
             modules.Report,
             modules.AutoSecurity,
             modules.Router,
             modules.RecommendationSystem,
             modules.Signals,
-            modules.Devices,
+            modules.WiFiDevices,
+            modules.SmartAlarmClock,
         ),
         state=state,
     )

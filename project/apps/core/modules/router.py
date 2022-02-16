@@ -63,8 +63,8 @@ class Router(BaseModule):
         )
 
     def process_command(self, command: Command) -> typing.Any:
-        if command.name == BotCommands.CONNECTED_DEVICES:
-            self._send_connected_devices()
+        if command.name == BotCommands.RAW_WIFI_DEVICES:
+            self._send_wifi_connected_devices()
             return True
 
         return False
@@ -122,7 +122,7 @@ class Router(BaseModule):
 
         return create_plot(title='User is connected to router', x_attr='received_at', y_attr='value', stats=stats)
 
-    def _send_connected_devices(self) -> None:
+    def _send_wifi_connected_devices(self) -> None:
         message = ''
 
         if config.ROUTER_TYPE == 'tplink':

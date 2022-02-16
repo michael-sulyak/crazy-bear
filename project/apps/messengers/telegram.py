@@ -12,7 +12,9 @@ import telegram
 from emoji import emojize
 from pika.exceptions import AMQPConnectionError
 from telegram import ReplyMarkup, Update as TelegramUpdate
-from telegram.error import NetworkError as TelegramNetworkError, TimedOut as TelegramTimedOut
+from telegram.error import (
+    NetworkError as TelegramNetworkError, TimedOut as TelegramTimedOut,
+)
 from telegram.ext.utils.webhookhandler import WebhookServer
 from telegram.utils.request import Request as TelegramRequest
 
@@ -46,6 +48,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
     _update_queue: queue.Queue
     _webhook_server: WebhookServer
     _worker: threading.Thread
+    _last_message_id: typing.Any = None
 
     def __init__(self, *,
                  request: typing.Optional[TelegramRequest] = None,
@@ -58,6 +61,11 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         self._lock = threading.RLock()
         self._update_queue = queue.Queue()
         self._run_worker()
+
+    @property
+    @synchronized_method
+    def last_message_id(self) -> typing.Any:
+        return self._last_message_id
 
     def _run_worker(self) -> None:
         def _worker() -> typing.NoReturn:
@@ -104,7 +112,8 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         self._worker.join(0)
 
     @synchronized_method
-    def send_message(self, text: str, *,
+    def send_message(self,
+                     text: str, *,
                      parse_mode: str = 'markdown',
                      reply_markup: typing.Optional[ReplyMarkup] = DEFAULT,
                      message_id: typing.Optional[int] = None) -> typing.Optional[int]:
@@ -126,17 +135,20 @@ class TelegramMessenger(CVMixin, BaseMessenger):
                 parse_mode=parse_mode,
                 reply_markup=reply_markup,
             )
-        except (TelegramNetworkError, TelegramTimedOut,) as e:
+        except TelegramNetworkError as e:
             logging.warning(e, exc_info=True)
-            sleep(1)
+            sleep(1)  # TODO: Repeat request
+            # TODO: Raise for MESSAGE_EDIT_TIME_EXPIRED and other
             return None
+
+        self._last_message_id = message_id or result.message_id
 
         return message_id or result.message_id
 
     @synchronized_method
     def send_image(self, image: typing.Any, *, caption: typing.Optional[str] = None) -> None:
         try:
-            self._bot.send_photo(
+            result = self._bot.send_photo(
                 self.chat_id,
                 photo=image,
                 caption=caption,
@@ -144,6 +156,8 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         except (TelegramNetworkError, TelegramTimedOut,) as e:
             logging.warning(e, exc_info=True)
             sleep(1)
+        else:
+            self._last_message_id = result.message_id
 
     @synchronized_method
     def send_images(self, images: typing.Any) -> None:
@@ -151,18 +165,20 @@ class TelegramMessenger(CVMixin, BaseMessenger):
             return
 
         try:
-            self._bot.send_media_group(
+            results = self._bot.send_media_group(
                 self.chat_id,
                 media=list(telegram.InputMediaPhoto(image) for image in images),
             )
         except (TelegramNetworkError, TelegramTimedOut,) as e:
             logging.warning(e, exc_info=True)
             sleep(1)
+        else:
+            self._last_message_id = results[-1].message_id
 
     @synchronized_method
     def send_file(self, file: typing.Any, *, caption: typing.Optional[str] = None) -> None:
         try:
-            self._bot.send_document(
+            result = self._bot.send_document(
                 self.chat_id,
                 document=file,
                 caption=caption,
@@ -170,6 +186,8 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         except (TelegramNetworkError, TelegramTimedOut,) as e:
             logging.warning(e, exc_info=True)
             sleep(1)
+        else:
+            self._last_message_id = result.message_id
 
     @synchronized_method
     def error(self, text: str, *, _title: str = 'Error') -> None:
@@ -187,34 +205,6 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         except (TelegramNetworkError, TelegramTimedOut,) as e:
             logging.warning(e, exc_info=True)
             sleep(1)
-
-    # @synchronized_method
-    # def get_updates(self) -> typing.Iterator[Message]:
-    #     # now = datetime.datetime.now()
-    #
-    #     while True:
-    #         try:
-    #             update = self._update_queue.get(block=False)
-    #         except queue.Empty:
-    #             break
-    #
-    #         if update.message.from_user.username != config.TELEGRAM_USERNAME:
-    #             text = update.message.text.replace("`", "\\`")
-    #             self.error(
-    #                 f'User "{update.effective_user.name}" (@{update.effective_user.username}) sent '
-    #                 f'in chat #{update.effective_chat.id}:\n'
-    #                 f'```\n{text}\n```'
-    #             )
-    #             continue
-    #
-    #         # See drop_pending_updates=True,
-    #         # sent_at = update.message.date.astimezone(config.PY_TIME_ZONE).replace(tzinfo=None)
-    #         #
-    #         # if now - sent_at < datetime.timedelta(seconds=30):
-    #         #     yield self._parse_update(update)
-    #         # else:
-    #         #     logging.debug(f'Skip telegram message: {update.message.text}')
-    #         yield self._parse_update(update)
 
     @staticmethod
     def _parse_update(update: TelegramUpdate) -> Message:

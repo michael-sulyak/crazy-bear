@@ -1,7 +1,7 @@
 echo "Updating..."
 sudo apt update && sudo apt upgrade
 
-echo "Install dependencies..."
+echo "Installing dependencies..."
 sudo apt install -y \
     fail2ban \
     python3-pip \
@@ -15,18 +15,22 @@ sudo apt install -y \
     gpiozero \
     RPi.GPIO
 
-sudo ufw allow 22 && sudo ufw enable
+echo "Enabling UFW..."
+sudo ufw allow 22 && \
+  sudo ufw allow 8443/udp && \
+  sudo ufw allow 8080 && \
+  sudo ufw enable
 
-echo "Install OpenCV..."
+echo "InstallING OpenCV..."
 sudo apt install python3-opencv
 
-echo "Config docker..."
+echo "Configuring docker..."
 sudo groupadd docker
 sudo usermod -aG docker $USER
 newgrp docker
 sudo systemctl enable docker
 
-echo "Install other dependencies..."
+echo "Installing other dependencies..."
 sudo apt install -y \
     libfreetype6-dev \
     pkg-config \
@@ -50,8 +54,8 @@ sudo apt install -y \
     libhdf5-103 \
     python3-pyqt5
 
-echo "Build app..."
-docker-compose build
+echo "Building app..."
+docker-compose -p crazy_bear -f docker-compose.prod.yml build
 
-echo "Up app..."
-docker-compose up -d
+echo "Starting app..."
+docker-compose -p crazy_bear -f docker-compose.prod.yml up -d

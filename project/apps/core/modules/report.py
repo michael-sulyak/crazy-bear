@@ -1,6 +1,7 @@
 import datetime
 import io
 import logging
+import threading
 import typing
 
 from emoji import emojize
@@ -47,6 +48,8 @@ class Report(BaseModule):
         'i': 'inner_stats',
         'r': 'router_usage',
     }
+    _lock_for_status: threading.RLock
+    _message_id_for_status: typing.Any = None
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -54,6 +57,7 @@ class Report(BaseModule):
         now = datetime.datetime.now()
         self._last_cpu_notification = now
         self._last_ram_notification = now
+        self._lock_for_status = threading.RLock()
 
         self.task_queue.put_task(RepeatableTask(
             target=self._ping_task_queue,
@@ -79,6 +83,11 @@ class Report(BaseModule):
                 priority=TaskPriorities.LOW,
                 interval=datetime.timedelta(minutes=10),
             ),
+            IntervalTask(
+                target=self._update_status,
+                priority=TaskPriorities.LOW,
+                interval=datetime.timedelta(minutes=1),
+            ),
         )
 
     def subscribe_to_events(self) -> tuple:
@@ -88,38 +97,6 @@ class Report(BaseModule):
             events.request_for_statistics.connect(self._create_task_queue_stats),
             events.request_for_statistics.connect(self._create_ram_stats),
         )
-
-    def _pipe_for_stats(self, receivers: typing.Sequence, kwargs: dict) -> None:
-        with ProgressBar(self.messenger, title='Collecting stats...') as progress_bar:
-            count = len(receivers)
-            plots = []
-            exceptions = []
-
-            for i in range(count):
-                try:
-                    result = yield
-                except Exception as e:
-                    exceptions.append(e)
-                    continue
-
-                if result is not None:
-                    if isinstance(result, (tuple, list,)):
-                        plots.extend(result)
-                    else:
-                        plots.append(result)
-
-                progress_bar.set((i + 1) / count)
-
-            for exception in exceptions:
-                logging.exception(exception)
-                self.messenger.exception(exception)
-
-            if plots:
-                self.messenger.send_images(images=plots)
-            else:
-                self.messenger.send_message('There is still little data')
-
-        yield None
 
     def process_command(self, command: Command) -> typing.Any:
         if command.name == BotCommands.STATUS:
@@ -154,7 +131,7 @@ class Report(BaseModule):
                 flags = {'a', 'e', 'r'}
 
             events.request_for_statistics.pipe(
-                self._pipe_for_stats,
+                self._pipe_for_collecting_stats,
                 date_range=date_range,
                 components={self._stats_flags_map[flag] for flag in flags},
             )
@@ -182,6 +159,48 @@ class Report(BaseModule):
             return True
 
         return False
+
+    def _update_status(self) -> None:
+        with self._lock_for_status:
+            if self._message_id_for_status and self.messenger.last_message_id != self._message_id_for_status:
+                self._message_id_for_status = None
+
+            if not self._message_id_for_status:
+                return
+
+            self._send_status()
+
+    def _pipe_for_collecting_stats(self, receivers: typing.Sequence, kwargs: dict) -> typing.Iterator:
+        with ProgressBar(self.messenger, title='Collecting stats...') as progress_bar:
+            count = len(receivers)
+            plots = []
+            exceptions = []
+
+            for i in range(count):
+                try:
+                    result = yield
+                except Exception as e:
+                    exceptions.append(e)
+                    continue
+
+                if result is not None:
+                    if isinstance(result, (tuple, list,)):
+                        plots.extend(result)
+                    else:
+                        plots.append(result)
+
+                progress_bar.set((i + 1) / count)
+
+            for exception in exceptions:
+                logging.exception(exception)
+                self.messenger.exception(exception)
+
+            if plots:
+                self.messenger.send_images(images=plots)
+            else:
+                self.messenger.send_message('There is still little data')
+
+        yield None
 
     @synchronized_method
     def _ping_task_queue(self, *, sent_at: datetime.datetime) -> None:
@@ -218,12 +237,12 @@ class Report(BaseModule):
         if humidity is None:
             humidity = nothing
         else:
-            humidity = f'{round(humidity, 1)}%{ _get_mark(humidity, (40, 60,), (30, 60,))}'
+            humidity = f'{round(humidity, 1)}%{_get_mark(humidity, (40, 60,), (30, 60,))}'
 
         if temperature is None:
             temperature = nothing
         else:
-            temperature = f'{round(temperature, 1)}℃{ _get_mark(temperature, (19, 22.5,), (18, 25.5,))}'
+            temperature = f'{round(temperature, 1)}℃{_get_mark(temperature, (19, 22.5,), (18, 25.5,))}'
 
         if self.state[CURRENT_FPS] is None:
             current_fps = nothing
@@ -232,12 +251,12 @@ class Report(BaseModule):
 
         try:
             cpu_temperature = get_cpu_temp()
-            cpu_temperature = f'{round(cpu_temperature, 1)}℃{ _get_mark(cpu_temperature, (0, 60,), (0, 80,))}'
+            cpu_temperature = f'{round(cpu_temperature, 1)}℃{_get_mark(cpu_temperature, (0, 60,), (0, 80,))}'
         except RuntimeError:
             cpu_temperature = nothing
 
         ram_usage = get_ram_usage() * 100
-        ram_usage = f'{round(ram_usage, 1)}%{ _get_mark(ram_usage, (0, 60,), (0, 80,))}'
+        ram_usage = f'{round(ram_usage, 1)}%{_get_mark(ram_usage, (0, 60,), (0, 80,))}'
 
         connected_devices = get_connected_devices_to_router()
         connected_devices_str = ', '.join(
@@ -274,7 +293,11 @@ class Report(BaseModule):
             f'Started at: `{self.state[INITED_AT].strftime("%d.%m.%Y, %H:%M:%S")}`'
         )
 
-        self.messenger.send_message(message)
+        with self._lock_for_status:
+            if self._message_id_for_status:
+                message += f'\nUpdated at: `{datetime.datetime.now().strftime("%d.%m.%Y, %H:%M:%S")}`'
+
+            self._message_id_for_status = self.messenger.send_message(message, message_id=self._message_id_for_status)
 
     @staticmethod
     def _create_cpu_temp_stats(date_range: typing.Tuple[datetime.datetime, datetime.datetime],
@@ -340,33 +363,37 @@ class Report(BaseModule):
         try:
             cpu_temperature = get_cpu_temp()
         except RuntimeError:
-            pass
-        else:
-            Signal.add(signal_type=constants.CPU_TEMPERATURE, value=cpu_temperature)
+            return
 
-            now = datetime.datetime.now()
+        Signal.add(signal_type=constants.CPU_TEMPERATURE, value=cpu_temperature)
 
-            if now - self._last_cpu_notification > datetime.timedelta(minutes=30):
-                if cpu_temperature > 70:
-                    self.messenger.send_message('CPU temperature is very high!')
-                    self._last_cpu_notification = now - datetime.timedelta(minutes=20)
-                elif cpu_temperature > 60:
-                    self.messenger.send_message('CPU temperature is high!')
-                    self._last_cpu_notification = now
+        now = datetime.datetime.now()
+        diff = now - self._last_cpu_notification
+
+        if cpu_temperature > 90 and diff > datetime.timedelta(minutes=5):
+            self.messenger.send_message('CPU temperature is very high!')
+        elif cpu_temperature > 70 and diff > datetime.timedelta(minutes=20):
+            self.messenger.send_message('CPU temperature is very high!')
+        elif cpu_temperature > 60 and diff > datetime.timedelta(minutes=60):
+            self.messenger.send_message('CPU temperature is high!')
+
+        self._last_cpu_notification = now
 
     def _save_ram_usage(self) -> None:
         ram_usage = round(get_ram_usage() * 100, 2)
         Signal.add(signal_type=constants.RAM_USAGE, value=ram_usage)
 
         now = datetime.datetime.now()
+        diff = now - self._last_ram_notification
 
-        if now - self._last_ram_notification > datetime.timedelta(minutes=30):
-            if ram_usage > 80:
-                self.messenger.send_message('Running out of RAM!!!')
-                self._last_ram_notification = now - datetime.timedelta(minutes=20)
-            elif ram_usage > 60:
-                self.messenger.send_message('Running out of RAM!')
-                self._last_ram_notification = now
+        if ram_usage > 90 and diff > datetime.timedelta(hours=1):
+            self.messenger.send_message('Running out of RAM!!!')
+        elif ram_usage > 80 and diff > datetime.timedelta(hours=2):
+            self.messenger.send_message('Running out of RAM!!!')
+        elif ram_usage > 60 and diff > datetime.timedelta(hours=3):
+            self.messenger.send_message('Running out of RAM!')
+
+        self._last_ram_notification = now
 
     def _send_report(self) -> None:
         now = datetime.datetime.now()

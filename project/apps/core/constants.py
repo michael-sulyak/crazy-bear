@@ -16,6 +16,8 @@ PHOTO = 'photo'
 ARDUINO_IS_ENABLED = 'arduino_is_enabled'
 RECOMMENDATION_SYSTEM_IS_ENABLED = 'recommendation_system_is_enabled'
 
+MAIN_LAMP_IS_ON = 'main_lamp_is_on'
+
 
 class BotCommands:
     REPORT = '/report'
@@ -28,13 +30,14 @@ class BotCommands:
 
     STATUS = '/status'
     STATS = '/stats'
+    LAMP = '/lamp'
 
     TO = '/to'
-    CONNECTED_DEVICES = '/connected_devices'
+    RAW_WIFI_DEVICES = '/raw_wifi_devices'
     RECOMMENDATION_SYSTEM = '/recommendation_system'
     HELP = '/help'
     RESTART = '/restart'
-    DEVICES = '/devices'
+    WIFI_DEVICES = '/wifi_devices'
     CHECK_DB = '/check_db'
     DB_STATS = '/db_stats'
     RETURN = '/return'

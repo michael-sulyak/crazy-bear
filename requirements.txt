@@ -1,15 +1,15 @@
 apscheduler==3.6.3
 atomicwrites==1.4.0; sys_platform == "win32"
-attrs==21.2.0
+attrs==21.4.0
 backports.zoneinfo==0.2.1; python_version >= "3.6" and python_version < "3.9" or python_version < "3.9"
 cachetools==4.2.2
 certifi==2021.10.8
-charset-normalizer==2.0.9; python_version >= "3"
+charset-normalizer==2.0.12; python_version >= "3"
 colorama==0.4.4; sys_platform == "win32"
 crontab==0.23.0
 cycler==0.11.0
-dropbox==11.25.0
-emoji==1.6.1
+dropbox==11.27.0
+emoji==1.6.3
 et-xmlfile==1.1.0
 fire==0.4.0
 greenlet==1.1.2; python_version >= "3" and (platform_machine == "aarch64" or platform_machine == "ppc64le" or platform_machine == "x86_64" or platform_machine == "amd64" or platform_machine == "AMD64" or platform_machine == "win32" or platform_machine == "WIN32")
@@ -21,31 +21,32 @@ matplotlib==3.3.0
 numpy==1.18.4
 openpyxl==3.0.9
 packaging==21.3
+paho-mqtt==1.6.1
 pandas==1.0.5
 pika==1.2.0
-pillow==8.4.0
+pillow==9.0.1
 pluggy==1.0.0
 ply==3.11
 py==1.11.0
-pyparsing==3.0.6
+pyparsing==3.0.7
 pyserial==3.5
-pytest==6.2.5
+pytest==7.0.1
 python-dateutil==2.8.2
 python-dotenv==0.19.2
-python-telegram-bot==13.8.1
+python-telegram-bot==13.11
 pytz==2021.3
 pytz-deprecation-shim==0.1.0.post0
-requests==2.26.0
+requests==2.27.1
 scipy==1.5.2
 seaborn==0.11.2
-sentry-sdk==1.5.0
+sentry-sdk==1.5.5
 six==1.16.0
-sqlalchemy==1.4.27
-stone==3.2.1
+sqlalchemy==1.4.31
+stone==3.3.1
 termcolor==1.1.0
-toml==0.10.2
+tomli==2.0.1
 tornado==6.1
 tzdata==2021.5; python_version >= "3.6" or platform_system == "Windows"
 tzlocal==4.1
-urllib3==1.26.7
-wheel==0.37.0
+urllib3==1.26.8
+wheel==0.37.1

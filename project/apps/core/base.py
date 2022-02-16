@@ -12,6 +12,7 @@ from ..messengers import events as messenger_events
 from ..messengers.base import BaseMessenger
 from ..task_queue import BaseTaskQueue, UniqueTaskQueue
 from ..task_queue.dto import RepeatableTask
+from ..zigbee.base import ZigBee
 
 
 @dataclass
@@ -19,6 +20,7 @@ class ModuleContext:
     messenger: BaseMessenger
     state: State
     task_queue: BaseTaskQueue
+    zig_bee: ZigBee
 
 
 class BaseModule(abc.ABC):

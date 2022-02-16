@@ -13,6 +13,8 @@ services:
       - .:/app
     depends_on:
       - postgres
+      - zigbee_mq
+      - zigbee2mqtt
     networks:
       - default
       - telehooks_mq
@@ -25,6 +27,30 @@ services:
       - postgres_data:/var/lib/postgresql/data
     env_file:
       - envs/prod.env
+
+  zigbee_mq:
+    restart: always
+    image: eclipse-mosquitto:2.0
+    volumes:
+      - "./mosquitto-data:/mosquitto"
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    command: "mosquitto -c /mosquitto-no-auth.conf"
+
+  zigbee2mqtt:
+    restart: always
+    image: koenkk/zigbee2mqtt:1.23.0
+    privileged: true
+    depends_on:
+      - zigbee_mq
+    volumes:
+      - ../zigbee2mqtt-data:/app/data
+      - /run/udev:/run/udev:ro
+    ports:
+      - 8080:8080
+    environment:
+      - TZ=Europe/Moscow
 
 volumes:
   postgres_data: { }

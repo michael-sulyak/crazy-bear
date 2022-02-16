@@ -9,13 +9,13 @@ from ...devices.utils import device_manager
 
 
 __all__ = (
-    'Devices',
+    'WiFiDevices',
 )
 
 
-class Devices(BaseModule):
+class WiFiDevices(BaseModule):
     def process_command(self, command: Command) -> typing.Any:
-        if command.name != BotCommands.DEVICES:
+        if command.name != BotCommands.WIFI_DEVICES:
             return False
 
         if not command.first_arg:
