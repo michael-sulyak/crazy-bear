@@ -41,6 +41,8 @@ class LCSmartLamp:
         'red': (128, 0, 0,),
         'white': (254, 254, 254,),
     }
+    MIN_BRIGHTNESS = 0
+    MAX_BRIGHTNESS = 254
     _can_run_after: datetime.datetime
     _lock: threading.RLock
 
@@ -56,11 +58,14 @@ class LCSmartLamp:
                 color_temp: str = 'neutral',
                 brightness: int = 254,
                 transition: int = 0) -> None:
+        assert self.MIN_BRIGHTNESS <= brightness <= self.MAX_BRIGHTNESS
+        assert not isinstance(color_temp, str) or color_temp in self.color_temps
+        assert not isinstance(color_temp, int) or 150 <= color_temp <= 500
+
         self.zig_bee.set(self.friendly_name, {
             'state': 'ON',
             'color_temp': color_temp,
             'brightness': brightness,
-            # 'color': {'rgb': ','.join(map(str, rgb))},
             'transition': transition,
         })
 
@@ -80,8 +85,7 @@ class LCSmartLamp:
     @synchronized_method
     @method_with_transition
     def set_color_by_name(self, name: str, *, transition: int = 0) -> None:
-        # self.set_color(self.colors_map[name], transition=transition)
-        self.turn_on(rgb=self.colors_map[name], transition=transition)
+        self.set_color(self.colors_map[name], transition=transition)
 
     @synchronized_method
     @method_with_transition
@@ -91,14 +95,15 @@ class LCSmartLamp:
         self.zig_bee.set(self.friendly_name, {'color_temp': value, 'transition': transition})
 
     @synchronized_method
-    def set_color_temp_startup(self, value: int) -> None:
-        assert 150 <= value <= 500
+    def set_color_temp_startup(self, value: typing.Union[str, int]) -> None:
+        assert not isinstance(value, str) or value in self.color_temps
+        assert not isinstance(value, int) or 150 <= value <= 500
         self.zig_bee.set(self.friendly_name, {'color_temp_startup': value})
 
     @synchronized_method
     @method_with_transition
     def set_brightness(self, value: int, *, transition: int = 0) -> None:
-        assert 0 <= value <= 254
+        assert self.MIN_BRIGHTNESS <= value <= self.MAX_BRIGHTNESS
         self.zig_bee.set(self.friendly_name, {'brightness': value, 'transition': transition})
 
     @synchronized_method
@@ -124,3 +129,39 @@ class LCSmartLamp:
     def is_off(self) -> bool:
         state = self.get_state()
         return state['state'] == 'OFF'
+
+    @synchronized_method
+    def test(self) -> None:
+        self.turn_off()
+        sleep(2)
+
+        self.turn_on(transition=1)
+        sleep(2)
+
+        self.set_color((255, 0, 0,), transition=1)
+        sleep(2)
+
+        self.set_color((0, 255, 0,), transition=1)
+        sleep(2)
+
+        self.set_color((0, 0, 255,), transition=1)
+        sleep(2)
+
+        self.set_color((0, 0, 0,), transition=1)
+        sleep(2)
+
+        self.set_brightness(0, transition=1)
+        sleep(2)
+
+        for brightness in range(0, 255, 50):
+            self.set_brightness(brightness, transition=1)
+            sleep(2)
+
+        self.set_brightness(255, transition=1)
+        sleep(2)
+
+        for color in self.colors_map.values():
+            self.set_color(color, transition=1)
+            sleep(2)
+
+        self.turn_off(transition=1)

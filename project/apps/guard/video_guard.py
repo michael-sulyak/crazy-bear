@@ -34,7 +34,7 @@ class VideoGuard:
         self.process_frame.close()
         self.motion_detector.realese()
 
-    def process_frames(self) -> typing.Generator:
+    def process_frames(self) -> typing.Generator[None, tuple, None]:
         last_is_occupied = False
         frames = []
         send_video = False

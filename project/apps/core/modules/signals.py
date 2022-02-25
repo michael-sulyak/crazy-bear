@@ -2,7 +2,6 @@ import datetime
 import typing
 
 from crontab import CronTab
-from sqlalchemy import func as sa_func
 
 from .. import constants
 from ..base import BaseModule, Command
@@ -82,6 +81,7 @@ class Signals(BaseModule):
             constants.RAM_USAGE,
             ArduinoSensorTypes.TEMPERATURE,
             ArduinoSensorTypes.HUMIDITY,
+            ArduinoSensorTypes.PIR_SENSOR,
         )
 
         all_signals = {*for_compress, *for_compress_by_time}
@@ -97,12 +97,6 @@ class Signals(BaseModule):
         datetime_range = (
             now - datetime.timedelta(hours=3),
             now - datetime.timedelta(minutes=5),
-        )
-
-        Signal.compress_by_time(
-            ArduinoSensorTypes.PIR_SENSOR,
-            datetime_range=datetime_range,
-            aggregate_function=sa_func.max,
         )
 
         for item in for_compress:
@@ -121,7 +115,11 @@ class Signals(BaseModule):
             )
 
         for item in for_compress_by_time:
-            Signal.compress_by_time(item, datetime_range=datetime_range)
+            Signal.compress_by_time(
+                item,
+                datetime_range=datetime_range,
+            )
+
             Signal.compress(
                 item,
                 datetime_range=datetime_range,

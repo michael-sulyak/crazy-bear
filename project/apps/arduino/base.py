@@ -1,8 +1,8 @@
+import datetime
 import json
 import logging
 import typing
 from dataclasses import dataclass, field
-import datetime
 
 import serial
 
@@ -18,12 +18,6 @@ class ArduinoResponse:
     payload: typing.Optional[dict] = None
     received_at: datetime.datetime = field(default_factory=current_time)
 
-
-SENSORS_PAYLOAD_MAP = {
-    'p': 'pir_sensor',
-    'h': 'humidity',
-    't': 'temperature',
-}
 
 # @dataclass
 # class ArduinoRequest:
@@ -122,5 +116,8 @@ class ArduinoConnector:
 
             yield ArduinoResponse(
                 type=line['t'],
-                payload={SENSORS_PAYLOAD_MAP[k]: v for k, v in line['p'].items()},
+                payload={
+                    constants.SENSORS_PAYLOAD_MAP[key]: value
+                    for key, value in line['p'].items()
+                },
             )

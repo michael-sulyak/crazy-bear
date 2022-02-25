@@ -27,7 +27,7 @@ from ...core.constants import (
 from ...devices.utils import get_connected_devices_to_router
 from ...messengers.utils import ProgressBar
 from ...signals.models import Signal
-from ...task_queue import IntervalTask, RepeatableTask, TaskPriorities
+from ...task_queue import DelayedTask, IntervalTask, RepeatableTask, TaskPriorities
 from .... import config
 
 
@@ -59,12 +59,12 @@ class Report(BaseModule):
         self._last_ram_notification = now
         self._lock_for_status = threading.RLock()
 
-        self.task_queue.put_task(RepeatableTask(
-            target=self._ping_task_queue,
+        self.task_queue.put(
+            self._ping_task_queue,
             kwargs={'sent_at': now},
             priority=TaskPriorities.LOW,
             run_after=now + self._timedelta_for_ping,
-        ))
+        )
 
     def init_repeatable_tasks(self) -> tuple:
         return (
@@ -99,6 +99,9 @@ class Report(BaseModule):
         )
 
     def process_command(self, command: Command) -> typing.Any:
+        with self._lock_for_status:
+            self._message_id_for_status = None
+
         if command.name == BotCommands.STATUS:
             self._send_status()
             return True

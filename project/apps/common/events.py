@@ -3,44 +3,44 @@ import threading
 import typing
 from dataclasses import dataclass
 
+from .base import BaseReceiver
 from .exceptions import Shutdown
 from .utils import synchronized_method
 
 
 __all__ = (
     'Event',
-    'Receiver',
 )
 
 
 class Event:
-    receivers: typing.List[typing.Callable]
+    receivers: typing.Set[typing.Callable]
     providing_kwargs: typing.Tuple[str]
-    _lock: threading.Lock
+    _lock: threading.RLock
 
     def __init__(self, *, providing_kwargs: typing.Optional[typing.Iterable[str]] = ()) -> None:
-        self.receivers = []
-        self._lock = threading.Lock()
+        self.receivers = set()
         self.providing_kwargs = tuple(providing_kwargs)
+        self._lock = threading.RLock()
 
-    @synchronized_method
     def connect(self, func: typing.Callable) -> 'Receiver':
         assert callable(func)
 
-        self.receivers.append(func)
+        with self._lock:
+            self.receivers.add(func)
 
         return Receiver(func=func, event=self)
 
-    @synchronized_method
     def disconnect(self, receiver: typing.Callable) -> None:
         assert callable(receiver)
 
-        try:
-            index = self.receivers.index(receiver)
-            del self.receivers[index]
-        except ValueError:
-            pass
+        with self._lock:
+            try:
+                self.receivers.remove(receiver)
+            except KeyError:
+                pass
 
+    @synchronized_method
     def send(self, **kwargs) -> None:
         for receiver in self.receivers:
             try:
@@ -50,6 +50,7 @@ class Event:
             except Exception as e:
                 logging.exception(e)
 
+    @synchronized_method
     def process(self, **kwargs) -> typing.Tuple[list, list]:
         results = []
         exceptions = []
@@ -66,6 +67,7 @@ class Event:
 
         return results, exceptions
 
+    @synchronized_method
     def pipe(self, func: typing.Callable, **kwargs) -> typing.Any:
         handler = func(receivers=self.receivers, kwargs=kwargs)
         next(handler)
@@ -90,7 +92,7 @@ class Event:
 
 
 @dataclass
-class Receiver:
+class Receiver(BaseReceiver):
     event: Event
     func: typing.Callable
 

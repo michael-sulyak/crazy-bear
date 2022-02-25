@@ -6,7 +6,7 @@ from collections import defaultdict
 
 from paho.mqtt.client import Client, MQTTMessage, MQTTMessageInfo, MQTTv5
 
-from . import constants
+from . import constants, exceptions
 from ..common.utils import synchronized_method
 
 
@@ -14,17 +14,12 @@ class ZigBee:
     _mq: typing.Optional[Client] = None
     _subscribers_map: typing.Dict[str, typing.List[typing.Callable]]
     _permanent_subscribers_map: typing.Dict[str, typing.List[typing.Callable]]
-    _topics_for_saving: typing.Set[str]
     _topic_results_map: typing.Dict[str, typing.Any]
     _lock: threading.RLock
-    _messages = []
 
     def __init__(self) -> None:
         self._subscribers_map = defaultdict(list)
         self._permanent_subscribers_map = defaultdict(list)
-        self._topics_for_saving = {
-            constants.ZigBeeTopics.DEVICES,
-        }
         self._topic_results_map = {
             constants.ZigBeeTopics.DEVICES: [],
         }
@@ -45,7 +40,10 @@ class ZigBee:
             payload={'state': ''},
         )
 
-    def check_health(self) -> bool:
+    def is_health(self) -> bool:
+        if self._mq is None:
+            return False
+
         name = 'health_check'
         response = self._request_data(
             topic_for_sending=f'zigbee2mqtt/bridge/request/{name}',
@@ -63,6 +61,13 @@ class ZigBee:
         return response['status'] == 'ok'
 
     @synchronized_method
+    def subscribe_on_topic(self,
+                           topic: str,
+                           func: typing.Callable) -> None:
+        self._permanent_subscribers_map[topic].append(func)
+        self._mq.subscribe(topic)
+
+    @synchronized_method
     def open(self) -> None:
         if self._mq is not None:
             raise Exception('MQ was created')
@@ -72,26 +77,25 @@ class ZigBee:
         mq.connect('zigbee_mq', port=1883)  # TODO: Move in config
         mq.loop_start()
 
-        for topic in self._topics_for_saving:
+        for topic in self._topic_results_map:
             mq.subscribe(topic)
 
         self._mq = mq
 
     @synchronized_method
     def close(self) -> None:
+        if self._mq is None:
+            raise Exception('MQ wasn\'t created')
+
         self._mq.loop_stop()
 
     @synchronized_method
     def _on_message(self, client: Client, userdata: typing.Any, message: MQTTMessage) -> None:
-        self._messages.append((message.topic, message.payload,))
-
-        if not message.topic.startswith('zigbee2mqtt/'):
-            return
-
         if (
-                not self._subscribers_map[message.topic]
+                message.topic.startswith('zigbee2mqtt/')
+                and not self._subscribers_map[message.topic]
                 and not self._permanent_subscribers_map[message.topic]
-                and message.topic not in self._topics_for_saving
+                and message.topic not in self._topic_results_map
         ):
             return
 
@@ -100,22 +104,15 @@ class ZigBee:
         for subscriber in self._subscribers_map[message.topic]:
             subscriber(payload)
 
-        if self._subscribers_map:
+        if self._subscribers_map[message.topic]:
             self._mq.unsubscribe(message.topic)
             self._subscribers_map[message.topic].clear()
 
         for subscriber in self._permanent_subscribers_map[message.topic]:
             subscriber(payload)
 
-        if message.topic in self._topics_for_saving:
+        if message.topic in self._topic_results_map:
             self._topic_results_map[message.topic] = payload
-
-    @synchronized_method
-    def subscribe_on_topic(self,
-                           topic: str,
-                           func: typing.Callable) -> None:
-        self._permanent_subscribers_map[topic].append(func)
-        self._mq.subscribe(topic)
 
     @synchronized_method
     def _subscribe_on_topic(self,
@@ -155,7 +152,7 @@ class ZigBee:
         event.wait(timeout=timeout)
 
         if not event.is_set():
-            raise Exception('No data')
+            raise exceptions.ZigBeeTimeoutError
 
         return result
 

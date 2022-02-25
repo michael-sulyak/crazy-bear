@@ -4,7 +4,7 @@ import typing
 
 from . import events as core_events
 from .base import BaseModule, ModuleContext
-from ..common.events import Receiver
+from ..common.base import BaseReceiver
 from ..common.exceptions import Shutdown
 from ..common.state import State
 from ..common.utils import log_performance
@@ -24,7 +24,7 @@ class Commander:
     task_queue: BaseTaskQueue
     task_worker: BaseWorker
     zig_bee: ZigBee
-    _receivers: typing.Tuple[Receiver, ...]
+    _receivers: typing.Tuple[BaseReceiver, ...]
 
     def __init__(self, *,
                  messenger: BaseMessenger,
@@ -71,7 +71,7 @@ class Commander:
         self.close()
 
     def process_updates(self) -> None:
-        message = self.message_queue.get()
+        message = self.message_queue.get(block=True)
 
         if not message.command:
             return

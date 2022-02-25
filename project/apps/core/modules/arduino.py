@@ -5,13 +5,13 @@ import typing
 import serial
 
 from ..base import BaseModule, Command
-from ..constants import ARDUINO_IS_ENABLED, BotCommands, WEATHER_HUMIDITY, WEATHER_TEMPERATURE
+from ..constants import ARDUINO_IS_ENABLED, BotCommands, MotionTypeSources, WEATHER_HUMIDITY, WEATHER_TEMPERATURE
 from ...arduino.base import ArduinoConnector
 from ...arduino.constants import ArduinoSensorTypes
 from ...common.constants import OFF, ON
 from ...common.utils import create_plot, synchronized_method
 from ...core import events
-from ...core.constants import PHOTO, SECURITY_IS_ENABLED, USE_CAMERA
+from ...core.constants import SECURITY_IS_ENABLED
 from ...signals.models import Signal
 from ...task_queue import IntervalTask, TaskPriorities
 
@@ -43,7 +43,7 @@ class Arduino(BaseModule):
     def subscribe_to_events(self) -> tuple:
         return (
             *super().subscribe_to_events(),
-            events.request_for_statistics.connect(self._create_arduino_sensor_avg_stats),
+            events.request_for_statistics.connect(self._create_arduino_sensor_stats),
             events.new_arduino_data.connect(self._process_new_arduino_logs),
         )
 
@@ -63,19 +63,23 @@ class Arduino(BaseModule):
     @synchronized_method
     def disable(self) -> None:
         super().disable()
-        self._disable_arduino()
+
+        if self.state[ARDUINO_IS_ENABLED]:
+            self._disable_arduino()
 
     @synchronized_method
     def _check_arduino_connector(self) -> None:
-        if self.state[ARDUINO_IS_ENABLED]:
-            if not self._arduino_connector.is_active:
-                self._disable_arduino()
-                return
+        if not self.state[ARDUINO_IS_ENABLED]:
+            return
 
-            signals = self._arduino_connector.process_updates()
+        if not self._arduino_connector.is_active:
+            self._disable_arduino()
+            return
 
-            if signals:
-                events.new_arduino_data.send(signals=signals)
+        signals = self._arduino_connector.process_updates()
+
+        if signals:
+            events.new_arduino_data.send(signals=signals)
 
     @synchronized_method
     def _enable_arduino(self) -> None:
@@ -103,8 +107,8 @@ class Arduino(BaseModule):
             self.messenger.send_message('Arduino is already off')
 
     @staticmethod
-    def _create_arduino_sensor_avg_stats(date_range: typing.Tuple[datetime.datetime, datetime.datetime],
-                                         components: typing.Set[str]) -> typing.Optional[typing.List[io.BytesIO]]:
+    def _create_arduino_sensor_stats(date_range: typing.Tuple[datetime.datetime, datetime.datetime],
+                                     components: typing.Set[str]) -> typing.Optional[typing.List[io.BytesIO]]:
         if 'arduino' not in components:
             return None
 
@@ -171,12 +175,6 @@ class Arduino(BaseModule):
     @synchronized_method
     def _process_new_arduino_logs(self, signals: typing.List[Signal]) -> None:
         if self.state[SECURITY_IS_ENABLED]:
-            # Recheck logic related to the user connection.
-            events.check_if_user_is_at_home.send(force=True)
-        else:
-            return
-
-        if self.state[SECURITY_IS_ENABLED]:
             last_movement = None
 
             for signal in signals:
@@ -196,7 +194,4 @@ class Arduino(BaseModule):
                     f'Timestamp: `{last_movement.received_at.strftime("%Y-%m-%d, %H:%M:%S")}`'
                 )
 
-                if self.state[USE_CAMERA]:
-                    self._run_command(BotCommands.CAMERA, PHOTO)
-
-                events.motion_detected.send()
+                events.motion_detected.send(source=MotionTypeSources.SENSORS)

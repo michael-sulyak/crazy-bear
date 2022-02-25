@@ -24,31 +24,31 @@ class DynamicConfigProxy:
         self._lock = threading.RLock()
 
     def __getitem__(self, name: str) -> typing.Any:
-        return self.__get().get(name)
+        return self._get().get(name)
 
     def __setitem__(self, name: str, value: typing.Any) -> None:
         with self._lock:
             DynamicConstant.set(name, value)
-            self.__clear()
+            self._clear()
 
         dynamic_config_is_updated.send()
 
     def __delitem__(self, name: str) -> None:
         with self._lock:
             DynamicConstant.delete(name)
-            self.__clear()
+            self._clear()
 
         dynamic_config_is_updated.send()
 
     @synchronized_method
-    def __get(self) -> dict:
+    def _get(self) -> dict:
         if self._cache is None:
             self._cache = get_config()
 
         return self._cache
 
     @synchronized_method
-    def __clear(self) -> None:
+    def _clear(self) -> None:
         self._cache = None
 
 

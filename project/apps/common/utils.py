@@ -5,6 +5,7 @@ import logging
 import os
 import threading
 import typing
+from collections import deque
 from contextlib import contextmanager
 
 import cv2
@@ -195,9 +196,8 @@ def single_synchronized(func: typing.Callable) -> typing.Callable:
 
 
 def is_sleep_hours(timestamp: typing.Optional[datetime.datetime] = None) -> bool:
-    assert 0 <= config.SLEEP_HOURS[0] <= 24
-    assert 0 <= config.SLEEP_HOURS[1] <= 24
-    assert config.SLEEP_HOURS[0] != config.SLEEP_HOURS[1]
+    assert 0 <= config.SLEEP_HOURS[0] < 24
+    assert 0 <= config.SLEEP_HOURS[1] < 24
 
     if timestamp is None:
         timestamp = datetime.datetime.now()
@@ -248,7 +248,7 @@ def get_my_ip() -> str:
 
 
 @contextmanager
-def log_performance(operation_type: str, name: str):
+def log_performance(operation_type: str, name: str) -> typing.Generator:
     with sentry_sdk.start_transaction(op=operation_type, name=name):
         yield
 
@@ -286,3 +286,34 @@ def add_timestamp_in_frame(frame: np.array) -> None:
 def get_ram_usage() -> float:
     total, used, free = map(int, os.popen('free -t -m').readlines()[1].split()[1:4])
     return 1 - free / total
+
+
+@contextmanager
+def mock_var(module: object, attribute: str, new: typing.Any) -> typing.Generator:
+    prev_value = getattr(module, attribute)
+    setattr(module, attribute, new)
+    yield
+    setattr(module, attribute, prev_value)
+
+
+def with_throttling(period: datetime.timedelta, *, count: int = 1) -> typing.Callable:
+    def _decorator(func: typing.Callable) -> typing.Callable:
+        times_of_run = deque()
+
+        @functools.wraps(func)
+        def _wrapper(self, *args, **kwargs) -> None:
+            now = datetime.datetime.now()
+
+            while len(times_of_run) >= count:
+                if now - times_of_run[0] > period:
+                    times_of_run.popleft()
+                else:
+                    return
+
+            times_of_run.append(now)
+
+            func(*args, **kwargs)
+
+        return _wrapper
+
+    return _decorator

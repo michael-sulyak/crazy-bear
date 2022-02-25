@@ -1,3 +1,4 @@
+import functools
 import json
 import logging
 import queue
@@ -9,11 +10,12 @@ from time import sleep
 
 import pika
 import telegram
+import urllib3
 from emoji import emojize
 from pika.exceptions import AMQPConnectionError
 from telegram import ReplyMarkup, Update as TelegramUpdate
 from telegram.error import (
-    NetworkError as TelegramNetworkError, TimedOut as TelegramTimedOut,
+    NetworkError as TelegramNetworkError,
 )
 from telegram.ext.utils.webhookhandler import WebhookServer
 from telegram.utils.request import Request as TelegramRequest
@@ -37,6 +39,21 @@ WEBHOOK_PORT = 8443
 
 class DEFAULT:
     pass
+
+
+def handel_telegram_exceptions(func: typing.Callable) -> typing.Callable:
+    @functools.wraps(func)
+    def wrap_func(*args, **kwargs) -> typing.Any:
+        try:
+            return func(*args, **kwargs)
+        except TelegramNetworkError as e:
+            if isinstance(e.__cause__, urllib3.exceptions.HTTPError):
+                logging.warning(e, exc_info=True)
+                return None
+
+            raise
+
+    return wrap_func
 
 
 class TelegramMessenger(CVMixin, BaseMessenger):
@@ -66,6 +83,88 @@ class TelegramMessenger(CVMixin, BaseMessenger):
     @synchronized_method
     def last_message_id(self) -> typing.Any:
         return self._last_message_id
+
+    def close(self) -> None:
+        self._worker.join(0)
+
+    @synchronized_method
+    @handel_telegram_exceptions
+    def send_message(self,
+                     text: str, *,
+                     parse_mode: str = 'markdown',
+                     reply_markup: typing.Optional[ReplyMarkup] = DEFAULT,
+                     message_id: typing.Optional[int] = None) -> typing.Optional[int]:
+        if reply_markup is DEFAULT:
+            if callable(self.default_reply_markup):
+                reply_markup = self.default_reply_markup()
+            else:
+                reply_markup = self.default_reply_markup
+
+        if message_id:
+            func = partial(self._bot.edit_message_text, message_id=message_id)
+        else:
+            func = self._bot.send_message
+
+        result = func(
+            chat_id=self.chat_id,
+            text=text,
+            parse_mode=parse_mode,
+            reply_markup=reply_markup,
+        )
+
+        self._last_message_id = message_id or result.message_id
+
+        return message_id or result.message_id
+
+    @synchronized_method
+    @handel_telegram_exceptions
+    def send_image(self, image: typing.Any, *, caption: typing.Optional[str] = None) -> None:
+        result = self._bot.send_photo(
+            self.chat_id,
+            photo=image,
+            caption=caption,
+        )
+        self._last_message_id = result.message_id
+
+    @synchronized_method
+    @handel_telegram_exceptions
+    def send_images(self, images: typing.Any) -> None:
+        if not images:
+            return
+
+        results = self._bot.send_media_group(
+            self.chat_id,
+            media=list(telegram.InputMediaPhoto(image) for image in images),
+        )
+
+        self._last_message_id = results[-1].message_id
+
+    @synchronized_method
+    @handel_telegram_exceptions
+    def send_file(self, file: typing.Any, *, caption: typing.Optional[str] = None) -> None:
+        result = self._bot.send_document(
+            self.chat_id,
+            document=file,
+            caption=caption,
+        )
+        self._last_message_id = result.message_id
+
+    def error(self, text: str, *, title: str = 'Error') -> None:
+        logging.warning(text)
+        self.send_message(f'{emojize(":pager:")} ️*{title}* ```\n{text}\n```')
+
+    def exception(self, exp: Exception) -> None:
+        self.error(f'{repr(exp)}\n{"".join(traceback.format_tb(exp.__traceback__))}', title='Exception')
+
+    @synchronized_method
+    @handel_telegram_exceptions
+    def start_typing(self) -> None:
+        self._bot.send_chat_action(chat_id=self.chat_id, action=telegram.ChatAction.TYPING)
+
+    @synchronized_method
+    @handel_telegram_exceptions
+    def remove_message(self, message_id: int) -> None:
+        self._bot.delete_message(chat_id=self.chat_id, message_id=message_id)
 
     def _run_worker(self) -> None:
         def _worker() -> typing.NoReturn:
@@ -108,104 +207,6 @@ class TelegramMessenger(CVMixin, BaseMessenger):
 
         events.new_message.send(message=self._parse_update(update))
 
-    def close(self) -> None:
-        self._worker.join(0)
-
-    @synchronized_method
-    def send_message(self,
-                     text: str, *,
-                     parse_mode: str = 'markdown',
-                     reply_markup: typing.Optional[ReplyMarkup] = DEFAULT,
-                     message_id: typing.Optional[int] = None) -> typing.Optional[int]:
-        if reply_markup is DEFAULT:
-            if callable(self.default_reply_markup):
-                reply_markup = self.default_reply_markup()
-            else:
-                reply_markup = self.default_reply_markup
-
-        if message_id:
-            func = partial(self._bot.edit_message_text, message_id=message_id)
-        else:
-            func = self._bot.send_message
-
-        try:
-            result = func(
-                chat_id=self.chat_id,
-                text=text,
-                parse_mode=parse_mode,
-                reply_markup=reply_markup,
-            )
-        except TelegramNetworkError as e:
-            logging.warning(e, exc_info=True)
-            sleep(1)  # TODO: Repeat request
-            # TODO: Raise for MESSAGE_EDIT_TIME_EXPIRED and other
-            return None
-
-        self._last_message_id = message_id or result.message_id
-
-        return message_id or result.message_id
-
-    @synchronized_method
-    def send_image(self, image: typing.Any, *, caption: typing.Optional[str] = None) -> None:
-        try:
-            result = self._bot.send_photo(
-                self.chat_id,
-                photo=image,
-                caption=caption,
-            )
-        except (TelegramNetworkError, TelegramTimedOut,) as e:
-            logging.warning(e, exc_info=True)
-            sleep(1)
-        else:
-            self._last_message_id = result.message_id
-
-    @synchronized_method
-    def send_images(self, images: typing.Any) -> None:
-        if not images:
-            return
-
-        try:
-            results = self._bot.send_media_group(
-                self.chat_id,
-                media=list(telegram.InputMediaPhoto(image) for image in images),
-            )
-        except (TelegramNetworkError, TelegramTimedOut,) as e:
-            logging.warning(e, exc_info=True)
-            sleep(1)
-        else:
-            self._last_message_id = results[-1].message_id
-
-    @synchronized_method
-    def send_file(self, file: typing.Any, *, caption: typing.Optional[str] = None) -> None:
-        try:
-            result = self._bot.send_document(
-                self.chat_id,
-                document=file,
-                caption=caption,
-            )
-        except (TelegramNetworkError, TelegramTimedOut,) as e:
-            logging.warning(e, exc_info=True)
-            sleep(1)
-        else:
-            self._last_message_id = result.message_id
-
-    @synchronized_method
-    def error(self, text: str, *, _title: str = 'Error') -> None:
-        logging.warning(text)
-        self.send_message(f'{emojize(":pager:")} ️*{_title}* ```\n{text}\n```')
-
-    @synchronized_method
-    def exception(self, exp: Exception) -> None:
-        self.error(f'{repr(exp)}\n{"".join(traceback.format_tb(exp.__traceback__))}', _title='Exception')
-
-    @synchronized_method
-    def start_typing(self) -> None:
-        try:
-            self._bot.send_chat_action(chat_id=self.chat_id, action=telegram.ChatAction.TYPING)
-        except (TelegramNetworkError, TelegramTimedOut,) as e:
-            logging.warning(e, exc_info=True)
-            sleep(1)
-
     @staticmethod
     def _parse_update(update: TelegramUpdate) -> Message:
         text: str = update.message.text
@@ -233,10 +234,3 @@ class TelegramMessenger(CVMixin, BaseMessenger):
                 kwargs=command_kwargs,
             ),
         )
-
-    def remove_message(self, message_id: int) -> None:
-        try:
-            self._bot.delete_message(chat_id=self.chat_id, message_id=message_id)
-        except (TelegramNetworkError, TelegramTimedOut,) as e:
-            logging.warning(e, exc_info=True)
-            sleep(1)

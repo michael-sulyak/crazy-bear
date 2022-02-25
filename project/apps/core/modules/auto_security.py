@@ -1,5 +1,4 @@
 import datetime
-import threading
 import typing
 
 from .. import events
@@ -21,6 +20,7 @@ __all__ = (
 class AutoSecurity(BaseModule):
     initial_state = {
         AUTO_SECURITY_IS_ENABLED: False,
+        SECURITY_IS_ENABLED: False,
     }
     _last_movement_at: typing.Optional[datetime.datetime] = None
     _camera_was_not_used: bool = False
@@ -38,7 +38,14 @@ class AutoSecurity(BaseModule):
     def subscribe_to_events(self) -> tuple:
         return (
             *super().subscribe_to_events(),
+            self.state.subscribe_toggle(SECURITY_IS_ENABLED, {
+                (False, True,): lambda name: events.security_is_enabled.send(),
+                (True, False,): lambda name: events.security_is_disabled.send(),
+                (None, True,): lambda name: events.security_is_enabled.send(),
+            }),
             events.motion_detected.connect(self._update_last_movement_at),
+            events.security_is_enabled.connect(lambda: self.messenger.send_message('Security is enabled')),
+            events.security_is_disabled.connect(lambda: self.messenger.send_message('Security is disabled')),
         )
 
     def process_command(self, command: Command) -> typing.Any:
@@ -52,10 +59,8 @@ class AutoSecurity(BaseModule):
                     return False
             elif command.first_arg == ON:
                 self.state[SECURITY_IS_ENABLED] = True
-                self.messenger.send_message('Security is enabled')
             elif command.first_arg == OFF:
                 self.state[SECURITY_IS_ENABLED] = False
-                self.messenger.send_message('Security is disabled')
             else:
                 return False
 
@@ -102,9 +107,11 @@ class AutoSecurity(BaseModule):
     def _update_last_movement_at(self) -> None:
         self._last_movement_at = datetime.datetime.now()
 
-        if (not self.state[USER_IS_CONNECTED_TO_ROUTER]
+        if (
+                not self.state[USER_IS_CONNECTED_TO_ROUTER]
                 and not self.state[USE_CAMERA]
-                and self.state[CAMERA_IS_AVAILABLE]):
+                and self.state[CAMERA_IS_AVAILABLE]
+        ):
             self._camera_was_not_used = True
             self._run_command(BotCommands.CAMERA, ON)
 

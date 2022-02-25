@@ -15,8 +15,8 @@ CURRENT_FPS = 'current_fps'
 PHOTO = 'photo'
 ARDUINO_IS_ENABLED = 'arduino_is_enabled'
 RECOMMENDATION_SYSTEM_IS_ENABLED = 'recommendation_system_is_enabled'
-
 MAIN_LAMP_IS_ON = 'main_lamp_is_on'
+MENU_PAGES_MAP = 'menu_pages_map'
 
 
 class BotCommands:
@@ -41,3 +41,8 @@ class BotCommands:
     CHECK_DB = '/check_db'
     DB_STATS = '/db_stats'
     RETURN = '/return'
+
+
+class MotionTypeSources:
+    SENSORS = 'sensors'
+    VIDEO = 'video'

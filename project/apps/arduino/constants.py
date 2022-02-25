@@ -18,3 +18,10 @@ class ArduinoSensorTypes:
         HUMIDITY,
         TEMPERATURE,
     }
+
+
+SENSORS_PAYLOAD_MAP = {
+    'p': 'pir_sensor',
+    'h': 'humidity',
+    't': 'temperature',
+}

@@ -31,7 +31,7 @@ class TaskPriorityQueue(Queue):
             self.queue_map[task.priority] = []
             bisect.insort(self.priorities, task.priority)
 
-        heappush(self.queue_map[task.priority], (task.field_for_sorting, task,))
+        heappush(self.queue_map[task.priority], (task.run_after, task,))
 
     def _get(self) -> typing.Optional[Task]:
         now = datetime.datetime.now()

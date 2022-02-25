@@ -31,7 +31,6 @@ logging.basicConfig(level=logging_level)
 
 
 def get_traces_sampler(sampling_context: dict) -> float:
-    return 0
     op = sampling_context['transaction_context']['op']
 
     if op == 'cmd':
@@ -105,14 +104,14 @@ def main():
         module_classes=(
             modules.Camera,
             modules.Arduino,
-            modules.MenuModule,
+            modules.Menu,
             modules.Report,
             modules.AutoSecurity,
             modules.Router,
             modules.RecommendationSystem,
             modules.Signals,
             modules.WiFiDevices,
-            modules.SmartAlarmClock,
+            modules.SmartLampController,
         ),
         state=state,
     )

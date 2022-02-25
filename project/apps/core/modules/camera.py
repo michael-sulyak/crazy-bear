@@ -1,17 +1,18 @@
 import datetime
 import logging
 import typing
+from functools import partial
 
 import numpy as np
 from imutils.video import VideoStream
 
 from ..base import BaseModule, Command
-from ..constants import BotCommands
+from ..constants import BotCommands, MotionTypeSources
 from ... import task_queue
 from ...common.camera import VideoCamera
 from ...common.constants import OFF, ON
 from ...common.storage import file_storage
-from ...common.utils import add_timestamp_in_frame, camera_is_available, synchronized_method
+from ...common.utils import add_timestamp_in_frame, camera_is_available, synchronized_method, with_throttling
 from ...core import events
 from ...core.constants import (
     CAMERA_IS_AVAILABLE, CURRENT_FPS, SECURITY_IS_ENABLED, USE_CAMERA, VIDEO_RECORDING_IS_ENABLED, VIDEO_SECURITY,
@@ -31,7 +32,6 @@ class Camera(BaseModule):
         VIDEO_SECURITY: None,
         USE_CAMERA: False,
         CAMERA_IS_AVAILABLE: True,
-        SECURITY_IS_ENABLED: False,
         CURRENT_FPS: None,
         VIDEO_RECORDING_IS_ENABLED: False,
     }
@@ -75,6 +75,7 @@ class Camera(BaseModule):
         return (
             *super().subscribe_to_events(),
             events.frame_from_video_camera.connect(self._process_frame),
+            events.motion_detected.connect(self._process_motion_detection),
         )
 
     def process_command(self, command: Command) -> typing.Any:
@@ -155,7 +156,7 @@ class Camera(BaseModule):
             self._video_stream.start()
             self._video_camera = VideoCamera(
                 video_stream=self._video_stream,
-                callback=events.frame_from_video_camera.send,
+                callback=partial(events.frame_from_video_camera.send, source=MotionTypeSources.VIDEO),
                 max_fps=config.FPS,
             )
             self._video_camera.start()
@@ -219,20 +220,26 @@ class Camera(BaseModule):
         if not self._can_use_camera():
             return
 
-        now = datetime.datetime.now()
         frame = self._video_stream.read()
 
-        if frame is not None:
-            self.messenger.send_frame(frame, caption=f'Captured at {now.strftime("%d.%m.%Y, %H:%M:%S")}')
-            self.task_queue.put(
-                file_storage.upload_frame,
-                kwargs={
-                    'file_name': f'saved_photos/{now.strftime("%Y-%m-%d %H:%M:%S.png")}',
-                    'frame': frame,
-                },
-                priority=task_queue.TaskPriorities.MEDIUM,
-                retry_policy=task_queue.retry_policy_for_connection_error,
-            )
+        if frame is None:
+            return
+
+        now = datetime.datetime.now()
+
+        self.messenger.send_frame(
+            frame,
+            caption=f'Captured at {now.strftime("%d.%m.%Y, %H:%M:%S")}',
+        )
+        self.task_queue.put(
+            file_storage.upload_frame,
+            kwargs={
+                'file_name': f'saved_photos/{now.strftime("%Y-%m-%d %H:%M:%S.png")}',
+                'frame': frame,
+            },
+            priority=task_queue.TaskPriorities.MEDIUM,
+            retry_policy=task_queue.retry_policy_for_connection_error,
+        )
 
     @synchronized_method
     def _start_video_recording(self) -> None:
@@ -252,11 +259,14 @@ class Camera(BaseModule):
         self._video_frames = []
 
         self.messenger.send_message('Sending the video...')
-        self.task_queue.put(lambda: self.messenger.send_frames_as_video(
-            frames=video_frames,
-            fps=config.FPS,
-            caption='Recorded video',
-        ))
+        self.task_queue.put(
+            lambda: self.messenger.send_frames_as_video(
+                frames=video_frames,
+                fps=config.FPS,
+                caption='Recorded video',
+            ),
+            priority=task_queue.TaskPriorities.MEDIUM,
+        )
 
     def _can_use_camera(self) -> bool:
         use_camera: bool = self.state[USE_CAMERA]
@@ -314,3 +324,13 @@ class Camera(BaseModule):
             new_frame = np.copy(frame)
             add_timestamp_in_frame(new_frame)
             self._video_frames.append(new_frame)
+
+    @synchronized_method
+    @with_throttling(datetime.timedelta(seconds=5), count=1)
+    @with_throttling(datetime.timedelta(minutes=1), count=10)
+    def _process_motion_detection(self, *, source: str) -> None:
+        if source == MotionTypeSources.SENSORS and self.state[USE_CAMERA]:
+            self.task_queue.put(
+                self._take_photo,
+                priority=task_queue.TaskPriorities.HIGH,
+            )

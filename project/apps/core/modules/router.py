@@ -23,8 +23,6 @@ class Router(BaseModule):
     _last_connected_at: datetime.datetime
     _timedelta_for_connection: datetime.timedelta = datetime.timedelta(seconds=10)
     _user_was_connected: typing.Optional[bool] = None
-    _last_saving: datetime.datetime
-    _timedelta_for_saving: datetime.timedelta = datetime.timedelta(minutes=1)
 
     _last_checking: datetime.datetime
     _timedelta_for_checking: datetime.timedelta = datetime.timedelta(seconds=10)
@@ -32,12 +30,9 @@ class Router(BaseModule):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-        self.state.subscribe(constants.USER_IS_CONNECTED_TO_ROUTER, self._process_new_user_state)
-
         now = datetime.datetime.now()
 
         self._last_connected_at = now
-        self._last_saving = now
         self._last_checking = now
 
     @property
@@ -49,6 +44,11 @@ class Router(BaseModule):
     def subscribe_to_events(self) -> tuple:
         return (
             *super().subscribe_to_events(),
+            self.state.subscribe_toggle(constants.USER_IS_CONNECTED_TO_ROUTER, {
+                (False, True,): lambda name: events.user_is_connected_to_router.send(),
+                (True, False,): lambda name: events.user_is_disconnected_to_router.send(),
+                (None, True,): lambda name: events.user_is_connected_to_router.send(),
+            }),
             events.request_for_statistics.connect(self._create_router_stats),
             events.check_if_user_is_at_home.connect(self._check_user_status),
         )
@@ -86,11 +86,10 @@ class Router(BaseModule):
         if not need_to_recheck:
             return
 
+        is_connected = check_if_host_is_at_home()
         self._last_checking = now
 
-        is_connected = check_if_host_is_at_home()
-
-        need_to_save = self._user_was_connected != is_connected or now - self._last_saving >= self._timedelta_for_saving
+        need_to_save = self._user_was_connected != is_connected
 
         if need_to_save:
             Signal.add(signal_type=constants.USER_IS_CONNECTED_TO_ROUTER, value=int(is_connected))
@@ -147,11 +146,3 @@ class Router(BaseModule):
                 message += '\n'
 
         self.messenger.send_message(message)
-
-    @staticmethod
-    def _process_new_user_state(*, name: str, old_value: bool, new_value: bool) -> None:
-        if old_value and not new_value:
-            events.user_is_disconnected_to_router.send()
-
-        if new_value and not old_value:
-            events.user_is_connected_to_router.send()

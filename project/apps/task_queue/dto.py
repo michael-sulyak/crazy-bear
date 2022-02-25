@@ -87,25 +87,6 @@ class Task:
     def __post_init__(self) -> None:
         self.target = log_func_performance(self.__class__.__name__.lower())(self.target)
 
-    # def __lt__(self, other: 'Task') -> bool:
-    #     return self.field_for_sorting < other.field_for_sorting
-    #
-    # def __le__(self, other: 'Task') -> bool:
-    #     return self.field_for_sorting <= other.field_for_sorting
-    #
-    # def __gt__(self, other: 'Task') -> bool:
-    #     return self.field_for_sorting > other.field_for_sorting
-    #
-    # def __ge__(self, other: 'Task') -> bool:
-    #     return self.field_for_sorting >= other.field_for_sorting
-    #
-    # def __eq__(self, other: 'Task') -> bool:
-    #     return self.field_for_sorting == other.field_for_sorting
-
-    @property
-    def field_for_sorting(self) -> typing.Any:
-        return self.run_after
-
     @property
     @synchronized_method
     def status(self) -> str:

@@ -5,19 +5,14 @@ import typing
 
 from telegram import ReplyKeyboardMarkup
 
+from .. import constants
 from ..base import BaseModule, Command
-from ..constants import (
-    ARDUINO_IS_ENABLED, AUTO_SECURITY_IS_ENABLED, BotCommands, MAIN_LAMP_IS_ON, RECOMMENDATION_SYSTEM_IS_ENABLED,
-    SECURITY_IS_ENABLED,
-    USE_CAMERA,
-    VIDEO_RECORDING_IS_ENABLED,
-)
 from ...common.constants import AUTO, OFF, ON
 from ...common.state import State
 
 
 __all__ = (
-    'MenuModule',
+    'Menu',
     'TelegramMenu',
 )
 
@@ -25,7 +20,6 @@ __all__ = (
 class TelegramMenu:
     menu_state_name = 'menu'
     home_page_code: str
-    pages_map: dict
     state: State
     _last_result: typing.Optional[typing.Sequence] = None
 
@@ -46,22 +40,23 @@ class TelegramMenu:
         }
 
     def __call__(self, *args, **kwargs) -> typing.Optional[ReplyKeyboardMarkup]:
-        if not self.state[self.menu_state_name]:
-            page_code = self.home_page_code
-        else:
-            page_code = self.state[self.menu_state_name][-1]
-
-            if page_code not in self.pages_map:
+        with self.state.lock(self.menu_state_name):
+            if not self.state[self.menu_state_name]:
                 page_code = self.home_page_code
+            else:
+                page_code = self.state[self.menu_state_name][-1]
 
-        result = self.pages_map[page_code].get()
+                if page_code not in self.pages_map:
+                    page_code = self.home_page_code
 
-        if result == self._last_result:
-            return None
+            result = self.pages_map[page_code].get()
 
-        self._last_result = result
+            if result == self._last_result:
+                return None
 
-        return result
+            self._last_result = result
+
+            return result
 
 
 class BasePage(abc.ABC):
@@ -91,16 +86,16 @@ class MainPage(BasePage):
     def _get_items(self) -> typing.Sequence:
         return (
             (
-                f'{BotCommands.SECURITY} {OFF if self.state[SECURITY_IS_ENABLED] else ON}',
-                f'{BotCommands.SECURITY} {AUTO} {OFF if self.state[AUTO_SECURITY_IS_ENABLED] else ON}',
+                f'{constants.BotCommands.SECURITY} {OFF if self.state[constants.SECURITY_IS_ENABLED] else ON}',
+                f'{constants.BotCommands.SECURITY} {AUTO} {OFF if self.state[constants.AUTO_SECURITY_IS_ENABLED] else ON}',
             ),
             (
-                f'{BotCommands.TO} {AllFuncsPage.code}',
-                f'{BotCommands.TO} {LampPage.code}',
+                f'{constants.BotCommands.TO} {AllFuncsPage.code}',
+                f'{constants.BotCommands.TO} {LampPage.code}',
             ),
             (
-                BotCommands.STATUS,
-                f'{BotCommands.STATS} -s',
+                constants.BotCommands.STATUS,
+                f'{constants.BotCommands.STATS} -s',
             ),
         )
 
@@ -112,7 +107,7 @@ class LampPage(BasePage):
     def _get_items(self) -> typing.Sequence:
         return (
             (
-                f'{BotCommands.LAMP} {OFF if self.state[MAIN_LAMP_IS_ON] else ON}',
+                f'{constants.BotCommands.LAMP} {OFF if self.state[constants.MAIN_LAMP_IS_ON] else ON}',
             ),
             # (
             #     f'{BotCommands.LAMP} color white',
@@ -123,23 +118,23 @@ class LampPage(BasePage):
             #     f'{BotCommands.LAMP} color green',
             # ),
             (
-                f'{BotCommands.LAMP} increase_brightness',
-                f'{BotCommands.LAMP} decrease_brightness',
+                f'{constants.BotCommands.LAMP} increase_brightness',
+                f'{constants.BotCommands.LAMP} decrease_brightness',
             ),
             # (
             #     f'{BotCommands.LAMP} increase_color_temp',
             #     f'{BotCommands.LAMP} decrease_color_temp',
             # ),
             (
-                f'{BotCommands.LAMP} color_temp 150',
-                f'{BotCommands.LAMP} color_temp 250',
+                f'{constants.BotCommands.LAMP} color_temp 150',
+                f'{constants.BotCommands.LAMP} color_temp 250',
             ),
             (
-                f'{BotCommands.LAMP} color_temp 350',
-                f'{BotCommands.LAMP} color_temp 500',
+                f'{constants.BotCommands.LAMP} color_temp 350',
+                f'{constants.BotCommands.LAMP} color_temp 500',
             ),
             (
-                BotCommands.RETURN,
+                constants.BotCommands.RETURN,
             ),
         )
 
@@ -149,37 +144,41 @@ class AllFuncsPage(BasePage):
     code = 'all_funcs'
 
     def _get_items(self) -> typing.Sequence:
-        use_camera: bool = self.state[USE_CAMERA]
+        use_camera: bool = self.state[constants.USE_CAMERA]
 
         camera_line = [
-            f'{BotCommands.CAMERA} {OFF if use_camera else ON}',
+            f'{constants.BotCommands.CAMERA} {OFF if use_camera else ON}',
         ]
 
         if use_camera:
-            camera_line.append(f'{BotCommands.CAMERA} photo')
-            camera_line.append(f'{BotCommands.CAMERA} record {OFF if self.state[VIDEO_RECORDING_IS_ENABLED] else ON}')
+            camera_line.append(f'{constants.BotCommands.CAMERA} photo')
+            camera_line.append(
+                f'{constants.BotCommands.CAMERA} record {OFF if self.state[constants.VIDEO_RECORDING_IS_ENABLED] else ON}')
 
         return (
             camera_line,
-            (f'{BotCommands.RECOMMENDATION_SYSTEM} {OFF if self.state[RECOMMENDATION_SYSTEM_IS_ENABLED] else ON}',),
-            (f'{BotCommands.ARDUINO} {OFF if self.state[ARDUINO_IS_ENABLED] else ON}',),
-            (BotCommands.STATS, BotCommands.DB_STATS, BotCommands.CHECK_DB,),
-            (BotCommands.RAW_WIFI_DEVICES, BotCommands.WIFI_DEVICES,),
-            (BotCommands.RESTART,),
-            (BotCommands.HELP, BotCommands.RETURN,),
+            (
+                f'{constants.BotCommands.RECOMMENDATION_SYSTEM}'
+                f' {OFF if self.state[constants.RECOMMENDATION_SYSTEM_IS_ENABLED] else ON}',
+            ),
+            (f'{constants.BotCommands.ARDUINO} {OFF if self.state[constants.ARDUINO_IS_ENABLED] else ON}',),
+            (constants.BotCommands.STATS, constants.BotCommands.DB_STATS, constants.BotCommands.CHECK_DB,),
+            (constants.BotCommands.RAW_WIFI_DEVICES, constants.BotCommands.WIFI_DEVICES,),
+            (constants.BotCommands.RESTART,),
+            (constants.BotCommands.HELP, constants.BotCommands.RETURN,),
         )
 
 
-class MenuModule(BaseModule):
+class Menu(BaseModule):
     NEXT = '→'
     PREV = '←'
 
     def process_command(self, command: Command) -> typing.Any:
-        if command.name == BotCommands.RESTART:
+        if command.name == constants.BotCommands.RESTART:
             os.kill(os.getpid(), signal.SIGTERM)
             return True
 
-        if command.name == BotCommands.RETURN:
+        if command.name == constants.BotCommands.RETURN:
             menu = self.state[TelegramMenu.menu_state_name]
 
             if len(menu) > 1:
@@ -190,8 +189,10 @@ class MenuModule(BaseModule):
 
             return True
 
-        if command.name == BotCommands.TO:
-            self.state[TelegramMenu.menu_state_name].append(command.first_arg)
+        if command.name == constants.BotCommands.TO:
+            with self.state.lock(TelegramMenu.menu_state_name):
+                self.state[TelegramMenu.menu_state_name].append(command.first_arg)
+
             self.messenger.send_message(self.NEXT)
 
             return True

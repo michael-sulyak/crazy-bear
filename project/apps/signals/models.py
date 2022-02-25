@@ -161,7 +161,7 @@ class Signal(db.Base):
             return
 
         new_signals = tuple(
-            Signal(type=signal_type, value=signal.value, received_at=signal.aggregated_time)
+            Signal(type=signal_type, value=signal._value, received_at=signal.aggregated_time)
             for signal in signals
         )
 

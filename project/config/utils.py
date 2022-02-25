@@ -5,6 +5,8 @@ import re
 import typing
 from types import MappingProxyType
 
+from crontab import CronTab
+
 
 class NOTHING:
     pass
@@ -18,32 +20,10 @@ class Env:
             return os.environ.get(name, default)
 
     def int(self, name: str, *, default: typing.Any = NOTHING) -> typing.Optional[int]:
-        try:
-            result = self(name)
-        except KeyError:
-            if default is NOTHING:
-                raise
-
-            return default
-
-        if not result and result != 0:
-            return default
-
-        return int(result)
+        return self._value(name, default=default, value_converter=int)
 
     def float(self, name: str, *, default: typing.Any = NOTHING) -> typing.Optional[float]:
-        try:
-            result = self(name)
-        except KeyError:
-            if default is NOTHING:
-                raise
-
-            return default
-
-        if not result and result != 0:
-            return default
-
-        return float(result)
+        return self._value(name, default=default, value_converter=float)
 
     def bool(self, name: str, *, default: typing.Any = NOTHING) -> typing.Optional[int]:
         try:
@@ -54,7 +34,15 @@ class Env:
 
             return default
 
-        return result in ('1', 'true', 'True', 'yes', 'YES',)
+        is_true = result in ('1', 'true', 'True', 'yes', 'YES',)
+
+        if is_true:
+            return True
+
+        if result not in ('0', 'false', 'False', 'no', 'NO',):
+            raise ValueError
+
+        return False
 
     def tuple(self,
               name: str, *,
@@ -74,11 +62,11 @@ class Env:
 
         return tuple(value_type(x.strip()) for x in result.split(separator))
 
-    def frozenset(self,
-                  name: str, *,
-                  default: typing.Any = NOTHING,
-                  separator: str = ',',
-                  value_type: typing.Any = str) -> typing.Optional[frozenset]:
+    def frozen_set(self,
+                   name: str, *,
+                   default: typing.Any = NOTHING,
+                   separator: str = ',',
+                   value_type: typing.Any = str) -> typing.Optional[frozenset]:
         result = self.tuple(name, default=default, separator=separator, value_type=value_type)
 
         if result is None:
@@ -87,18 +75,7 @@ class Env:
         return frozenset(result)
 
     def json(self, name: str, *, default: typing.Any = NOTHING) -> typing.Any:
-        try:
-            result = self(name)
-        except KeyError:
-            if default is NOTHING:
-                raise
-
-            return default
-
-        if not result:
-            return None
-
-        return json.loads(result)
+        return self._value(name, default=default, value_converter=json.loads)
 
     def frozen_json(self, name: str, *, default: typing.Any = NOTHING) -> typing.Any:
         data = self.json(name, default=default)
@@ -108,7 +85,7 @@ class Env:
 
         return MappingProxyType(data)
 
-    def timedelta(self, name: str, *, default: typing.Any = NOTHING) -> datetime.timedelta:
+    def time_delta(self, name: str, *, default: typing.Any = NOTHING) -> datetime.timedelta:
         try:
             result = self.tuple(name, separator=' ')
         except KeyError:
@@ -118,6 +95,43 @@ class Env:
             return default
 
         return datetime.timedelta(**{result[1]: int(result[0])})
+
+    def range(self,
+              name: str, *,
+              default: typing.Any = NOTHING,
+              value_type: typing.Callable) -> typing.Tuple[typing.Any, typing.Any]:
+        try:
+            result = self.tuple(name, value_type=value_type)
+        except KeyError:
+            if default is NOTHING:
+                raise
+
+            return default
+
+        if len(result) != 2:
+            raise ValueError
+
+        return result
+
+    def time_range(self, name: str, *, default: typing.Any = NOTHING) -> typing.Tuple[datetime.time, datetime.time]:
+        return self.range(name, default=default, value_type=datetime.time.fromisoformat)
+
+    def crontab(self, name: str, *, default: typing.Any = NOTHING) -> typing.Any:
+        return self._value(name, default=default, value_converter=CronTab)
+
+    def _value(self,
+               name: str, *,
+               default: typing.Any = NOTHING,
+               value_converter: typing.Callable) -> typing.Any:
+        try:
+            result = self(name)
+        except KeyError:
+            if default is NOTHING:
+                raise
+
+            return default
+
+        return value_converter(result)
 
 
 env = Env()

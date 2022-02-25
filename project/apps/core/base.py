@@ -5,7 +5,7 @@ import typing
 from dataclasses import dataclass, field
 
 from . import events
-from ..common.events import Receiver
+from ..common.base import BaseReceiver
 from ..common.state import State
 from ..common.types import FrozenDict
 from ..messengers import events as messenger_events
@@ -30,7 +30,7 @@ class BaseModule(abc.ABC):
     state: State
     task_queue: BaseTaskQueue
     unique_task_queue: UniqueTaskQueue
-    _subscribers_to_events: typing.Tuple[Receiver, ...]
+    _subscribers_to_events: typing.Tuple[BaseReceiver, ...]
     _repeatable_tasks: typing.Tuple[RepeatableTask, ...]
     _lock: typing.Union[threading.Lock, threading.RLock]
 
@@ -52,11 +52,18 @@ class BaseModule(abc.ABC):
     def init_repeatable_tasks(self) -> tuple:
         return ()
 
-    def subscribe_to_events(self) -> typing.Tuple[Receiver, ...]:
-        return (
+    def subscribe_to_events(self) -> typing.Tuple[BaseReceiver, ...]:
+        subscribers = (
             events.shutdown.connect(self.disable),
-            messenger_events.input_command.connect(self.process_command),
         )
+
+        if self.__class__.process_command is not BaseModule.process_command:
+            # Process input commands if it is overwrited.
+            subscribers += (
+                messenger_events.input_command.connect(self.process_command),
+            )
+
+        return subscribers
 
     def process_command(self, command: 'Command') -> typing.Any:
         pass
