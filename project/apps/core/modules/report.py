@@ -27,7 +27,7 @@ from ...core.constants import (
 from ...devices.utils import get_connected_devices_to_router
 from ...messengers.utils import ProgressBar
 from ...signals.models import Signal
-from ...task_queue import DelayedTask, IntervalTask, RepeatableTask, TaskPriorities
+from ...task_queue import IntervalTask, TaskPriorities
 from .... import config
 
 
@@ -171,6 +171,7 @@ class Report(BaseModule):
             if not self._message_id_for_status:
                 return
 
+            logging.info('Update status')
             self._send_status()
 
     def _pipe_for_collecting_stats(self, receivers: typing.Sequence, kwargs: dict) -> typing.Iterator:
@@ -261,7 +262,14 @@ class Report(BaseModule):
         ram_usage = get_ram_usage() * 100
         ram_usage = f'{round(ram_usage, 1)}%{_get_mark(ram_usage, (0, 60,), (0, 80,))}'
 
-        connected_devices = get_connected_devices_to_router()
+        connected_devices = ()
+
+        try:
+            connected_devices = tuple(get_connected_devices_to_router())
+        except Exception as e:
+            logging.exception(e)
+            pass
+
         connected_devices_str = ', '.join(
             f'`{device.name}`' if device.name else f'`Unknown {device.mac_address}`'
             for device in connected_devices

@@ -26,11 +26,7 @@ def get_connected_macs_to_router() -> typing.Generator[str, None, None]:
             if mac_address:
                 yield mac_address
     elif config.ROUTER_TYPE == 'mi':
-        try:
-            connected_devices = mi_wifi.device_list()['list']
-        except Exception as e:
-            logging.exception(e)
-            return
+        connected_devices = mi_wifi.device_list()['list']
 
         for device in connected_devices:
             yield device['mac']

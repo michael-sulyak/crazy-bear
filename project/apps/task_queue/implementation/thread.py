@@ -1,21 +1,19 @@
-import datetime
 import logging
 import queue
 import threading
 import typing
+from functools import partial
 from time import sleep
 
+from .. import constants
 from ..base import BaseTaskQueue, BaseWorker, TaskPriorityQueue
-from ..constants import TaskPriorities, TaskStatus
-from ..dto import RetryPolicy, Task, default_retry_policy
-from ..exceptions import RepeatTask
-from ...common.utils import synchronized_method
+from ..dto import Task
+from ..middlewares import BaseMiddleware
 
 
 __all__ = (
     'MemTaskQueue',
     'ThreadWorker',
-    'UniqueTaskQueue',
 )
 
 
@@ -29,10 +27,8 @@ class MemTaskQueue(BaseTaskQueue):
         return self._tasks.qsize()
 
     def put_task(self, task: Task) -> None:
-        task.status = TaskStatus.PENDING
-
+        task.status = constants.TaskStatuses.PENDING
         logging.debug('Put %s to MemTaskQueue', task)
-
         self._tasks.put(task)
 
     def get(self) -> typing.Optional[Task]:
@@ -44,18 +40,31 @@ class MemTaskQueue(BaseTaskQueue):
 
 class ThreadWorker(BaseWorker):
     task_queue: BaseTaskQueue
+    middlewares: typing.Tuple[BaseMiddleware, ...]
+    _middleware_chain: typing.Callable
     _is_run: threading.Event
     _thread: threading.Thread
     _on_close: typing.Optional[typing.Callable]
-    _getting_delay: float = 0.2
+    _getting_delay: float = 0.1
 
     def __init__(self, *,
                  task_queue: BaseTaskQueue,
-                 on_close: typing.Optional[typing.Callable] = None) -> None:
+                 on_close: typing.Optional[typing.Callable] = None,
+                 middlewares: typing.Tuple[BaseMiddleware, ...]) -> None:
         self.task_queue = task_queue
+        self.middlewares = middlewares
         self._on_close = on_close
         self._is_run = threading.Event()
         self._thread = threading.Thread(target=self._process_tasks)
+
+        self._middleware_chain = self._run_task
+
+        for middleware in reversed(self.middlewares):
+            self._middleware_chain = partial(
+                middleware.process,
+                handler=self._middleware_chain,
+                task_queue=self.task_queue,
+            )
 
     @property
     def is_run(self) -> bool:
@@ -93,52 +102,13 @@ class ThreadWorker(BaseWorker):
             logging.debug('Get %s from MemTaskQueue', task)
 
             try:
-                task.run()
-            except RepeatTask:
-                self.task_queue.put_task(task)
+                self._middleware_chain(task=task)
             except Exception as e:
                 logging.exception(e)
 
         if self._on_close is not None:
             self._on_close()
 
-
-class UniqueTaskQueue:
-    _lock: threading.Lock
-    _tasks_map: typing.Dict[typing.Callable, Task]
-    _task_queue: BaseTaskQueue
-
-    def __init__(self, *, task_queue: BaseTaskQueue) -> None:
-        self._task_queue = task_queue
-        self._tasks_map = {}
-        self._lock = threading.Lock()
-
-    def push(self,
-             target: typing.Callable, *,
-             priority: int = TaskPriorities.MEDIUM,
-             retry_policy: RetryPolicy = default_retry_policy,
-             run_after: typing.Optional[datetime.datetime] = None) -> typing.Optional[Task]:
-        if not self._task_is_finished(target):
-            return None
-
-        task = self._task_queue.put(target, priority=priority, retry_policy=retry_policy, run_after=run_after)
-
-        if task is not None:
-            self._track(task)
-
-        return task
-
-    @synchronized_method
-    def _track(self, task: Task) -> None:
-        self._tasks_map[task.target] = task
-
-    @synchronized_method
-    def _task_is_finished(self, target: typing.Callable) -> bool:
-        if target not in self._tasks_map:
-            return True
-
-        if self._tasks_map[target].status in (TaskStatus.FINISHED, TaskStatus.FAILED,):
-            del self._tasks_map[target]
-            return True
-
-        return False
+    @staticmethod
+    def _run_task(*, task: Task) -> typing.Any:
+        return task.run()

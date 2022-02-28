@@ -1,6 +1,6 @@
 __all__ = (
     'TaskPriorities',
-    'TaskStatus',
+    'TaskStatuses',
 )
 
 
@@ -10,7 +10,7 @@ class TaskPriorities:
     LOW = 3
 
 
-class TaskStatus:
+class TaskStatuses:
     CREATED = 'created'
     PENDING = 'pending'
     STARTED = 'started'

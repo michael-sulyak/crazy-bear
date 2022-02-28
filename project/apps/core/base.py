@@ -10,7 +10,7 @@ from ..common.state import State
 from ..common.types import FrozenDict
 from ..messengers import events as messenger_events
 from ..messengers.base import BaseMessenger
-from ..task_queue import BaseTaskQueue, UniqueTaskQueue
+from ..task_queue import BaseTaskQueue
 from ..task_queue.dto import RepeatableTask
 from ..zigbee.base import ZigBee
 
@@ -29,7 +29,6 @@ class BaseModule(abc.ABC):
     messenger: BaseMessenger
     state: State
     task_queue: BaseTaskQueue
-    unique_task_queue: UniqueTaskQueue
     _subscribers_to_events: typing.Tuple[BaseReceiver, ...]
     _repeatable_tasks: typing.Tuple[RepeatableTask, ...]
     _lock: typing.Union[threading.Lock, threading.RLock]
@@ -40,7 +39,6 @@ class BaseModule(abc.ABC):
         self.messenger = self.context.messenger
         self.state = self.context.state
         self.task_queue = self.context.task_queue
-        self.unique_task_queue = UniqueTaskQueue(task_queue=self.context.task_queue)
 
         self.state.create_many(**self.initial_state)
         self._subscribers_to_events = self.subscribe_to_events()

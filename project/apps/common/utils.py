@@ -14,6 +14,7 @@ import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import pytz
 import requests
 import seaborn as sns
 import sentry_sdk
@@ -170,6 +171,13 @@ def get_weather() -> dict:
     return requests.get(config.OPENWEATHERMAP_URL, timeout=10).json()
 
 
+def get_sunrise_time() -> datetime.datetime:
+    weather_info = get_weather()
+    sunrise_dt = datetime.datetime.fromtimestamp(weather_info['sys']['sunrise'])
+    sunrise_dt -= datetime.timedelta(seconds=weather_info['timezone'])
+    return pytz.UTC.localize(sunrise_dt)
+
+
 def synchronized_method(func: typing.Callable) -> typing.Callable:
     @functools.wraps(func)
     def _wrapper(self, *args, **kwargs) -> typing.Any:
@@ -301,7 +309,7 @@ def with_throttling(period: datetime.timedelta, *, count: int = 1) -> typing.Cal
         times_of_run = deque()
 
         @functools.wraps(func)
-        def _wrapper(self, *args, **kwargs) -> None:
+        def _wrapper(*args, **kwargs) -> None:
             now = datetime.datetime.now()
 
             while len(times_of_run) >= count:

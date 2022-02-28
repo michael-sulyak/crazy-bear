@@ -132,7 +132,6 @@ class VideoGuard:
                 'frame': frame,
             },
             priority=tq.TaskPriorities.MEDIUM,
-            retry_policy=tq.retry_policy_for_connection_error,
         )
 
     def _save_video(self, frames: np.array) -> None:
@@ -146,5 +145,4 @@ class VideoGuard:
                 'fps': config.FPS,
             },
             priority=tq.TaskPriorities.MEDIUM,
-            retry_policy=tq.retry_policy_for_connection_error,
         )

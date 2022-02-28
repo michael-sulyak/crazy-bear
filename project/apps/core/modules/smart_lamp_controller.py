@@ -3,14 +3,12 @@ import threading
 import typing
 from functools import partial
 
-import pytz
-
 from project import config
 from . import constants
 from ..base import BaseModule, Command
 from ..constants import BotCommands
 from ...common.constants import OFF, ON
-from ...common.utils import current_time, get_weather, synchronized_method
+from ...common.utils import current_time, get_sunrise_time, synchronized_method
 from ...task_queue import ScheduledTask, TaskPriorities
 from ...zigbee.exceptions import ZigBeeTimeoutError
 from ...zigbee.lamps.life_control import LCSmartLamp
@@ -23,6 +21,7 @@ __all__ = (
 
 class SmartLampController(BaseModule):
     smart_lamp: LCSmartLamp
+    _sunrise_timeout: datetime.timedelta = datetime.timedelta(hours=1)
     _lock: threading.RLock
     _last_manual_action: typing.Optional[datetime.datetime] = None
     _last_artificial_sunrise_time: typing.Optional[datetime.datetime] = None
@@ -48,13 +47,14 @@ class SmartLampController(BaseModule):
     def init_repeatable_tasks(self) -> tuple:
         repeatable_tasks = ()
 
-        if config.ARTIFICIAL_SUNRISE_TIME:
-            repeatable_tasks += (
+        if config.ARTIFICIAL_SUNRISE_SCHEDULES:
+            repeatable_tasks += tuple(
                 ScheduledTask(
-                    crontab=config.ARTIFICIAL_SUNRISE_TIME,
+                    crontab=sunrise_schedule,
                     target=self._run_artificial_sunrise,
                     priority=TaskPriorities.LOW,
-                ),
+                )
+                for sunrise_schedule in config.ARTIFICIAL_SUNRISE_SCHEDULES
             )
 
         return repeatable_tasks
@@ -66,7 +66,11 @@ class SmartLampController(BaseModule):
             with self._lock:
                 try:
                     if command.first_arg == ON:
-                        self.smart_lamp.turn_on(transition=default_transition)
+                        if command.second_arg:
+                            self.smart_lamp.turn_on(brightness=int(command.second_arg), transition=default_transition)
+                        else:
+                            self.smart_lamp.turn_on(transition=default_transition)
+
                         self.state[constants.MAIN_LAMP_IS_ON] = True
                     elif command.first_arg == OFF:
                         self.smart_lamp.turn_off(transition=default_transition)
@@ -79,7 +83,7 @@ class SmartLampController(BaseModule):
                     elif command.first_arg == 'brightness':
                         self.smart_lamp.set_brightness(int(command.second_arg), transition=default_transition)
                     elif command.first_arg == 'color_temp':
-                        self.smart_lamp.set_color_temp(int(command.second_arg), transition=default_transition)
+                        self.smart_lamp.set_color_temp(int(command.second_arg))
                     elif command.first_arg == 'increase_brightness':
                         self.smart_lamp.step_brightness(50, transition=default_transition)
                     elif command.first_arg == 'decrease_brightness':
@@ -88,6 +92,8 @@ class SmartLampController(BaseModule):
                         self.smart_lamp.step_color_temp(50, transition=default_transition)
                     elif command.first_arg == 'decrease_color_temp':
                         self.smart_lamp.step_color_temp(-50, transition=default_transition)
+                    elif command.first_arg == 'sunrise':
+                        self._run_artificial_sunrise(forcibly=True)
                     else:
                         return False
                 except ZigBeeTimeoutError:
@@ -117,12 +123,13 @@ class SmartLampController(BaseModule):
             pass
 
     @synchronized_method
-    def _run_artificial_sunrise(self, *, step: int = 1) -> None:
+    def _run_artificial_sunrise(self, *, step: int = 1, forcibly: bool = False) -> None:
         def _run_next_step(timedelta: datetime.timedelta) -> None:
             self.task_queue.put(
                 self._run_artificial_sunrise,
                 kwargs={'step': step + 1},
                 run_after=datetime.datetime.now() + timedelta,
+                priority=TaskPriorities.LOW,
             )
 
         if step == 1:
@@ -132,48 +139,53 @@ class SmartLampController(BaseModule):
             if not self.state[constants.USER_IS_CONNECTED_TO_ROUTER]:
                 return
 
-            if (current_time() - self._get_real_sunrise_time()) > datetime.timedelta(minutes=20):
+            if not forcibly and (current_time() - get_sunrise_time()) > self._sunrise_timeout:
                 return
 
             self.smart_lamp.turn_on(
-                brightness=20,
+                brightness=5,
+                color_temp=150,
                 transition=1,
             )
+            self.smart_lamp.set_color_temp(150)
+            self.state[constants.MAIN_LAMP_IS_ON] = True
 
             self._last_artificial_sunrise_time = datetime.datetime.now()
             _run_next_step(datetime.timedelta(minutes=1))
             return
 
-        if not self._can_continue_artificial_sunrise:
+        if not self._can_continue_artificial_sunrise():
             return
 
-        brightness = step * 20
+        brightness = step * 5
 
         if brightness > self.smart_lamp.MAX_BRIGHTNESS:
             brightness = self.smart_lamp.MAX_BRIGHTNESS
 
-        self.smart_lamp.set_brightness(brightness)
+        self.smart_lamp.set_brightness(brightness, transition=1)
 
         if brightness == self.smart_lamp.MAX_BRIGHTNESS:
-            diff = self._get_real_sunrise_time() - current_time()
-            diff += datetime.timedelta(minutes=20)
+            diff = get_sunrise_time() - current_time()
+            diff += self._sunrise_timeout
 
-            if diff < datetime.timedelta(minutes=30):
-                diff = datetime.timedelta(minutes=30)
+            if diff < self._sunrise_timeout:
+                diff = self._sunrise_timeout
 
             self.task_queue.put(
                 self._turn_down_lamp,
                 run_after=datetime.datetime.now() + diff,
+                priority=TaskPriorities.LOW,
             )
         else:
             _run_next_step(datetime.timedelta(minutes=1))
 
     @synchronized_method
     def _turn_down_lamp(self) -> None:
-        if not self._can_continue_artificial_sunrise:
+        if not self._can_continue_artificial_sunrise():
             return
 
         self.smart_lamp.turn_off(transition=1)
+        self.state[constants.MAIN_LAMP_IS_ON] = False
 
     @synchronized_method
     def _can_continue_artificial_sunrise(self) -> None:
@@ -181,10 +193,3 @@ class SmartLampController(BaseModule):
                 self._last_manual_action is None
                 or self._last_manual_action < self._last_artificial_sunrise_time
         )
-
-    @staticmethod
-    def _get_real_sunrise_time() -> datetime.datetime:
-        weather_info = get_weather()
-        sunrise_dt = datetime.datetime.fromtimestamp(weather_info['sys']['sunrise'])
-        sunrise_dt -= datetime.timedelta(seconds=weather_info['timezone'])
-        return pytz.UTC.localize(sunrise_dt)

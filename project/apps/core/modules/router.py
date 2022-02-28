@@ -1,5 +1,6 @@
 import datetime
 import io
+import logging
 import typing
 
 from ..base import BaseModule, Command
@@ -22,9 +23,9 @@ __all__ = (
 class Router(BaseModule):
     _last_connected_at: datetime.datetime
     _timedelta_for_connection: datetime.timedelta = datetime.timedelta(seconds=10)
-    _user_was_connected: typing.Optional[bool] = None
 
-    _last_checking: datetime.datetime
+    _check_after: datetime.datetime
+    _errors_count: int = 0
     _timedelta_for_checking: datetime.timedelta = datetime.timedelta(seconds=10)
 
     def __init__(self, *args, **kwargs) -> None:
@@ -33,12 +34,19 @@ class Router(BaseModule):
         now = datetime.datetime.now()
 
         self._last_connected_at = now
-        self._last_checking = now
+        self._check_after = now
 
     @property
     def initial_state(self) -> typing.Dict[str, typing.Any]:
+        host_is_at_home = False
+
+        try:
+            host_is_at_home = check_if_host_is_at_home()
+        except Exception as e:
+            logging.exception(e)
+
         return {
-            constants.USER_IS_CONNECTED_TO_ROUTER: check_if_host_is_at_home(),
+            constants.USER_IS_CONNECTED_TO_ROUTER: host_is_at_home,
         }
 
     def subscribe_to_events(self) -> tuple:
@@ -73,28 +81,34 @@ class Router(BaseModule):
     def _check_user_status(self, *, force: bool = False) -> None:
         now = datetime.datetime.now()
 
-        if force:
-            need_to_recheck = True
-        else:
-            timedelta_for_checking = self._timedelta_for_checking
-
-            if self._user_was_connected and is_sleep_hours(now):
-                timedelta_for_checking *= 10
-
-            need_to_recheck = not self._user_was_connected or now - self._last_checking >= timedelta_for_checking
+        need_to_recheck = force or self._check_after <= now
 
         if not need_to_recheck:
             return
 
-        is_connected = check_if_host_is_at_home()
-        self._last_checking = now
+        try:
+            is_connected = check_if_host_is_at_home()
+        except Exception as e:
+            logging.exception(e)
+            is_connected = False
+            self._errors_count += 1
+        else:
+            self._errors_count = 0
 
-        need_to_save = self._user_was_connected != is_connected
+        if self._errors_count > 0:
+            delta = self._timedelta_for_checking + datetime.timedelta(seconds=self._errors_count * 10)
 
-        if need_to_save:
-            Signal.add(signal_type=constants.USER_IS_CONNECTED_TO_ROUTER, value=int(is_connected))
-            self._user_was_connected = is_connected
-            self._last_saving = now
+            if delta > datetime.timedelta(minutes=10):
+                delta = datetime.timedelta(minutes=10)
+
+            self._check_after = now + delta
+        elif is_sleep_hours():
+            self._check_after = now + self._timedelta_for_checking + datetime.timedelta(seconds=10)
+        else:
+            self._check_after = now + self._timedelta_for_checking
+
+        Signal.add(signal_type=constants.USER_IS_CONNECTED_TO_ROUTER, value=int(is_connected))
+        self._last_saving = now
 
         if is_connected:
             self._last_connected_at = now

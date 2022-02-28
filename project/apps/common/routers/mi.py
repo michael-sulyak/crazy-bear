@@ -66,7 +66,7 @@ class MiWiFi:
                 'password': generate_password_hash(nonce, self.password),
                 'nonce': nonce,
             },
-            timeout=5,
+            timeout=30,
         )
 
         response.raise_for_status()

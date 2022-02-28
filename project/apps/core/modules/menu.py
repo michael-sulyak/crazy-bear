@@ -105,26 +105,23 @@ class LampPage(BasePage):
     code = 'lamp'
 
     def _get_items(self) -> typing.Sequence:
+        main_lamp_is_on = self.state[constants.MAIN_LAMP_IS_ON]
+
+        first_row = (
+            f'{constants.BotCommands.LAMP} {OFF if main_lamp_is_on else ON}',
+        )
+
+        if not main_lamp_is_on:
+            first_row += (
+                f'{constants.BotCommands.LAMP} {ON} 5',
+            )
+
         return (
-            (
-                f'{constants.BotCommands.LAMP} {OFF if self.state[constants.MAIN_LAMP_IS_ON] else ON}',
-            ),
-            # (
-            #     f'{BotCommands.LAMP} color white',
-            #     f'{BotCommands.LAMP} color yellow',
-            # ),
-            # (
-            #     f'{BotCommands.LAMP} color blue',
-            #     f'{BotCommands.LAMP} color green',
-            # ),
+            first_row,
             (
                 f'{constants.BotCommands.LAMP} increase_brightness',
                 f'{constants.BotCommands.LAMP} decrease_brightness',
             ),
-            # (
-            #     f'{BotCommands.LAMP} increase_color_temp',
-            #     f'{BotCommands.LAMP} decrease_color_temp',
-            # ),
             (
                 f'{constants.BotCommands.LAMP} color_temp 150',
                 f'{constants.BotCommands.LAMP} color_temp 250',
@@ -132,6 +129,14 @@ class LampPage(BasePage):
             (
                 f'{constants.BotCommands.LAMP} color_temp 350',
                 f'{constants.BotCommands.LAMP} color_temp 500',
+            ),
+            (
+                f'{constants.BotCommands.LAMP} color white',
+                f'{constants.BotCommands.LAMP} color yellow',
+            ),
+            (
+                f'{constants.BotCommands.LAMP} color blue',
+                f'{constants.BotCommands.LAMP} color green',
             ),
             (
                 constants.BotCommands.RETURN,

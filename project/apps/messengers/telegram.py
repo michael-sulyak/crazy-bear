@@ -184,7 +184,11 @@ class TelegramMessenger(CVMixin, BaseMessenger):
                     data=json.loads(body.decode('utf-8')),
                     bot=self._bot,
                 )
-                self._process_telegram_message(telegram_update)
+
+                try:
+                    self._process_telegram_message(telegram_update)
+                except Exception as e:
+                    logging.exception(e)
 
             channel.queue_declare(queue=config.TELEGRAM_QUEUE_NAME)
             channel.basic_consume(queue=config.TELEGRAM_QUEUE_NAME, on_message_callback=_callback, auto_ack=True)
@@ -194,7 +198,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         self._worker.start()
 
     def _process_telegram_message(self, update: TelegramUpdate) -> None:
-        username = update.message.from_user and update.message.from_user.username
+        username = update.message and update.message.from_user and update.message.from_user.username
 
         if username != config.TELEGRAM_USERNAME:
             text = update.message.text.replace("`", "\\`")

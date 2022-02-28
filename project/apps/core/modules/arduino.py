@@ -9,7 +9,7 @@ from ..constants import ARDUINO_IS_ENABLED, BotCommands, MotionTypeSources, WEAT
 from ...arduino.base import ArduinoConnector
 from ...arduino.constants import ArduinoSensorTypes
 from ...common.constants import OFF, ON
-from ...common.utils import create_plot, synchronized_method
+from ...common.utils import create_plot, synchronized_method, with_throttling
 from ...core import events
 from ...core.constants import SECURITY_IS_ENABLED
 from ...signals.models import Signal
@@ -188,10 +188,14 @@ class Arduino(BaseModule):
                     last_movement = signal
 
             if last_movement:
-                self.messenger.send_message(
-                    f'*Detected movement*\n'
-                    f'Current pir sensor: `{last_movement.value}`\n'
-                    f'Timestamp: `{last_movement.received_at.strftime("%Y-%m-%d, %H:%M:%S")}`'
-                )
-
+                self._send_message_about_movement(last_movement)
                 events.motion_detected.send(source=MotionTypeSources.SENSORS)
+
+    @synchronized_method
+    @with_throttling(datetime.timedelta(seconds=5), count=1)
+    def _send_message_about_movement(self, last_movement: Signal) -> None:
+        self.messenger.send_message(
+            f'*Detected movement*\n'
+            f'Current pir sensor: `{last_movement.value}`\n'
+            f'Timestamp: `{last_movement.received_at.strftime("%Y-%m-%d, %H:%M:%S")}`'
+        )

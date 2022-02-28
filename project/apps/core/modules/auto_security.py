@@ -104,7 +104,7 @@ class AutoSecurity(BaseModule):
         self.messenger.send_message('Auto security is disabled')
 
     @synchronized_method
-    def _update_last_movement_at(self) -> None:
+    def _update_last_movement_at(self, source: str) -> None:
         self._last_movement_at = datetime.datetime.now()
 
         if (

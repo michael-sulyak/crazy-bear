@@ -14,12 +14,12 @@ __all__ = (
 
 
 class Event:
-    receivers: typing.Set[typing.Callable]
+    receivers: typing.Tuple[typing.Callable, ...]
     providing_kwargs: typing.Tuple[str]
     _lock: threading.RLock
 
     def __init__(self, *, providing_kwargs: typing.Optional[typing.Iterable[str]] = ()) -> None:
-        self.receivers = set()
+        self.receivers = ()
         self.providing_kwargs = tuple(providing_kwargs)
         self._lock = threading.RLock()
 
@@ -27,7 +27,7 @@ class Event:
         assert callable(func)
 
         with self._lock:
-            self.receivers.add(func)
+            self.receivers = (*self.receivers, func,)
 
         return Receiver(func=func, event=self)
 
@@ -35,10 +35,11 @@ class Event:
         assert callable(receiver)
 
         with self._lock:
-            try:
-                self.receivers.remove(receiver)
-            except KeyError:
-                pass
+            self.receivers = tuple(
+                receiver_
+                for receiver_ in self.receivers
+                if receiver != receiver_
+            )
 
     @synchronized_method
     def send(self, **kwargs) -> None:

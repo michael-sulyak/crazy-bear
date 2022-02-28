@@ -144,7 +144,7 @@ class Signal(db.Base):
             return
 
         signals = db.db_session().query(
-            aggregate_function(cls.value).label('value'),
+            aggregate_function(cls.value).label('aggregated_value'),
             sa_func.date_trunc(query_data['date_trunc'], cls.received_at).label('aggregated_time'),
         ).filter(
             cls.received_at >= query_data['start_time'],
@@ -161,7 +161,7 @@ class Signal(db.Base):
             return
 
         new_signals = tuple(
-            Signal(type=signal_type, value=signal._value, received_at=signal.aggregated_time)
+            Signal(type=signal_type, value=signal.aggregated_value, received_at=signal.aggregated_time)
             for signal in signals
         )
 
@@ -185,31 +185,20 @@ class Signal(db.Base):
             return
 
         received_at_to_remove = []
-        last_value_to_remove = None
+        last_saved_value = signals[0]
 
         for i, item in enumerate(signals):
-            if i == 0 or i >= len(signals) - 1:
+            if not (0 < i < len(signals) - 1):
                 continue
 
-            if signals[i].received_at - signals[i - 1].received_at >= approximation_time:
-                last_value_to_remove = None
-                continue
-
-            cond_1 = abs(signals[i - 1].value - item.value) <= approximation_value
-            cond_2 = abs(signals[i + 1].value - item.value) <= approximation_value
-
-            if last_value_to_remove is None:
-                cond_3 = True
-            else:
-                cond_3 = abs(last_value_to_remove - item.value) <= approximation_value
+            cond_1 = signals[i].received_at - last_saved_value.received_at <= approximation_time
+            cond_2 = abs(item.value - last_saved_value.value) <= approximation_value
+            cond_3 = abs(signals[i + 1].value - item.value) <= approximation_value
 
             if cond_1 and cond_2 and cond_3:
                 received_at_to_remove.append(item.received_at)
-
-                if last_value_to_remove is None:
-                    last_value_to_remove = item.value
             else:
-                last_value_to_remove = None
+                last_saved_value = signals[i]
 
         if received_at_to_remove:
             with db.db_session().begin():

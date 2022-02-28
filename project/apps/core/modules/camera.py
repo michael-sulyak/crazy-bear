@@ -238,7 +238,6 @@ class Camera(BaseModule):
                 'frame': frame,
             },
             priority=task_queue.TaskPriorities.MEDIUM,
-            retry_policy=task_queue.retry_policy_for_connection_error,
         )
 
     @synchronized_method

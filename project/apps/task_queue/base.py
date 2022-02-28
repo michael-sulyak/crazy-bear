@@ -6,12 +6,13 @@ from heapq import heappop, heappush
 from queue import Empty, Queue
 
 from .constants import TaskPriorities
-from .dto import RetryPolicy, Task, default_retry_policy
+from .dto import Task
 
 
 __all__ = (
     'BaseTaskQueue',
     'BaseWorker',
+    'TaskPriorityQueue',
 )
 
 
@@ -58,7 +59,6 @@ class BaseTaskQueue(abc.ABC):
             args: typing.Optional[tuple] = None,
             kwargs: typing.Optional[typing.Dict[str, typing.Any]] = None, *,
             priority: int = TaskPriorities.MEDIUM,
-            retry_policy: RetryPolicy = default_retry_policy,
             run_after: typing.Optional[datetime.datetime] = None) -> typing.Optional[Task]:
         if run_after is None:
             run_after = datetime.datetime.now()
@@ -68,7 +68,6 @@ class BaseTaskQueue(abc.ABC):
             target=target,
             args=args,
             kwargs=kwargs,
-            retry_policy=retry_policy,
             run_after=run_after,
         )
 

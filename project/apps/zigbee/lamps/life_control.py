@@ -34,6 +34,12 @@ class LCSmartLamp:
     friendly_name: str
     zig_bee: ZigBee
     color_temps = ('coolest', 'cool', 'neutral', 'warm',)
+    color_temps_map = {
+        'coolest': 250,
+        'cool': 250,
+        'neutral': 350,
+        'warm': 150,
+    }
     colors_map = {
         'yellow': (249, 215, 28,),
         'blue': (30, 144, 255,),
@@ -147,17 +153,17 @@ class LCSmartLamp:
         self.set_color((0, 0, 255,), transition=1)
         sleep(2)
 
-        self.set_color((0, 0, 0,), transition=1)
+        self.set_color((255, 255, 255,), transition=1)
         sleep(2)
 
         self.set_brightness(0, transition=1)
         sleep(2)
 
-        for brightness in range(0, 255, 50):
+        for brightness in range(0, 254, 50):
             self.set_brightness(brightness, transition=1)
             sleep(2)
 
-        self.set_brightness(255, transition=1)
+        self.set_brightness(254, transition=1)
         sleep(2)
 
         for color in self.colors_map.values():

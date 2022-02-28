@@ -13,11 +13,18 @@ class BaseTaskQueueException(Exception):
 
 
 class RepeatTask(BaseTaskQueueException):
-    after: typing.Optional[datetime.timedelta]
+    after: typing.Optional[datetime.datetime]
     source: typing.Optional[Exception]
 
     def __init__(self, *,
-                 after: typing.Optional[datetime.timedelta] = None,
-                 source: typing.Optional[Exception]) -> None:
+                 after: typing.Optional[datetime.datetime] = None,
+                 delay: typing.Optional[datetime.timedelta] = None,
+                 source: typing.Optional[Exception] = None) -> None:
+        if after is None:
+            after = datetime.datetime.now()
+
+        if delay is not None:
+            after += delay
+
         self.after = after
         self.source = source
