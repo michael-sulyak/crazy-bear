@@ -8,8 +8,6 @@
 
 int availableMemory();
 
-void rawRadioRead(RF24 &radio);
-
 class RadioTransmitter {
 public:
     RadioTransmitter(RF24 &radio);

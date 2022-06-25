@@ -21,7 +21,7 @@ __all__ = (
 
 class SmartLampController(BaseModule):
     smart_lamp: LCSmartLamp
-    _sunrise_timeout: datetime.timedelta = datetime.timedelta(hours=1)
+    _sunrise_time: datetime.timedelta = datetime.timedelta(hours=2)
     _lock: threading.RLock
     _last_manual_action: typing.Optional[datetime.datetime] = None
     _last_artificial_sunrise_time: typing.Optional[datetime.datetime] = None
@@ -139,8 +139,8 @@ class SmartLampController(BaseModule):
             if not self.state[constants.USER_IS_CONNECTED_TO_ROUTER]:
                 return
 
-            if not forcibly and (current_time() - get_sunrise_time()) > self._sunrise_timeout:
-                return
+            # if not forcibly and (current_time() - get_sunrise_time()) > self._sunrise_timeout:
+            #     return
 
             self.smart_lamp.turn_on(
                 brightness=5,
@@ -151,7 +151,7 @@ class SmartLampController(BaseModule):
             self.state[constants.MAIN_LAMP_IS_ON] = True
 
             self._last_artificial_sunrise_time = datetime.datetime.now()
-            _run_next_step(datetime.timedelta(minutes=1))
+            _run_next_step(datetime.timedelta(minutes=5))
             return
 
         if not self._can_continue_artificial_sunrise():
@@ -165,11 +165,12 @@ class SmartLampController(BaseModule):
         self.smart_lamp.set_brightness(brightness, transition=1)
 
         if brightness == self.smart_lamp.MAX_BRIGHTNESS:
-            diff = get_sunrise_time() - current_time()
-            diff += self._sunrise_timeout
+            diff_1 = get_sunrise_time() - current_time()
+            diff_2 = self._last_artificial_sunrise_time + self._sunrise_time - current_time()
+            diff = max(diff_1, diff_2)
 
-            if diff < self._sunrise_timeout:
-                diff = self._sunrise_timeout
+            if diff < datetime.timedelta(minutes=5):
+                diff = datetime.timedelta(minutes=5)
 
             self.task_queue.put(
                 self._turn_down_lamp,
@@ -177,7 +178,7 @@ class SmartLampController(BaseModule):
                 priority=TaskPriorities.LOW,
             )
         else:
-            _run_next_step(datetime.timedelta(minutes=1))
+            _run_next_step(datetime.timedelta(minutes=2))
 
     @synchronized_method
     def _turn_down_lamp(self) -> None:

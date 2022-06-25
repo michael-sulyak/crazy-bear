@@ -157,6 +157,7 @@ class Report(BaseModule):
 
             self.messenger.send_message(
                 '`/devices` *<mac>* *<name>* *<is_defining>*',
+                '`/timer` *<number>* *<time_unit>* | *<command_name>* *<command_args>*',
             )
 
             return True

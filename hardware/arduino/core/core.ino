@@ -70,7 +70,6 @@ void loop() {
         sendJsonBuffer();
 
         if (millis() - lastRadioAt >= radioDelay) {
-            sendJsonBuffer();
             radioTransmitter.powerUp();
             radioTransmitter.send(jsonBuffer);
             radioTransmitter.powerDown();

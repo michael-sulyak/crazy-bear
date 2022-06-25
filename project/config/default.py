@@ -62,11 +62,10 @@ ROUTER_PASSWORD = env('ROUTER_PASSWORD')
 ROUTER_URL = env('ROUTER_URL')
 
 # Other
-SLEEP_HOURS = env.tuple('SLEEP_HOURS', value_type=int)
-# SLEEPING_TIME = env.time_range('SLEEPING_TIME')
+SLEEPING_TIME = env.time_range('SLEEPING_TIME')
 NORMAL_HUMIDITY_RANGE = env.tuple('NORMAL_HUMIDITY_RANGE', value_type=int)
 NORMAL_TEMPERATURE_RANGE = env.tuple('NORMAL_TEMPERATURE_RANGE', value_type=int)
-ARTIFICIAL_SUNRISE_SCHEDULES = env.tuple('ARTIFICIAL_SUNRISE_TIMES', value_type=CronTab, default=None)
+ARTIFICIAL_SUNRISE_SCHEDULES = env.tuple('ARTIFICIAL_SUNRISE_SCHEDULES', separator=';', value_type=CronTab)
 
 # Smart devices
 MAIN_SMART_LAMP = env('MAIN_SMART_LAMP')

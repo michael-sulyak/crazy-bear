@@ -81,7 +81,6 @@ class Signals(BaseModule):
             constants.RAM_USAGE,
             ArduinoSensorTypes.TEMPERATURE,
             ArduinoSensorTypes.HUMIDITY,
-            ArduinoSensorTypes.PIR_SENSOR,
         )
 
         all_signals = {*for_compress, *for_compress_by_time}

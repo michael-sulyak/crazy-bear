@@ -41,6 +41,7 @@ class BotCommands:
     CHECK_DB = '/check_db'
     DB_STATS = '/db_stats'
     RETURN = '/return'
+    TIMER = '/timer'
 
 
 class MotionTypeSources:

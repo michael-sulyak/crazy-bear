@@ -8,16 +8,6 @@
 #include <RF24.h>  // https://nrf24.github.io/RF24/
 
 
-void rawRadioRead(RF24 &radio) {
-    char buffer[33];
-    radio.read(&buffer, 32);
-    buffer[32] = '\0';
-    Serial.print("`");
-    Serial.print(buffer);
-    Serial.println("`");
-    Serial.println(byte(buffer[0]));
-}
-
 int availableMemory() {
     int size = 2048;  // For ATmega328
     byte *buf;
@@ -138,9 +128,12 @@ bool RadioTransmitter::read(StaticJsonDocument<MSG_SIZE> &jsonBuffer) {
     Serial.println(blockBuffer);
 #endif
 
+    // Don't start process messages without the started bytes.
     if (strcmp(blockBuffer, startedBytes) != 0) {
 #if DEBUG
-        Serial.println("It is not started bytes.");
+        Serial.print("\"");
+        Serial.print(blockBuffer);
+        Serial.println("\" - it is not started bytes.");
 #endif
         return false;
     }
@@ -149,6 +142,7 @@ bool RadioTransmitter::read(StaticJsonDocument<MSG_SIZE> &jsonBuffer) {
 
     unsigned short int part = 0;
 
+    // Read blocks until the ended bytes.
     while (millis() - startGettingAt < 2000) {
         if (!_radio->available()) {
             delay(MSG_DELAY);
@@ -221,6 +215,6 @@ void RadioTransmitter::powerDown() {
 
 bool RadioTransmitter::ping() {
     const char text[] = "ping";
-    return _radio->write("ping", sizeof(text));
+    return _radio->write(&text, sizeof(text));
 }
 

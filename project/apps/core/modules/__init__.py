@@ -8,3 +8,4 @@ from .recommendation_system import *
 from .signals import *
 from .wifi_devices import *
 from .smart_lamp_controller import *
+from .extra_commands import *

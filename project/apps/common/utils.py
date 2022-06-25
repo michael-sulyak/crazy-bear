@@ -204,16 +204,15 @@ def single_synchronized(func: typing.Callable) -> typing.Callable:
 
 
 def is_sleep_hours(timestamp: typing.Optional[datetime.datetime] = None) -> bool:
-    assert 0 <= config.SLEEP_HOURS[0] < 24
-    assert 0 <= config.SLEEP_HOURS[1] < 24
-
     if timestamp is None:
         timestamp = datetime.datetime.now()
 
-    if config.SLEEP_HOURS[0] > config.SLEEP_HOURS[1]:
-        return timestamp.hour >= config.SLEEP_HOURS[0] or timestamp.hour <= config.SLEEP_HOURS[1]
+    timestamp_time = timestamp.time()
+
+    if config.SLEEPING_TIME[0] > config.SLEEPING_TIME[1]:
+        return timestamp_time >= config.SLEEPING_TIME[0] or timestamp_time <= config.SLEEPING_TIME[1]
     else:
-        return config.SLEEP_HOURS[0] <= timestamp.hour <= config.SLEEP_HOURS[1]
+        return config.SLEEPING_TIME[0] <= timestamp_time <= config.SLEEPING_TIME[1]
 
 
 def convert_params_to_date_range(delta_value: int = 24,

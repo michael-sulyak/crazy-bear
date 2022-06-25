@@ -3,7 +3,6 @@ import json
 import threading
 import typing
 from collections import defaultdict
-
 from paho.mqtt.client import Client, MQTTMessage, MQTTMessageInfo, MQTTv5
 
 from . import constants, exceptions
@@ -18,12 +17,15 @@ class ZigBee:
     _lock: threading.RLock
 
     def __init__(self) -> None:
-        self._subscribers_map = defaultdict(list)
-        self._permanent_subscribers_map = defaultdict(list)
-        self._topic_results_map = {
-            constants.ZigBeeTopics.DEVICES: [],
-        }
         self._lock = threading.RLock()
+
+    @property
+    @synchronized_method
+    def mq(self) -> Client:
+        if self._mq is None:
+            self.open()
+
+        return self._mq
 
     @property
     @synchronized_method
@@ -41,9 +43,6 @@ class ZigBee:
         )
 
     def is_health(self) -> bool:
-        if self._mq is None:
-            return False
-
         name = 'health_check'
         response = self._request_data(
             topic_for_sending=f'zigbee2mqtt/bridge/request/{name}',
@@ -74,8 +73,15 @@ class ZigBee:
 
         mq = Client('mqtt5_client', protocol=MQTTv5)
         mq.on_message = self._on_message
+        mq.on_disconnect = self._on_disconnect
         mq.connect('zigbee_mq', port=1883)  # TODO: Move in config
         mq.loop_start()
+
+        self._subscribers_map = defaultdict(list)
+        self._permanent_subscribers_map = defaultdict(list)
+        self._topic_results_map = {
+            constants.ZigBeeTopics.DEVICES: [],
+        }
 
         for topic in self._topic_results_map:
             mq.subscribe(topic)
@@ -84,10 +90,14 @@ class ZigBee:
 
     @synchronized_method
     def close(self) -> None:
-        if self._mq is None:
+        if self.mq is None:
             raise Exception('MQ wasn\'t created')
 
-        self._mq.loop_stop()
+        self.mq.loop_stop()
+
+    @synchronized_method
+    def _on_disconnect(self, client: Client, userdata: typing.Any, rc) -> None:
+        self._mq = None
 
     @synchronized_method
     def _on_message(self, client: Client, userdata: typing.Any, message: MQTTMessage) -> None:
@@ -105,7 +115,7 @@ class ZigBee:
             subscriber(payload)
 
         if self._subscribers_map[message.topic]:
-            self._mq.unsubscribe(message.topic)
+            self.mq.unsubscribe(message.topic)
             self._subscribers_map[message.topic].clear()
 
         for subscriber in self._permanent_subscribers_map[message.topic]:
@@ -128,7 +138,7 @@ class ZigBee:
             func(*args, **kwargs)
 
         if not self._subscribers_map[topic]:
-            self._mq.subscribe(topic)
+            self.mq.subscribe(topic)
 
         self._subscribers_map[topic].append(_decorated_func)
 
@@ -136,7 +146,7 @@ class ZigBee:
                       topic_for_sending: str,
                       topic_for_receiving: str,
                       payload: typing.Any = None,
-                      timeout: int = 10) -> typing.Any:
+                      timeout: int = 10) -> typing.Optional[dict]:
         event = threading.Event()
         result = None
 
@@ -160,5 +170,5 @@ class ZigBee:
         if payload is not None:
             payload = json.dumps(payload)
 
-        msg_info: MQTTMessageInfo = self._mq.publish(topic, payload=payload)
+        msg_info: MQTTMessageInfo = self.mq.publish(topic, payload=payload)
         msg_info.wait_for_publish(timeout=10)
