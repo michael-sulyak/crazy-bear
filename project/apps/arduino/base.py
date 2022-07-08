@@ -74,6 +74,10 @@ class ArduinoConnector:
 
             if response.type == constants.ArduinoResponseTypes.SENSORS:
                 for name, value in response.payload.items():
+                    if value is None:
+                        # Skip, if we can't get data.
+                        continue
+
                     signals.append(Signal(type=name, value=value, received_at=response.received_at))
 
             if response.type == constants.ArduinoResponseTypes.SETTINGS:

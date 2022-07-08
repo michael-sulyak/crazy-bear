@@ -99,7 +99,7 @@ class SmartLampController(BaseModule):
                 except ZigBeeTimeoutError:
                     self.messenger.send_message('Can\'t connect')
 
-                self._last_manual_action = datetime.datetime.now()
+                self._last_manual_action = current_time()
                 self.messenger.send_message('Done')
 
             return True
@@ -150,7 +150,7 @@ class SmartLampController(BaseModule):
             self.smart_lamp.set_color_temp(150)
             self.state[constants.MAIN_LAMP_IS_ON] = True
 
-            self._last_artificial_sunrise_time = datetime.datetime.now()
+            self._last_artificial_sunrise_time = current_time()
             _run_next_step(datetime.timedelta(minutes=5))
             return
 

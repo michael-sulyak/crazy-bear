@@ -107,6 +107,10 @@ class Task:
         self._status = constants.TaskStatuses.CANCELED
         return is_success
 
+    def __lt__(self, other: 'Task') -> bool:
+        # For ordering.
+        return self.run_after < other.run_after
+
 
 class RepeatableTask(Task, abc.ABC):
     pass

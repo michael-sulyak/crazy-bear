@@ -24,14 +24,54 @@
 
 
 LiquidCrystal_I2C lcd(0x27, LCD_WIDTH, LCD_HEIGHT);
-
 RF24 radio(PIN_CE, PIN_CSN);
 RadioTransmitter radioTransmitter(radio);
 StaticJsonDocument<MSG_SIZE> jsonBuffer;
+const int mhPin = 2;
 
-bool isWaitingData = true;
 
-unsigned short cycledVarForWaitingData = 0;
+struct {
+    bool isWaitingData = true;
+    unsigned short cycledVarForWaitingData = 0;
+    unsigned long lastReceivedDateAt = 0;
+    unsigned long lastUpdatedBatteryLevelAt = 0;
+    bool lsdIsOn = true;
+} globalState;
+
+void setup() {
+    Serial.begin(9600);
+    initLcd();
+    radioTransmitter.init();
+    radioTransmitter.powerUp();
+    pinMode(mhPin, INPUT);
+    showLaunchScreen();
+    printInCenter(msgForWaitingData);
+}
+
+
+void loop() {
+    if (radioTransmitter.hasInputData()) {
+        processInputData();
+    }
+
+    if (!globalState.isWaitingData && millis() - globalState.lastReceivedDateAt > 60 * 1000) {
+        globalState.isWaitingData = true;
+    }
+
+    if (globalState.isWaitingData) {
+        printMsgForWaitingData();
+    }
+
+    if (globalState.lastUpdatedBatteryLevelAt == 0 ||
+        millis() - globalState.lastUpdatedBatteryLevelAt > 60 * 1000) {
+        printBatteryLevel(LCD_WIDTH - 1, 0);
+        globalState.lastUpdatedBatteryLevelAt = millis();
+    }
+
+    processMhSensor();
+
+    delay(MSG_DELAY);
+}
 
 
 void initLcd() {
@@ -47,46 +87,46 @@ void printInCenter(String text) {
 }
 
 void printSensorsData() {
-    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("[Current stats]");
+    printBatteryLevel(LCD_WIDTH - 1, 0);
+
+    String value;
+    unsigned short n;
 
     lcd.setCursor(0, 2);
-    lcd.print("Temperature: ");
-    lcd.print(jsonBuffer["p"]["t"].as<String>());
+    value = "Temperature: ";
+    n = value.length();
+    lcd.print(value);
+    value = jsonBuffer["p"]["t"].as<String>();
+    n += value.length();
+    lcd.print(value);
     lcd.print("\xDF");
     lcd.print("C");
+    clearLcd(LCD_WIDTH - (n + 2));
 
     lcd.setCursor(0, 3);
-    lcd.print("Humidity: ");
-    lcd.print(jsonBuffer["p"]["h"].as<String>());
+    value = "Humidity: ";
+    n = value.length();
+    lcd.print(value);
+    value = jsonBuffer["p"]["h"].as<String>();
+    n += value.length();
+    lcd.print(value);
     lcd.print("%");
+    clearLcd(LCD_WIDTH - (n + 1));
 }
 
 float readVolt() {
-    const int sensorValue = analogRead(A0);  // Read the A0 pin value
-    return sensorValue * (5.00 / 1023.00) * 2;  // Convert the value to a true voltage.
+    const int sensorValue = analogRead(A0);
+    return sensorValue * (5.0 / 1024.00);
 }
 
-void printBatteryLevel(const int xPos, const int yPos) {
+
+void printBatteryLevel(const unsigned short xPos, const unsigned short yPos) {
     double currentVolt = readVolt();
 
-    // Check if voltage is bigger than 4.2 volt so this is a power source
-    if (currentVolt > 4.2) {
-        byte batlevel[8] = {
-                B01110,
-                B11111,
-                B10101,
-                B10001,
-                B11011,
-                B11011,
-                B11111,
-                B11111,
-        };
-
-        lcd.createChar(0, batlevel);
-        lcd.setCursor(xPos, yPos);
-        lcd.write(byte(0));
-    } else if (currentVolt <= 4.2 && currentVolt > 4.0) {
-        byte batlevel[8] = {
+    if (currentVolt > 4.0) {
+        const byte batteryLevel[8] = {
                 B01110,
                 B11111,
                 B11111,
@@ -96,12 +136,9 @@ void printBatteryLevel(const int xPos, const int yPos) {
                 B11111,
                 B11111,
         };
-
-        lcd.createChar(0, batlevel);
-        lcd.setCursor(xPos, yPos);
-        lcd.write(byte(0));
+        lcd.createChar(0, batteryLevel);
     } else if (currentVolt <= 4.0 && currentVolt > 3.8) {
-        byte batlevel[8] = {
+        const byte batteryLevel[8] = {
                 B01110,
                 B10001,
                 B11111,
@@ -111,12 +148,9 @@ void printBatteryLevel(const int xPos, const int yPos) {
                 B11111,
                 B11111,
         };
-
-        lcd.createChar(0, batlevel);
-        lcd.setCursor(xPos, yPos);
-        lcd.write(byte(0));
+        lcd.createChar(0, batteryLevel);
     } else if (currentVolt <= 3.8 && currentVolt > 3.6) {
-        byte batlevel[8] = {
+        const byte batteryLevel[8] = {
                 B01110,
                 B10001,
                 B10001,
@@ -126,12 +160,9 @@ void printBatteryLevel(const int xPos, const int yPos) {
                 B11111,
                 B11111,
         };
-
-        lcd.createChar(0, batlevel);
-        lcd.setCursor(xPos, yPos);
-        lcd.write(byte(0));
+        lcd.createChar(0, batteryLevel);
     } else if (currentVolt <= 3.6 && currentVolt > 3.4) {
-        byte batlevel[8] = {
+        const byte batteryLevel[8] = {
                 B01110,
                 B10001,
                 B10001,
@@ -141,12 +172,9 @@ void printBatteryLevel(const int xPos, const int yPos) {
                 B11111,
                 B11111,
         };
-
-        lcd.createChar(0, batlevel);
-        lcd.setCursor(xPos, yPos);
-        lcd.write(byte(0));
+        lcd.createChar(0, batteryLevel);
     } else if (currentVolt <= 3.4 && currentVolt > 3.2) {
-        byte batlevel[8] = {
+        const byte batteryLevel[8] = {
                 B01110,
                 B10001,
                 B10001,
@@ -156,12 +184,9 @@ void printBatteryLevel(const int xPos, const int yPos) {
                 B11111,
                 B11111,
         };
-
-        lcd.createChar(0, batlevel);
-        lcd.setCursor(xPos, yPos);
-        lcd.write(byte(0));
+        lcd.createChar(0, batteryLevel);
     } else if (currentVolt <= 3.2 && currentVolt > 3.0) {
-        byte batlevel[8] = {
+        const byte batteryLevel[8] = {
                 B01110,
                 B10001,
                 B10001,
@@ -171,12 +196,9 @@ void printBatteryLevel(const int xPos, const int yPos) {
                 B11111,
                 B11111,
         };
-
-        lcd.createChar(0, batlevel);
-        lcd.setCursor(xPos, yPos);
-        lcd.write(byte(0));
+        lcd.createChar(0, batteryLevel);
     } else if (currentVolt < 3.0) {
-        byte batlevel[8] = {
+        const byte batteryLevel[8] = {
                 B01110,
                 B10001,
                 B10001,
@@ -186,57 +208,30 @@ void printBatteryLevel(const int xPos, const int yPos) {
                 B10001,
                 B11111,
         };
-
-        lcd.createChar(0, batlevel);
-        lcd.setCursor(xPos, yPos);
-        lcd.write(byte(0));
-    }
-}
-
-void setup() {
-    Serial.begin(9600);
-    initLcd();
-    radioTransmitter.init();
-    radioTransmitter.powerUp();
-    showLaunchScreen();
-    printInCenter(msgForWaitingData);
-}
-
-
-void loop() {
-    if (radioTransmitter.hasInputData()) {
-        processInputData();
+        lcd.createChar(0, batteryLevel);
     }
 
-    if (isWaitingData) {
-        printMsgForWaitingData();
-    } else {
-        lcd.setCursor(0, 0);
-        lcd.print("[Current stats]");
-    }
-
-    printBatteryLevel(LCD_WIDTH - 1, 0);
-
-    delay(MSG_DELAY);
+    lcd.setCursor(xPos, yPos);
+    lcd.write(byte(0));
 }
 
 
 void printMsgForWaitingData() {
-    const int c = 10;
+    const short c = 400 / MSG_DELAY;
 
     for (unsigned short i = 0; i < 3; ++i) {
         lcd.setCursor(14 + i, 2);
-        if (((i + 1) * c) < cycledVarForWaitingData) {
+        if (((i + 1) * c) < globalState.cycledVarForWaitingData) {
             lcd.print(".");
         } else {
             lcd.print(" ");
         }
     }
 
-    ++cycledVarForWaitingData;
+    ++globalState.cycledVarForWaitingData;
 
-    if (cycledVarForWaitingData >= 4 * c) {
-        cycledVarForWaitingData = 0;
+    if (globalState.cycledVarForWaitingData >= 4 * c) {
+        globalState.cycledVarForWaitingData = 0;
     }
 }
 
@@ -249,8 +244,14 @@ void processInputData() {
         Serial.println();
 
         if (jsonBuffer["t"].as<String>() == typeSensors) {
-            isWaitingData = false;
+            if (globalState.isWaitingData) {
+                globalState.isWaitingData = false;
+                lcd.clear();
+                lcd.print("[Current stats]");
+            }
+
             printSensorsData();
+            globalState.lastReceivedDateAt = millis();
         } else if (jsonBuffer["t"].as<String>() == typeSilentMode) {
             if (jsonBuffer["v"].as<String>() == ON) {
                 lcd.noBacklight();
@@ -258,7 +259,7 @@ void processInputData() {
                 radioTransmitter.powerDown();
                 delay(jsonBuffer["s"].as<int>() * 60 * 1000);
             } else if (jsonBuffer["v"].as<String>() == OFF) {
-                isWaitingData = true;
+                globalState.isWaitingData = true;
                 printInCenter(msgForWaitingData);
                 lcd.backlight();
                 radioTransmitter.powerUp();
@@ -273,9 +274,22 @@ void processInputData() {
 //        Serial.println("b");
 }
 
+void processMhSensor() {
+    if (digitalRead(mhPin) == HIGH) {
+        if (globalState.lsdIsOn) {
+            globalState.lsdIsOn = false;
+            lcd.noBacklight();
+        }
+    } else {
+        if (!globalState.lsdIsOn) {
+            globalState.lsdIsOn = true;
+            lcd.backlight();
+        }
+    }
+}
+
 
 void showLaunchScreen() {
-#define SYMBOL_FOR_LAUNCH_SCREEN "X"
     for (unsigned short i = 0; i < LCD_WIDTH; ++i) {
         for (unsigned short j = 0; j < LCD_HEIGHT; ++j) {
             lcd.setCursor(i, j);
@@ -286,5 +300,11 @@ void showLaunchScreen() {
     }
 
     delay(100);
+}
+
+void clearLcd(unsigned short n) {
+    for (unsigned short i = 0; i < n; ++i) {
+        lcd.print(" ");
+    }
 }
 
