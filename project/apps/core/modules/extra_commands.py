@@ -5,6 +5,7 @@ from ..base import BaseModule, Command
 from ..constants import (
     BotCommands,
 )
+from ...common import doc
 from ...task_queue import TaskPriorities
 
 
@@ -14,6 +15,19 @@ __all__ = (
 
 
 class ExtraCommands(BaseModule):
+    doc = doc.generate_doc(
+        title='ExtraCommands',
+        commands=(
+            doc.CommandDef(
+                BotCommands.TIMER,
+                doc.VarDef('number', type='int'),
+                doc.VarDef('time_type'),
+                '|',
+                doc.VarDef('command'),
+            ),
+        ),
+    )
+
     def process_command(self, command: Command) -> typing.Any:
         if command.name == BotCommands.TIMER:
             number = int(command.first_arg)

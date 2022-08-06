@@ -15,7 +15,7 @@ from ..messengers import events
 from ..messengers.base import BaseMessenger
 from ..messengers.events import new_message
 from ..task_queue import BaseTaskQueue, BaseWorker, MemTaskQueue, ThreadWorker
-from ..task_queue.middlewares import ConcreteRetries, SupportOfRetries
+from ..task_queue.middlewares import ConcreteRetries, SupportOfRetries, ExceptionLogging
 from ..zigbee.base import ZigBee
 
 
@@ -38,6 +38,7 @@ class Commander:
         self.task_worker = ThreadWorker(
             task_queue=self.task_queue,
             middlewares=(
+                ExceptionLogging(),
                 ConcreteRetries(exceptions=(
                     ConnectionError,
                     NetworkError,

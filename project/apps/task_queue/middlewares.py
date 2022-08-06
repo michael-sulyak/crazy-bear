@@ -83,3 +83,14 @@ class PerformanceLogging(BaseMiddleware):
 
         with log_performance(task.__class__.__name__.lower(), func_name):
             return handler(task=task)
+
+
+class ExceptionLogging(BaseMiddleware):
+    def process(self, *, task: Task, task_queue: BaseTaskQueue, handler: typing.Callable) -> typing.Any:
+        try:
+            return handler(task=task)
+        except Exception as e:
+            logging.exception(e)
+            task.error = e
+            task.status = constants.TaskStatuses.FAILED
+            return None

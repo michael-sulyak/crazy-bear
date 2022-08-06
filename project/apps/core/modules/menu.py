@@ -3,11 +3,13 @@ import os
 import signal
 import typing
 
+from emoji.core import emojize
 from telegram import ReplyKeyboardMarkup
 
 from .. import constants
 from ..base import BaseModule, Command
-from ...common.constants import AUTO, OFF, ON
+from ...common import doc
+from ...common.constants import OFF, ON
 from ...common.state import State
 
 
@@ -86,16 +88,21 @@ class MainPage(BasePage):
     def _get_items(self) -> typing.Sequence:
         return (
             (
-                f'{constants.BotCommands.SECURITY} {OFF if self.state[constants.SECURITY_IS_ENABLED] else ON}',
-                f'{constants.BotCommands.SECURITY} {AUTO} {OFF if self.state[constants.AUTO_SECURITY_IS_ENABLED] else ON}',
+                constants.PrettyBotCommands.SECURITY_OFF
+                if self.state[constants.SECURITY_IS_ENABLED] else
+                constants.PrettyBotCommands.SECURITY_ON,
+
+                constants.PrettyBotCommands.SECURITY_AUTO_OFF
+                if self.state[constants.AUTO_SECURITY_IS_ENABLED] else
+                constants.PrettyBotCommands.SECURITY_AUTO_ON,
             ),
             (
-                f'{constants.BotCommands.TO} {AllFuncsPage.code}',
-                f'{constants.BotCommands.TO} {LampPage.code}',
+                constants.PrettyBotCommands.ALL_FUNCS,
+                constants.PrettyBotCommands.LAMP,
             ),
             (
-                constants.BotCommands.STATUS,
-                f'{constants.BotCommands.STATS} -s',
+                constants.PrettyBotCommands.STATUS,
+                constants.PrettyBotCommands.SHORT_STATS,
             ),
         )
 
@@ -175,8 +182,17 @@ class AllFuncsPage(BasePage):
 
 
 class Menu(BaseModule):
-    NEXT = '→'
-    PREV = '←'
+    doc = doc.generate_doc(
+        title='AutoSecurity',
+        commands=(
+            doc.CommandDef(constants.BotCommands.RESTART),
+            doc.CommandDef(constants.BotCommands.RETURN),
+            doc.CommandDef(constants.BotCommands.TO, doc.VarDef('name')),
+        ),
+    )
+
+    NEXT = emojize(':right_arrow:')
+    PREV = emojize(':back_arrow:')
 
     def process_command(self, command: Command) -> typing.Any:
         if command.name == constants.BotCommands.RESTART:
@@ -198,7 +214,7 @@ class Menu(BaseModule):
             with self.state.lock(TelegramMenu.menu_state_name):
                 self.state[TelegramMenu.menu_state_name].append(command.first_arg)
 
-            self.messenger.send_message(self.NEXT)
+            self.messenger.send_message(f'{self.NEXT} {command.first_arg.replace("_", " ").capitalize()}')
 
             return True
 

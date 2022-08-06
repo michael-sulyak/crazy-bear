@@ -9,6 +9,7 @@ from ..constants import ARDUINO_IS_ENABLED, BotCommands, MotionTypeSources, WEAT
 from ...arduino.base import ArduinoConnector
 from ...arduino.constants import ArduinoSensorTypes
 from ...common.constants import OFF, ON
+from ...common import doc
 from ...common.utils import create_plot, synchronized_method, with_throttling
 from ...core import events
 from ...core.constants import SECURITY_IS_ENABLED
@@ -22,6 +23,13 @@ __all__ = (
 
 
 class Arduino(BaseModule):
+    doc = doc.generate_doc(
+        title='Arduino',
+        commands=(
+            doc.CommandDef(BotCommands.ARDUINO, doc.OptionsDef(ON, OFF)),
+        ),
+    )
+
     initial_state = {
         ARDUINO_IS_ENABLED: False,
     }

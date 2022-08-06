@@ -9,11 +9,12 @@ from emoji import emojize
 from .. import events
 from ..base import BaseModule, Command
 from ..constants import (
-    ARDUINO_IS_ENABLED, BotCommands, CAMERA_IS_AVAILABLE, RECOMMENDATION_SYSTEM_IS_ENABLED,
+    ARDUINO_IS_ENABLED, CAMERA_IS_AVAILABLE, RECOMMENDATION_SYSTEM_IS_ENABLED,
     VIDEO_RECORDING_IS_ENABLED,
 )
 from ... import db
 from ...arduino.constants import ArduinoSensorTypes
+from ...common import doc
 from ...common.constants import INITED_AT
 from ...common.utils import (
     convert_params_to_date_range, create_plot, get_cpu_temp,
@@ -32,6 +33,22 @@ from .... import config
 
 
 class Report(BaseModule):
+    doc = doc.generate_doc(
+        title='Report',
+        commands=(
+            doc.CommandDef(constants.BotCommands.STATUS),
+            doc.CommandDef(constants.BotCommands.REPORT),
+            doc.CommandDef(constants.BotCommands.HELP),
+            doc.CommandDef(constants.BotCommands.DB_STATS),
+            doc.CommandDef(
+                constants.BotCommands.STATS,
+                doc.VarDef('number', type='int'),
+                doc.OptionsDef('days', 'hours', 'minutes', 'seconds'),
+                flags=(doc.FlagDef('f'), doc.FlagDef('s'), doc.FlagDef('e'), doc.FlagDef('a'), doc.FlagDef('r'),),
+            ),
+        ),
+    )
+
     _signals_for_clearing = (
         constants.CPU_TEMPERATURE,
         constants.TASK_QUEUE_DELAY,
@@ -102,11 +119,11 @@ class Report(BaseModule):
         with self._lock_for_status:
             self._message_id_for_status = None
 
-        if command.name == BotCommands.STATUS:
+        if command.name == constants.BotCommands.STATUS:
             self._send_status()
             return True
 
-        if command.name == BotCommands.STATS:
+        if command.name == constants.BotCommands.STATS:
             delta_type: str = command.get_second_arg('hours', skip_flags=True)
             delta_value: str = command.get_first_arg('24', skip_flags=True)
 
@@ -141,25 +158,16 @@ class Report(BaseModule):
 
             return True
 
-        if command.name == BotCommands.REPORT:
+        if command.name == constants.BotCommands.REPORT:
             self._send_report()
             return True
 
-        if command.name == BotCommands.DB_STATS:
+        if command.name == constants.BotCommands.DB_STATS:
             self._send_db_stats()
             return True
 
-        if command.name == BotCommands.HELP:
-            tags_info = '\n'.join(
-                f'`-{key}` - {value.replace("_", " ").title()}'
-                for key, value in self._stats_flags_map.items()
-            )
-
-            self.messenger.send_message(
-                '`/devices` *<mac>* *<name>* *<is_defining>*',
-                '`/timer` *<number>* *<time_unit>* | *<command_name>* *<command_args>*',
-            )
-
+        if command.name == constants.BotCommands.HELP:
+            self.messenger.send_message('\n\n'.join(events.getting_doc.process()[0]))
             return True
 
         return False

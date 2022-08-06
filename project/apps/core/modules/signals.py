@@ -5,9 +5,9 @@ from crontab import CronTab
 
 from .. import constants
 from ..base import BaseModule, Command
-from ..constants import BotCommands
 from ... import db
 from ...arduino.constants import ArduinoSensorTypes
+from ...common import doc
 from ...common.utils import current_time
 from ...messengers.utils import ProgressBar
 from ...signals.models import Signal
@@ -20,6 +20,13 @@ __all__ = (
 
 
 class Signals(BaseModule):
+    doc = doc.generate_doc(
+        title='Signals',
+        commands=(
+            doc.CommandDef(constants.BotCommands.CHECK_DB),
+        ),
+    )
+
     def init_repeatable_tasks(self) -> tuple:
         return (
             IntervalTask(
@@ -52,7 +59,7 @@ class Signals(BaseModule):
         )
 
     def process_command(self, command: Command) -> typing.Any:
-        if command.name == BotCommands.CHECK_DB:
+        if command.name == constants.BotCommands.CHECK_DB:
             with ProgressBar(self.messenger, title='Checking DB...') as progress_bar:
                 self._check_db()
                 progress_bar.set(0.5, title='Run `VACUUM FULL`...')

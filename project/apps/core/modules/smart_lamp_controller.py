@@ -12,6 +12,7 @@ from ...common.utils import current_time, get_sunrise_time, synchronized_method
 from ...task_queue import ScheduledTask, TaskPriorities
 from ...zigbee.exceptions import ZigBeeTimeoutError
 from ...zigbee.lamps.life_control import LCSmartLamp
+from ...common import doc
 
 
 __all__ = (
@@ -20,6 +21,23 @@ __all__ = (
 
 
 class SmartLampController(BaseModule):
+    doc = doc.generate_doc(
+        title='SmartLampController',
+        commands=(
+            doc.CommandDef(constants.BotCommands.LAMP, doc.OptionsDef(ON, OFF)),
+            doc.CommandDef(constants.BotCommands.LAMP, 'test'),
+            doc.CommandDef(constants.BotCommands.LAMP, 'color', doc.OptionsDef(*LCSmartLamp.colors_map.keys())),
+            doc.CommandDef(constants.BotCommands.LAMP, 'brightness', doc.VarDef('brightness', type='int')),
+            doc.CommandDef(constants.BotCommands.LAMP, 'color_temp', doc.VarDef('color_temp', type='int')),
+            doc.CommandDef(constants.BotCommands.LAMP, 'color_temp', doc.OptionsDef(*LCSmartLamp.color_temps)),
+            doc.CommandDef(constants.BotCommands.LAMP, 'increase_brightness'),
+            doc.CommandDef(constants.BotCommands.LAMP, 'decrease_brightness'),
+            doc.CommandDef(constants.BotCommands.LAMP, 'increase_color_temp'),
+            doc.CommandDef(constants.BotCommands.LAMP, 'decrease_color_temp'),
+            doc.CommandDef(constants.BotCommands.LAMP, 'sunrise'),
+        ),
+    )
+
     smart_lamp: LCSmartLamp
     _sunrise_time: datetime.timedelta = datetime.timedelta(hours=2)
     _lock: threading.RLock

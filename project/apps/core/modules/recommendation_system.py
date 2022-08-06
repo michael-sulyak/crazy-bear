@@ -4,16 +4,29 @@ from collections import defaultdict
 
 from .. import constants
 from ..base import BaseModule, Command
+from ..constants import BotCommands
 from ...arduino.constants import ArduinoSensorTypes
+from ...common import doc
 from ...common.constants import OFF, ON
 from ...common.utils import is_sleep_hours, synchronized_method
 from ...core import events
-from ..constants import BotCommands
 from ...signals.models import Signal
 from .... import config
 
 
+__all__ = (
+    'RecommendationSystem',
+)
+
+
 class RecommendationSystem(BaseModule):
+    doc = doc.generate_doc(
+        title='RecommendationSystem',
+        commands=(
+            doc.CommandDef(BotCommands.RECOMMENDATION_SYSTEM, doc.OptionsDef(ON, OFF)),
+        ),
+    )
+
     initial_state = {
         constants.RECOMMENDATION_SYSTEM_IS_ENABLED: False,
     }

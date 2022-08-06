@@ -7,6 +7,7 @@ from ..constants import (
     AUTO_SECURITY_IS_ENABLED, BotCommands, CAMERA_IS_AVAILABLE, SECURITY_IS_ENABLED, USER_IS_CONNECTED_TO_ROUTER,
     USE_CAMERA,
 )
+from ...common import doc
 from ...common.constants import AUTO, OFF, ON
 from ...common.utils import single_synchronized, synchronized_method
 from ...task_queue import IntervalTask, TaskPriorities
@@ -18,6 +19,13 @@ __all__ = (
 
 
 class AutoSecurity(BaseModule):
+    doc = doc.generate_doc(
+        title='AutoSecurity',
+        commands=(
+            doc.CommandDef(BotCommands.SECURITY, AUTO, doc.OptionsDef(ON, OFF)),
+        ),
+    )
+
     initial_state = {
         AUTO_SECURITY_IS_ENABLED: False,
         SECURITY_IS_ENABLED: False,

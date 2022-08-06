@@ -171,7 +171,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
             connection = None
             while connection is None:
                 try:
-                    connection = pika.BlockingConnection(pika.ConnectionParameters(host='mq', heartbeat=600))
+                    connection = pika.BlockingConnection(pika.ConnectionParameters(host=config.TELEHOOKS_HOST, heartbeat=600))
                 except AMQPConnectionError as e:
                     logging.error(e)
                     logging.info('Waiting AMQP...')
@@ -190,8 +190,8 @@ class TelegramMessenger(CVMixin, BaseMessenger):
                 except Exception as e:
                     logging.exception(e)
 
-            channel.queue_declare(queue=config.TELEGRAM_QUEUE_NAME)
-            channel.basic_consume(queue=config.TELEGRAM_QUEUE_NAME, on_message_callback=_callback, auto_ack=True)
+            channel.queue_declare(queue=config.TELEHOOKS_QUEUE_NAME)
+            channel.basic_consume(queue=config.TELEHOOKS_QUEUE_NAME, on_message_callback=_callback, auto_ack=True)
             channel.start_consuming()
 
         self._worker = threading.Thread(target=_worker)
@@ -213,28 +213,9 @@ class TelegramMessenger(CVMixin, BaseMessenger):
 
     @staticmethod
     def _parse_update(update: TelegramUpdate) -> Message:
-        text: str = update.message.text
-
-        params = text.split(' ')
-        command_name = params[0]
-        command_params = tuple(param.strip() for param in params[1:] if param)
-        command_args = []
-        command_kwargs = {}
-
-        for i, command_param in enumerate(command_params):
-            if '=' in command_param:
-                name, value = command_param.split('=', 1)
-                command_kwargs[name] = value
-            else:
-                command_args.append(command_param)
-
         return Message(
             username=update.message.from_user.username,
             chat_id=update.message.chat_id,
-            text=text,
-            command=Command(
-                name=command_name,
-                args=command_args,
-                kwargs=command_kwargs,
-            ),
+            text=update.message.text,
+            command=Command.from_string(update.message.text),
         )

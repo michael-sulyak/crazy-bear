@@ -16,7 +16,6 @@ import numpy as np
 import pandas as pd
 import pytz
 import requests
-import seaborn as sns
 import sentry_sdk
 from matplotlib.dates import DateFormatter
 from matplotlib.ticker import AutoLocator, MaxNLocator
@@ -73,10 +72,14 @@ def get_cpu_temp() -> float:
 
 
 def init_settings_for_plt() -> None:
+    import mplcyberpunk  # NOQA
+
     matplotlib.use('Agg')
     plt.ioff()
-    sns.set()
     pd.plotting.register_matplotlib_converters()
+    plt.rcParams.update({'font.family': 'Roboto'})
+
+    plt.style.use('cyberpunk')
 
 
 @timer

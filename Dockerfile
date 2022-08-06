@@ -1,4 +1,4 @@
-FROM ubuntu:20.10
+FROM ubuntu:22.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -30,15 +30,15 @@ RUN apt-get update && apt-get install -y \
     libatlas-base-dev \
     libtbb2 \
     libtbb-dev \
-    libdc1394-22-dev
+    libdc1394-dev
 
 RUN apt-get update && apt-get install -y \
-    python3-numpy=1:1.18.4-1ubuntu1 \
-    python3-scipy=1.5.2-2 \
-    python3-matplotlib=3.3.0-3 \
-    python3-pandas=1.0.5+dfsg-3 \
-    python3-opencv=4.2.0+dfsg-6build6 \
-    python3-psycopg2=2.8.5-1
+    python3-numpy=1:1.21.5-1build2 \
+    python3-scipy=1.8.0-1exp2ubuntu1 \
+    python3-matplotlib=3.5.1-2build1 \
+    python3-pandas=1.3.5+dfsg-3 \
+    python3-opencv=4.5.4+dfsg-9ubuntu4 \
+    python3-psycopg2=2.9.2-1build2
 
 # Requirements
 COPY ./requirements.txt /app

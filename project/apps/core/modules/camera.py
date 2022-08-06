@@ -9,10 +9,13 @@ from imutils.video import VideoStream
 from ..base import BaseModule, Command
 from ..constants import BotCommands, MotionTypeSources
 from ... import task_queue
+from ...common import doc
 from ...common.camera import VideoCamera
 from ...common.constants import OFF, ON
 from ...common.storage import file_storage
-from ...common.utils import add_timestamp_in_frame, camera_is_available, synchronized_method, with_throttling
+from ...common.utils import (
+    add_timestamp_in_frame, camera_is_available, synchronized_method, with_throttling,
+)
 from ...core import events
 from ...core.constants import (
     CAMERA_IS_AVAILABLE, CURRENT_FPS, SECURITY_IS_ENABLED, USE_CAMERA, VIDEO_RECORDING_IS_ENABLED, VIDEO_SECURITY,
@@ -28,6 +31,15 @@ __all__ = (
 
 
 class Camera(BaseModule):
+    doc = doc.generate_doc(
+        title='Camera',
+        commands=(
+            doc.CommandDef(BotCommands.CAMERA, doc.OptionsDef(ON, OFF)),
+            doc.CommandDef(BotCommands.CAMERA, 'photo'),
+            doc.CommandDef(BotCommands.CAMERA, 'record', doc.OptionsDef(ON, OFF)),
+        ),
+    )
+
     initial_state = {
         VIDEO_SECURITY: None,
         USE_CAMERA: False,
@@ -326,7 +338,6 @@ class Camera(BaseModule):
 
     @synchronized_method
     @with_throttling(datetime.timedelta(seconds=5), count=1)
-    @with_throttling(datetime.timedelta(minutes=1), count=10)
     def _process_motion_detection(self, *, source: str) -> None:
         if source == MotionTypeSources.SENSORS and self.state[USE_CAMERA]:
             self.task_queue.put(

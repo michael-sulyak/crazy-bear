@@ -4,6 +4,7 @@ from ..base import BaseModule, Command
 from ..constants import (
     BotCommands,
 )
+from ...common import doc
 from ...devices.dto import Device
 from ...devices.utils import device_manager
 
@@ -14,6 +15,23 @@ __all__ = (
 
 
 class WiFiDevices(BaseModule):
+    doc = doc.generate_doc(
+        title='SmartLampController',
+        commands=(
+            doc.CommandDef(BotCommands.WIFI_DEVICES),
+            doc.CommandDef(
+                BotCommands.WIFI_DEVICES,
+                doc.VarDef('mac_address'),
+            ),
+            doc.CommandDef(
+                BotCommands.WIFI_DEVICES,
+                doc.VarDef('mac_address'),
+                doc.VarDef('name'),
+                doc.OptionsDef('true', 'false'),
+            ),
+        ),
+    )
+
     def process_command(self, command: Command) -> typing.Any:
         if command.name != BotCommands.WIFI_DEVICES:
             return False

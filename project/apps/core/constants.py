@@ -1,3 +1,8 @@
+from emoji.core import emojize
+
+from ..common.constants import ON, OFF
+
+
 CPU_TEMPERATURE = 'cpu_temperature'
 WEATHER_TEMPERATURE = 'weather_temperature'
 WEATHER_HUMIDITY = 'weather_humidity'
@@ -42,6 +47,29 @@ class BotCommands:
     DB_STATS = '/db_stats'
     RETURN = '/return'
     TIMER = '/timer'
+
+
+class PrettyBotCommands:
+    STATUS = f'{emojize(":page_facing_up:")} Status'
+    SHORT_STATS = f'{emojize(":bar_chart:")} Short stats'
+    SECURITY_ON = f'{emojize(":police_officer:")} Security ON'
+    SECURITY_OFF = f'{emojize(":police_officer:")} Security OFF'
+    SECURITY_AUTO_ON = f'{emojize(":robot:")} Auto security ON'
+    SECURITY_AUTO_OFF = f'{emojize(":robot:")} Auto security OFF'
+    ALL_FUNCS = f'{emojize(":hammer_and_wrench:")} All utils'
+    LAMP = f'{emojize(":light_bulb:")} Lamp'
+
+
+BOT_COMMAND_ALIASES = {
+    PrettyBotCommands.STATUS: BotCommands.STATUS,
+    PrettyBotCommands.SHORT_STATS: f'{BotCommands.STATS} -s',
+    PrettyBotCommands.SECURITY_ON: f'{BotCommands.SECURITY} {ON}',
+    PrettyBotCommands.SECURITY_OFF: f'{BotCommands.SECURITY} {OFF}',
+    PrettyBotCommands.SECURITY_AUTO_ON: f'{BotCommands.SECURITY} auto {ON}',
+    PrettyBotCommands.SECURITY_AUTO_OFF: f'{BotCommands.SECURITY} auto {OFF}',
+    PrettyBotCommands.ALL_FUNCS: f'{BotCommands.TO} all_funcs',
+    PrettyBotCommands.LAMP: f'{BotCommands.TO} lamp',
+}
 
 
 class MotionTypeSources:

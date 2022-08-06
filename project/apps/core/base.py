@@ -4,7 +4,7 @@ import threading
 import typing
 from dataclasses import dataclass, field
 
-from . import events
+from . import events, constants
 from ..common.base import BaseReceiver
 from ..common.state import State
 from ..common.types import FrozenDict
@@ -56,10 +56,11 @@ class BaseModule(abc.ABC):
         )
 
         if self.__class__.process_command is not BaseModule.process_command:
-            # Process input commands if it is overwrited.
-            subscribers += (
-                messenger_events.input_command.connect(self.process_command),
-            )
+            # Process input commands if it's overwritten.
+            subscribers += (messenger_events.input_command.connect(self.process_command),)
+
+        if hasattr(self, 'doc'):
+            subscribers += (events.getting_doc.connect(lambda: self.doc),)
 
         return subscribers
 
@@ -130,6 +131,30 @@ class Command:
 
     def get_cleaned_flags(self) -> typing.Set[str]:
         return set(arg[1:] for arg in self.get_flags())
+
+    @classmethod
+    def from_string(cls, string: str) -> 'Command':
+        if string in constants.BOT_COMMAND_ALIASES:
+            string = constants.BOT_COMMAND_ALIASES[string]
+
+        params = string.split(' ')
+        command_name = params[0]
+        command_params = tuple(param.strip() for param in params[1:] if param)
+        command_args = []
+        command_kwargs = {}
+
+        for i, command_param in enumerate(command_params):
+            if '=' in command_param:
+                name, value = command_param.split('=', 1)
+                command_kwargs[name] = value
+            else:
+                command_args.append(command_param)
+
+        return Command(
+            name=command_name,
+            args=command_args,
+            kwargs=command_kwargs,
+        )
 
 
 @dataclass

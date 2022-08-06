@@ -4,7 +4,7 @@ import logging
 import typing
 
 from ..base import BaseModule, Command
-from ..constants import BotCommands
+from ...common import doc
 from ...common.routers.mi import mi_wifi
 from ...common.routers.tplink import TpLink
 from ...common.utils import create_plot, is_sleep_hours, synchronized_method
@@ -21,6 +21,13 @@ __all__ = (
 
 
 class Router(BaseModule):
+    doc = doc.generate_doc(
+        title='Router',
+        commands=(
+            doc.CommandDef(constants.BotCommands.RAW_WIFI_DEVICES),
+        ),
+    )
+
     _last_connected_at: datetime.datetime
     _timedelta_for_connection: datetime.timedelta = datetime.timedelta(seconds=10)
 
@@ -71,7 +78,7 @@ class Router(BaseModule):
         )
 
     def process_command(self, command: Command) -> typing.Any:
-        if command.name == BotCommands.RAW_WIFI_DEVICES:
+        if command.name == constants.BotCommands.RAW_WIFI_DEVICES:
             self._send_wifi_connected_devices()
             return True
 

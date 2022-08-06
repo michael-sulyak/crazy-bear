@@ -1,8 +1,8 @@
-import collections
 import typing
+from collections.abc import Mapping
 
 
-class FrozenDict(collections.Mapping):
+class FrozenDict(Mapping):
     def __init__(self, *args, **kwargs) -> None:
         self._d = dict(*args, **kwargs)
         self._hash = None

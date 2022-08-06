@@ -7,6 +7,7 @@ from paho.mqtt.client import Client, MQTTMessage, MQTTMessageInfo, MQTTv5
 
 from . import constants, exceptions
 from ..common.utils import synchronized_method
+from ... import config
 
 
 class ZigBee:
@@ -74,7 +75,7 @@ class ZigBee:
         mq = Client('mqtt5_client', protocol=MQTTv5)
         mq.on_message = self._on_message
         mq.on_disconnect = self._on_disconnect
-        mq.connect('zigbee_mq', port=1883)  # TODO: Move in config
+        mq.connect(config.ZIGBEE_MQ_HOST, port=config.ZIGBEE_MQ_PORT)
         mq.loop_start()
 
         self._subscribers_map = defaultdict(list)
