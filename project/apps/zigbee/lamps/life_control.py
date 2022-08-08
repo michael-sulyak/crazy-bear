@@ -33,7 +33,12 @@ def method_with_transition(func: typing.Callable) -> typing.Callable:
 class LCSmartLamp:
     friendly_name: str
     zig_bee: ZigBee
-    color_temps = ('coolest', 'cool', 'neutral', 'warm',)
+    color_temps = (
+        'coolest',
+        'cool',
+        'neutral',
+        'warm',
+    )
     color_temps_map = {
         'coolest': 250,
         'cool': 250,

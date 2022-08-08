@@ -192,7 +192,7 @@ class Menu(BaseModule):
     )
 
     NEXT = emojize(':right_arrow:')
-    PREV = emojize(':back_arrow:')
+    PREV = emojize(':BACK_arrow:')
 
     def process_command(self, command: Command) -> typing.Any:
         if command.name == constants.BotCommands.RESTART:
@@ -204,9 +204,10 @@ class Menu(BaseModule):
 
             if len(menu) > 1:
                 self.state[TelegramMenu.menu_state_name] = menu[:-1]
-                self.messenger.send_message(self.PREV)
+                state_name = self.state[TelegramMenu.menu_state_name][-1]
+                self.messenger.send_message(f'{self.PREV} {state_name.replace("_", " ").capitalize()}')
             else:
-                self.messenger.send_message('?')
+                self.messenger.send_message(emojize(':thinking_face:'))
 
             return True
 

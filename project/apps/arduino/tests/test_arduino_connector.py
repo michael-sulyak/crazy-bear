@@ -53,9 +53,9 @@ def test_process_updates(test_db):
     ser._write_message(b'{"t":"sensors","p":{"p": 100,"h": 20,"t":30}}' + arduino_connector.terminator)
     arduino_connector.process_updates()
 
-    humidity = Signal.last_aggregated(ArduinoSensorTypes.HUMIDITY)
-    temperature = Signal.last_aggregated(ArduinoSensorTypes.TEMPERATURE)
-    pir_sensor = Signal.last_aggregated(ArduinoSensorTypes.PIR_SENSOR)
+    humidity = Signal.get_one_aggregated(ArduinoSensorTypes.HUMIDITY)
+    temperature = Signal.get_one_aggregated(ArduinoSensorTypes.TEMPERATURE)
+    pir_sensor = Signal.get_one_aggregated(ArduinoSensorTypes.PIR_SENSOR)
 
     assert pir_sensor == 100
     assert humidity == 20

@@ -114,17 +114,22 @@ class Signal(db.Base):
         return signals
 
     @classmethod
-    def last_aggregated(cls,
-                        signal_type: str, *,
-                        aggregate_function: typing.Callable = sa_func.avg,
-                        td: datetime.timedelta = datetime.timedelta(minutes=1)) -> typing.Any:
+    def get_one_aggregated(cls,
+                           signal_type: str, *,
+                           aggregate_function: typing.Callable = sa_func.avg,
+                           datetime_range: typing.Optional[tuple[datetime.datetime, datetime.datetime]] = None,
+                           period: datetime.timedelta = datetime.timedelta(minutes=1)) -> typing.Any:
         now = current_time()
+
+        if datetime_range is None:
+            datetime_range = (now - period, now,)
 
         result = db.db_session().query(
             aggregate_function(cls.value).label('value'),
         ).filter(
             cls.type == signal_type,
-            cls.received_at >= now - td,
+            cls.received_at >= datetime_range[0],
+            cls.received_at <= datetime_range[1],
             cls.value.isnot(None),
         ).first()[0]
 

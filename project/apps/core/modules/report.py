@@ -8,28 +8,17 @@ from emoji import emojize
 
 from .. import events
 from ..base import BaseModule, Command
-from ..constants import (
-    ARDUINO_IS_ENABLED, CAMERA_IS_AVAILABLE, RECOMMENDATION_SYSTEM_IS_ENABLED,
-    VIDEO_RECORDING_IS_ENABLED,
-)
+from ..utils.reports import ShortTextReport
 from ... import db
-from ...arduino.constants import ArduinoSensorTypes
 from ...common import doc
-from ...common.constants import INITED_AT
 from ...common.utils import (
     convert_params_to_date_range, create_plot, get_cpu_temp,
     get_ram_usage, get_weather, synchronized_method,
 )
 from ...core import constants
-from ...core.constants import (
-    AUTO_SECURITY_IS_ENABLED, CURRENT_FPS, SECURITY_IS_ENABLED, USE_CAMERA,
-    VIDEO_SECURITY,
-)
-from ...devices.utils import get_connected_devices_to_router
 from ...messengers.utils import ProgressBar
 from ...signals.models import Signal
 from ...task_queue import IntervalTask, TaskPriorities
-from .... import config
 
 
 class Report(BaseModule):
@@ -231,91 +220,12 @@ class Report(BaseModule):
         )
 
     def _send_status(self) -> None:
-        yes, no, nothing = emojize(':check_mark_button:'), emojize(':multiply:'), emojize(':multiply:')
-        humidity = Signal.last_aggregated(ArduinoSensorTypes.HUMIDITY)
-        temperature = Signal.last_aggregated(ArduinoSensorTypes.TEMPERATURE)
-
-        def _get_mark(value: float, range_1: typing.Tuple[float, float], range_2: typing.Tuple[float, float]) -> str:
-            is_not_good = not (range_1[0] <= value <= range_1[1])
-            is_bad = not (range_2[0] <= value <= range_2[1])
-
-            if is_bad:
-                return emojize(':red_exclamation_mark:')
-
-            if is_not_good:
-                return emojize(':white_exclamation_mark:')
-
-            return ''
-
-        if humidity is None:
-            humidity = nothing
-        else:
-            humidity = f'{round(humidity, 1)}%{_get_mark(humidity, (40, 60,), (30, 60,))}'
-
-        if temperature is None:
-            temperature = nothing
-        else:
-            temperature = f'{round(temperature, 1)}℃{_get_mark(temperature, (19, 22.5,), (18, 25.5,))}'
-
-        if self.state[CURRENT_FPS] is None:
-            current_fps = nothing
-        else:
-            current_fps = round(self.state[CURRENT_FPS], 2)
-
-        try:
-            cpu_temperature = get_cpu_temp()
-            cpu_temperature = f'{round(cpu_temperature, 1)}℃{_get_mark(cpu_temperature, (0, 60,), (0, 80,))}'
-        except RuntimeError:
-            cpu_temperature = nothing
-
-        ram_usage = get_ram_usage() * 100
-        ram_usage = f'{round(ram_usage, 1)}%{_get_mark(ram_usage, (0, 60,), (0, 80,))}'
-
-        connected_devices = ()
-
-        try:
-            connected_devices = tuple(get_connected_devices_to_router())
-        except Exception as e:
-            logging.exception(e)
-            pass
-
-        connected_devices_str = ', '.join(
-            f'`{device.name}`' if device.name else f'`Unknown {device.mac_address}`'
-            for device in connected_devices
-        )
-
-        message = (
-            f'️*Crazy Bear* `v{config.VERSION}`\n\n'
-
-            f'{emojize(":floppy_disk:")} *Devices*\n'
-            f'Arduino: {yes if self.state[ARDUINO_IS_ENABLED] else no}\n\n'
-
-            f'{emojize(":camera:")} *Camera*\n'
-            f'Has camera: {yes if self.state[CAMERA_IS_AVAILABLE] else no}\n'
-            f'Camera is used: {yes if self.state[USE_CAMERA] else no}\n'
-            f'Video recording: {yes if self.state[VIDEO_RECORDING_IS_ENABLED] else no}\n'
-            f'FPS: `{current_fps}`\n\n'
-
-            f'{emojize(":shield:")} *Security*\n'
-            f'Security: {yes if self.state[SECURITY_IS_ENABLED] else no}\n'
-            f'Auto security: {yes if self.state[AUTO_SECURITY_IS_ENABLED] else no}\n'
-            f'Video security: {yes if self.state[VIDEO_SECURITY] else no}\n'
-            f'WiFi: {connected_devices_str if connected_devices_str else nothing}\n\n'
-
-            f'{emojize(":bar_chart:")} *Sensors*\n'
-            f'Humidity: `{humidity}`\n'
-            f'Temperature: `{temperature}`\n'
-            f'CPU Temperature: `{cpu_temperature}`\n'
-            f'RAM usage: `{ram_usage}`\n\n'
-
-            f'{emojize(":clipboard:")} *Other info*\n'
-            f'Recommendation system: {yes if self.state[RECOMMENDATION_SYSTEM_IS_ENABLED] else no}\n'
-            f'Started at: `{self.state[INITED_AT].strftime("%d.%m.%Y, %H:%M:%S")}`'
-        )
+        report = ShortTextReport(state=self.state)
+        message = report.generate()
 
         with self._lock_for_status:
             if self._message_id_for_status:
-                message += f'\nUpdated at: `{datetime.datetime.now().strftime("%d.%m.%Y, %H:%M:%S")}`'
+                message += f'\nUpdated at: `{report.now.strftime("%d.%m.%Y, %H:%M:%S")}`'
 
             self._message_id_for_status = self.messenger.send_message(message, message_id=self._message_id_for_status)
 

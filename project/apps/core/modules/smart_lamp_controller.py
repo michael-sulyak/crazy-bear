@@ -43,6 +43,7 @@ class SmartLampController(BaseModule):
     _lock: threading.RLock
     _last_manual_action: typing.Optional[datetime.datetime] = None
     _last_artificial_sunrise_time: typing.Optional[datetime.datetime] = None
+    _default_transition: float = 0.5
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -79,39 +80,40 @@ class SmartLampController(BaseModule):
 
     def process_command(self, command: Command) -> typing.Any:
         if command.name == BotCommands.LAMP:
-            default_transition = 1
-
             with self._lock:
                 try:
                     if command.first_arg == ON:
                         if command.second_arg:
-                            self.smart_lamp.turn_on(brightness=int(command.second_arg), transition=default_transition)
+                            self.smart_lamp.turn_on(
+                                brightness=int(command.second_arg),
+                                transition=self._default_transition,
+                            )
                         else:
-                            self.smart_lamp.turn_on(transition=default_transition)
+                            self.smart_lamp.turn_on(transition=self._default_transition)
 
                         self.state[constants.MAIN_LAMP_IS_ON] = True
                     elif command.first_arg == OFF:
-                        self.smart_lamp.turn_off(transition=default_transition)
+                        self.smart_lamp.turn_off(transition=self._default_transition)
                         self.state[constants.MAIN_LAMP_IS_ON] = False
                     elif command.first_arg == 'test':
                         self.smart_lamp.test()
                         self.state[constants.MAIN_LAMP_IS_ON] = False
                     elif command.first_arg == 'color':
-                        self.smart_lamp.set_color_by_name(command.second_arg, transition=default_transition)
+                        self.smart_lamp.set_color_by_name(command.second_arg, transition=self._default_transition)
                     elif command.first_arg == 'brightness':
-                        self.smart_lamp.set_brightness(int(command.second_arg), transition=default_transition)
+                        self.smart_lamp.set_brightness(int(command.second_arg), transition=self._default_transition)
                     elif command.first_arg == 'color_temp':
                         self.smart_lamp.set_color_temp(int(command.second_arg))
                     elif command.first_arg == 'increase_brightness':
-                        self.smart_lamp.step_brightness(50, transition=default_transition)
+                        self.smart_lamp.step_brightness(50, transition=self._default_transition)
                     elif command.first_arg == 'decrease_brightness':
-                        self.smart_lamp.step_brightness(-50, transition=default_transition)
+                        self.smart_lamp.step_brightness(-50, transition=self._default_transition)
                     elif command.first_arg == 'increase_color_temp':
-                        self.smart_lamp.step_color_temp(50, transition=default_transition)
+                        self.smart_lamp.step_color_temp(50, transition=self._default_transition)
                     elif command.first_arg == 'decrease_color_temp':
-                        self.smart_lamp.step_color_temp(-50, transition=default_transition)
+                        self.smart_lamp.step_color_temp(-50, transition=self._default_transition)
                     elif command.first_arg == 'sunrise':
-                        self._run_artificial_sunrise(forcibly=True)
+                        self._run_artificial_sunrise()
                     else:
                         return False
                 except ZigBeeTimeoutError:
@@ -141,7 +143,7 @@ class SmartLampController(BaseModule):
             pass
 
     @synchronized_method
-    def _run_artificial_sunrise(self, *, step: int = 1, forcibly: bool = False) -> None:
+    def _run_artificial_sunrise(self, *, step: int = 1) -> None:
         def _run_next_step(timedelta: datetime.timedelta) -> None:
             self.task_queue.put(
                 self._run_artificial_sunrise,
@@ -157,13 +159,10 @@ class SmartLampController(BaseModule):
             if not self.state[constants.USER_IS_CONNECTED_TO_ROUTER]:
                 return
 
-            # if not forcibly and (current_time() - get_sunrise_time()) > self._sunrise_timeout:
-            #     return
-
             self.smart_lamp.turn_on(
                 brightness=5,
                 color_temp=150,
-                transition=1,
+                transition=self._default_transition,
             )
             self.smart_lamp.set_color_temp(150)
             self.state[constants.MAIN_LAMP_IS_ON] = True
