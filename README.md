@@ -1,7 +1,7 @@
 # CrazyBear - Home Assistant in Telegram
 
 **NOTE: This project is not a general solution. This is just an implementation for specific purposes (my purposes 🙂). I
-hope some solutions will be helpful to you.**
+hope the code will be helpful to you.**
 
 ## Preview
 
