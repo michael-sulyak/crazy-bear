@@ -1,4 +1,4 @@
-echo "Updating..."
+echo "Updating dependencies..."
 sudo apt update && sudo apt upgrade
 
 echo "Installing dependencies..."
