@@ -12,4 +12,4 @@ arduino_monitor:
 	arduino-cli monitor --port /dev/ttyUSB0 --fqbn arduino:avr:nano:cpu=atmega328old
 
 freeze:
-    poetry export -f requirements.txt --output requirements.txt --without-hashes
+	poetry export -f requirements.txt --output requirements.txt --without-hashes
