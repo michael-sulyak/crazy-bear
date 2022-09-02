@@ -1,6 +1,8 @@
 import abc
 import typing
 
+from ..messengers.utils import escape_markdown
+
 
 def generate_doc(*, title: str, commands: tuple['CommandDef', ...]) -> str:
     commands = '\n'.join(command.to_short_form() for command in commands)
@@ -31,7 +33,7 @@ class CommandDef:
         if self.flags:
             result += f' {" ".join(flag.to_short_form() for flag in self.flags)}'
 
-        return result
+        return f'`{escape_markdown(result)}`'
 
 
 class BaseParam(abc.ABC):
@@ -59,7 +61,7 @@ class OptionsDef(BaseParam):
         self.options = options
 
     def to_short_form(self) -> str:
-        return f'\\[{"|".join(self.options)}\\]'
+        return f'[{"|".join(self.options)}]'
 
 
 class FlagDef:

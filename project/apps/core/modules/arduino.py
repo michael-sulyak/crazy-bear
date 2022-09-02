@@ -8,11 +8,12 @@ from ..base import BaseModule, Command
 from ..constants import ARDUINO_IS_ENABLED, BotCommands, MotionTypeSources, WEATHER_HUMIDITY, WEATHER_TEMPERATURE
 from ...arduino.base import ArduinoConnector
 from ...arduino.constants import ArduinoSensorTypes
-from ...common.constants import OFF, ON
 from ...common import doc
+from ...common.constants import OFF, ON
 from ...common.utils import create_plot, synchronized_method, with_throttling
 from ...core import events
 from ...core.constants import SECURITY_IS_ENABLED
+from ...messengers.utils import escape_markdown
 from ...signals.models import Signal
 from ...task_queue import IntervalTask, TaskPriorities
 
@@ -203,7 +204,10 @@ class Arduino(BaseModule):
     @with_throttling(datetime.timedelta(seconds=5), count=1)
     def _send_message_about_movement(self, last_movement: Signal) -> None:
         self.messenger.send_message(
-            f'*Detected movement*\n'
-            f'Current pir sensor: `{last_movement.value}`\n'
-            f'Timestamp: `{last_movement.received_at.strftime("%Y-%m-%d, %H:%M:%S")}`'
+            (
+                f'*Detected movement*\n'
+                f'Current pir sensor: `{last_movement.value}`\n'
+                f'Timestamp: `{escape_markdown(last_movement.received_at.strftime("%Y-%m-%d, %H:%M:%S"))}`'
+            ),
+            use_markdown=True,
         )

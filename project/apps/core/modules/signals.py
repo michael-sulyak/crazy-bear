@@ -60,9 +60,9 @@ class Signals(BaseModule):
 
     def process_command(self, command: Command) -> typing.Any:
         if command.name == constants.BotCommands.CHECK_DB:
-            with ProgressBar(self.messenger, title='Checking DB...') as progress_bar:
+            with ProgressBar(self.messenger, title='Checking DB\\.\\.\\.') as progress_bar:
                 self._check_db()
-                progress_bar.set(0.5, title='Run `VACUUM FULL`...')
+                progress_bar.set(0.5, title='Run `VACUUM FULL`\\.\\.\\.')
                 db.vacuum()
                 progress_bar.set(1)
                 self.messenger.send_message('Checking DB is finished')

@@ -6,6 +6,7 @@ from ..constants import (
     BotCommands,
 )
 from ...common import doc
+from ...messengers.utils import escape_markdown
 from ...task_queue import TaskPriorities
 
 
@@ -39,14 +40,20 @@ class ExtraCommands(BaseModule):
 
             self.task_queue.put(
                 lambda: (
-                    self.messenger.send_message(f'Run scheduled command {command_for_run}'),
+                    self.messenger.send_message(
+                        f'Run scheduled command `{escape_markdown(str(command_for_run))}`',
+                        use_markdown=True,
+                    ),
                     self._run_command(command_for_run.name, *command_for_run.args),
                 ),
                 run_after=datetime.datetime.now() + delta,
                 priority=TaskPriorities.LOW,
             )
 
-            self.messenger.send_message(f'{command_for_run} is sent')
+            self.messenger.send_message(
+                f'`{escape_markdown(str(command_for_run))}` is sent',
+                use_markdown=True,
+            )
 
             return True
 

@@ -7,6 +7,7 @@ from ..constants import (
 from ...common import doc
 from ...devices.dto import Device
 from ...devices.utils import device_manager
+from ...messengers.utils import escape_markdown
 
 
 __all__ = (
@@ -41,12 +42,12 @@ class WiFiDevices(BaseModule):
 
             for device in device_manager.devices:
                 text += (
-                    f'\n\n**Name:** {device.name}\n'
-                    f'**MAC:** {device.mac_address}\n'
+                    f'\n\n**Name:** `{escape_markdown(device.name)}`\n'
+                    f'**MAC:** `{escape_markdown(device.mac_address)}`\n'
                     f'**Is defining:** {device.is_defining}'
                 )
 
-            self.messenger.send_message(text)
+            self.messenger.send_message(text, use_markdown=True)
 
             return True
 

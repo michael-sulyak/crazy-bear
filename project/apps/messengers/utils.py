@@ -1,5 +1,7 @@
 import typing
 
+from telegram.utils.helpers import escape_markdown as telegram_escape_markdown
+
 from .base import BaseMessenger
 
 
@@ -16,6 +18,7 @@ class ProgressBar:
         self.message_id = self.messenger.send_message(
             f'{self.title}{self._generate_bar(0)}',
             reply_markup=None,
+            use_markdown=True,
         )
         return self
 
@@ -33,6 +36,7 @@ class ProgressBar:
             f'{self.title}{self._generate_bar(progress)}',
             message_id=self.message_id,
             reply_markup=None,
+            use_markdown=True,
         )
 
     @staticmethod
@@ -40,3 +44,7 @@ class ProgressBar:
         a, b, length = '█', '▁', 20
         s = int(progress * length)
         return f'`{a * s}{b * (length - s)} {str(int(progress * 100)).rjust(3, " ")}%`'
+
+
+def escape_markdown(text: str, entity_type: typing.Optional[str] = None) -> str:
+    return telegram_escape_markdown(text, version=2, entity_type=entity_type)

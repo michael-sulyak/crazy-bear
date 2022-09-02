@@ -105,9 +105,7 @@ class RecommendationSystem(BaseModule):
                 self._mark_as_sent('temperature')
 
             if temperature > config.NORMAL_TEMPERATURE_RANGE[1] and can_send_warning:
-                self.messenger.send_message(
-                    f'There is a high temperature in the room ({temperature})!',
-                )
+                self.messenger.send_message(f'There is a high temperature in the room ({temperature})!')
                 self._mark_as_sent('temperature')
 
     def _can_send_warning(self, name: str, timedelta_for_sending: datetime.timedelta) -> bool:

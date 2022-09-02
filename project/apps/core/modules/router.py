@@ -3,6 +3,8 @@ import io
 import logging
 import typing
 
+from requests import ReadTimeout
+
 from ..base import BaseModule, Command
 from ...common import doc
 from ...common.routers.mi import mi_wifi
@@ -10,6 +12,7 @@ from ...common.routers.tplink import TpLink
 from ...common.utils import create_plot, is_sleep_hours, synchronized_method
 from ...core import constants, events
 from ...devices.utils import check_if_host_is_at_home
+from ...messengers.utils import escape_markdown
 from ...signals.models import Signal
 from ...task_queue import IntervalTask, TaskPriorities
 from .... import config
@@ -95,6 +98,10 @@ class Router(BaseModule):
 
         try:
             is_connected = check_if_host_is_at_home()
+        except (ConnectionError, ReadTimeout,) as e:
+            logging.warning(e)
+            is_connected = False
+            self._errors_count += 1
         except Exception as e:
             logging.exception(e)
             is_connected = False
@@ -156,14 +163,14 @@ class Router(BaseModule):
 
             for connected_device in connected_devices:
                 for key, value in connected_device.items():
-                    message += f'*{key}:* {value}\n'
+                    message += f'*{escape_markdown(key)}:* {escape_markdown(value)}\n'
 
                 message += '\n'
         elif config.ROUTER_TYPE == 'mi':
             for device in mi_wifi.device_list()['list']:
                 for key, value in device.items():
-                    message += f'*{key}:* {value}\n'
+                    message += f'*{escape_markdown(str(key))}:* {escape_markdown(str(value))}\n'
 
                 message += '\n'
 
-        self.messenger.send_message(message)
+        self.messenger.send_message(message, use_markdown=True)

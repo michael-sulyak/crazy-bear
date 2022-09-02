@@ -12,6 +12,7 @@ from ...common.constants import INITED_AT
 from ...common.state import State
 from ...common.utils import current_time, get_ram_usage, get_cpu_temp
 from ...devices.utils import get_connected_devices_to_router
+from ...messengers.utils import escape_markdown
 from ...signals.models import Signal
 from .... import config
 
@@ -23,19 +24,19 @@ class ShortTextReport:
 
     state: State
     now: datetime.datetime
-    datetime_range_for_second_aggregation: tuple[datetime.datetime, datetime.datetime]
+    _datetime_range_for_second_aggregation: tuple[datetime.datetime, datetime.datetime]
 
     def __init__(self, *, state: State) -> None:
         self.state = state
         self.now = current_time()
-        self.datetime_range_for_second_aggregation = (
-            self.now - datetime.timedelta(minutes=70),
+        self._datetime_range_for_second_aggregation = (
             self.now - datetime.timedelta(minutes=60),
+            self.now,
         )
 
     def generate(self) -> str:
         return (
-            f'️*Crazy Bear* `v{config.VERSION}`\n\n'
+            f'️*Crazy Bear* `v{escape_markdown(config.VERSION)}`\n\n'
 
             f'{emojize(":floppy_disk:")} *Devices*\n'
             f'Arduino: {self.YES if self.state[ARDUINO_IS_ENABLED] else self.NO}\n\n'
@@ -44,7 +45,7 @@ class ShortTextReport:
             f'Has camera: {self.YES if self.state[CAMERA_IS_AVAILABLE] else self.NO}\n'
             f'Camera is used: {self.YES if self.state[USE_CAMERA] else self.NO}\n'
             f'Video recording: {self.YES if self.state[VIDEO_RECORDING_IS_ENABLED] else self.NO}\n'
-            f'FPS: `{self._fps_info}`\n\n'
+            f'FPS: `{escape_markdown(self._fps_info)}`\n\n'
 
             f'{emojize(":shield:")} *Security*\n'
             f'Security: {self.YES if self.state[SECURITY_IS_ENABLED] else self.NO}\n'
@@ -53,14 +54,14 @@ class ShortTextReport:
             f'WiFi: {self._connected_devices_info}\n\n'
 
             f'{emojize(":bar_chart:")} *Sensors*\n'
-            f'Humidity: `{self._humidity_info}`\n'
-            f'Temperature: `{self._temperature_info}`\n'
-            f'CPU Temperature: `{self._cpu_temperature_info}`\n'
-            f'RAM usage: `{self._ram_usage_info}`\n\n'
+            f'Humidity: `{escape_markdown(self._humidity_info)}`\n'
+            f'Temperature: `{escape_markdown(self._temperature_info)}`\n'
+            f'CPU Temperature: `{escape_markdown(self._cpu_temperature_info)}`\n'
+            f'RAM usage: `{escape_markdown(self._ram_usage_info)}`\n\n'
 
             f'{emojize(":clipboard:")} *Other info*\n'
             f'Recommendation system: {self.YES if self.state[RECOMMENDATION_SYSTEM_IS_ENABLED] else self.NO}\n'
-            f'Started at: `{self.state[INITED_AT].strftime("%d.%m.%Y, %H:%M:%S")}`'
+            f'Started at: `{escape_markdown(self.state[INITED_AT].strftime("%d.%m.%Y, %H:%M:%S"))}`'
         )
 
     @property
@@ -74,8 +75,9 @@ class ShortTextReport:
 
         second_humidity = Signal.get_one_aggregated(
             ArduinoSensorTypes.HUMIDITY,
-            datetime_range=self.datetime_range_for_second_aggregation,
+            datetime_range=self._datetime_range_for_second_aggregation,
         )
+
         if second_humidity is not None:
             diff = round(humidity - second_humidity, 1)
 
@@ -95,8 +97,9 @@ class ShortTextReport:
 
         second_temperature = Signal.get_one_aggregated(
             ArduinoSensorTypes.TEMPERATURE,
-            datetime_range=self.datetime_range_for_second_aggregation,
+            datetime_range=self._datetime_range_for_second_aggregation,
         )
+
         if second_temperature is not None:
             diff = round(temperature - second_temperature, 1)
 
@@ -127,7 +130,7 @@ class ShortTextReport:
             return self.NOTHING
 
         return ', '.join(
-            f'`{device.name}`' if device.name else f'`Unknown {device.mac_address}`'
+            f'`{escape_markdown(device.name)}`' if device.name else f'`Unknown {escape_markdown(device.mac_address)}`'
             for device in connected_devices
         )
 

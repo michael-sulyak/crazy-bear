@@ -16,7 +16,7 @@ from ...common.utils import (
     get_ram_usage, get_weather, synchronized_method,
 )
 from ...core import constants
-from ...messengers.utils import ProgressBar
+from ...messengers.utils import ProgressBar, escape_markdown
 from ...signals.models import Signal
 from ...task_queue import IntervalTask, TaskPriorities
 
@@ -156,7 +156,7 @@ class Report(BaseModule):
             return True
 
         if command.name == constants.BotCommands.HELP:
-            self.messenger.send_message('\n\n'.join(events.getting_doc.process()[0]))
+            self.messenger.send_message('\n\n'.join(events.getting_doc.process()[0]), use_markdown=True)
             return True
 
         return False
@@ -173,7 +173,7 @@ class Report(BaseModule):
             self._send_status()
 
     def _pipe_for_collecting_stats(self, receivers: typing.Sequence, kwargs: dict) -> typing.Iterator:
-        with ProgressBar(self.messenger, title='Collecting stats...') as progress_bar:
+        with ProgressBar(self.messenger, title='Collecting stats\\.\\.\\.') as progress_bar:
             count = len(receivers)
             plots = []
             exceptions = []
@@ -225,9 +225,13 @@ class Report(BaseModule):
 
         with self._lock_for_status:
             if self._message_id_for_status:
-                message += f'\nUpdated at: `{report.now.strftime("%d.%m.%Y, %H:%M:%S")}`'
+                message += f'\nUpdated at: `{escape_markdown(report.now.strftime("%d.%m.%Y, %H:%M:%S"))}`'
 
-            self._message_id_for_status = self.messenger.send_message(message, message_id=self._message_id_for_status)
+            self._message_id_for_status = self.messenger.send_message(
+                message,
+                message_id=self._message_id_for_status,
+                use_markdown=True,
+            )
 
     @staticmethod
     def _create_cpu_temp_stats(date_range: typing.Tuple[datetime.datetime, datetime.datetime],
@@ -330,26 +334,23 @@ class Report(BaseModule):
         hour = now.hour
 
         if hour < 12:
-            greeting = f'{emojize(":sunrise:")} ️*Good morning!*'
+            greeting = f'{emojize(":sunrise:")} ️*Good morning\\!*'
         elif 12 <= hour <= 17:
-            greeting = f'{emojize(":sunset:")} ️*Good afternoon!*'
+            greeting = f'{emojize(":sunset:")} ️*Good afternoon\\!*'
         elif 17 <= hour <= 24:
-            greeting = f'{emojize(":night_with_stars:")} ️*Good evening!*'
+            greeting = f'{emojize(":night_with_stars:")} ️*Good evening\\!*'
         else:
             greeting = ''
 
         weather_data = get_weather()
         weather = f'{emojize(":thermometer:")} ️The weather in {weather_data["name"]}: *{weather_data["main"]["temp"]}℃*'
         weather += (
-            f' ({weather_data["main"]["temp_min"]} .. {weather_data["main"]["temp_max"]}), '
+            f' ({weather_data["main"]["temp_min"]} \\.\\. {weather_data["main"]["temp_max"]}), '
             if weather_data["main"]["temp_min"] != weather_data["main"]["temp_max"] else ', '
         )
         weather += f'{weather_data["weather"][0]["description"]}.'
 
-        self.messenger.send_message(
-            f'{greeting}\n\n'
-            f'{weather}'
-        )
+        self.messenger.send_message(f'{greeting}\n\n{weather}', use_markdown=True)
 
     def _send_db_stats(self) -> None:
         sql = """
@@ -364,7 +365,7 @@ class Report(BaseModule):
         prepared_result = '**Table:**\n'
 
         for row in result:
-            prepared_result += f'`{row["table_name"]}`: {row["table_size"]}\n'
+            prepared_result += f'`{escape_markdown(row["table_name"])}`: {row["table_size"]}\n'
 
         prepared_result += '\n**Table Signal:**\n'
 
@@ -373,4 +374,4 @@ class Report(BaseModule):
         for name, count in signal_table_stats.items():
             prepared_result += f'`{name}`: {count}\n'
 
-        self.messenger.send_message(prepared_result)
+        self.messenger.send_message(prepared_result, use_markdown=True)

@@ -23,6 +23,7 @@ from telegram.utils.request import Request as TelegramRequest
 from . import events
 from .base import BaseMessenger
 from .mixins import CVMixin
+from .utils import escape_markdown
 from ..common.utils import synchronized_method
 from ..core.base import Command, Message
 from ... import config
@@ -91,7 +92,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
     @handel_telegram_exceptions
     def send_message(self,
                      text: str, *,
-                     parse_mode: str = 'markdown',
+                     use_markdown: bool = False,
                      reply_markup: typing.Optional[ReplyMarkup] = DEFAULT,
                      message_id: typing.Optional[int] = None) -> typing.Optional[int]:
         if reply_markup is DEFAULT:
@@ -108,7 +109,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         result = func(
             chat_id=self.chat_id,
             text=text,
-            parse_mode=parse_mode,
+            parse_mode='MarkdownV2' if use_markdown else None,
             reply_markup=reply_markup,
         )
 
@@ -151,7 +152,10 @@ class TelegramMessenger(CVMixin, BaseMessenger):
 
     def error(self, text: str, *, title: str = 'Error') -> None:
         logging.warning(text)
-        self.send_message(f'{emojize(":pager:")} ️*{title}* ```\n{text}\n```')
+        self.send_message(
+            f'{emojize(":pager:")} ️*{title}* ```\n{escape_markdown(text, entity_type="pre")}\n```',
+            use_markdown=True,
+        )
 
     def exception(self, exp: Exception) -> None:
         self.error(f'{repr(exp)}\n{"".join(traceback.format_tb(exp.__traceback__))}', title='Exception')
@@ -171,7 +175,9 @@ class TelegramMessenger(CVMixin, BaseMessenger):
             connection = None
             while connection is None:
                 try:
-                    connection = pika.BlockingConnection(pika.ConnectionParameters(host=config.TELEHOOKS_HOST, heartbeat=600))
+                    connection = pika.BlockingConnection(
+                        pika.ConnectionParameters(host=config.TELEHOOKS_HOST, heartbeat=600),
+                    )
                 except AMQPConnectionError as e:
                     logging.error(e)
                     logging.info('Waiting AMQP...')
