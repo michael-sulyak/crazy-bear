@@ -10,6 +10,7 @@ int availableMemory();
 
 class RadioTransmitter {
 public:
+    bool isDebugMode = false;
     RadioTransmitter(RF24 &radio);
     void init();
     bool send(StaticJsonDocument<MSG_SIZE> &jsonBuffer);

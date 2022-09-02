@@ -1,55 +1,62 @@
 #include <ArduinoJson.h>
 
-// For radio
+// For radio"
 #include "radio_transmitter/radio_transmitter.cpp"
 
-// For LCD
+// For LCD"
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
 
+// Pins for radio:
 #define PIN_CE 10
 #define PIN_CSN 9
-#define RADIO_ADDRESS 0xF0F0F0F066
 
+// Pins for LCD:
 #define LCD_WIDTH 20
 #define LCD_HEIGHT 4
 
-#define typeSensors "sensors"
-#define typeSilentMode "sm"
+// Other pins:
+#define PIN_MH 2
+
+// Vars:
+#define TYPE_SENSORS "sensors"
+#define TYPE_SILENT_MODE "sm"
 #define ON "on"
 #define OFF "off"
+#define MSG_FOR_WAITING_DATA "Waiting data   "
 
-#define msgForWaitingData "Waiting data   "
-
-
+// Global objects:
 LiquidCrystal_I2C lcd(0x27, LCD_WIDTH, LCD_HEIGHT);
 RF24 radio(PIN_CE, PIN_CSN);
 RadioTransmitter radioTransmitter(radio);
 StaticJsonDocument<MSG_SIZE> jsonBuffer;
-const int mhPin = 2;
 
-
+// Global state:
 struct {
     bool isWaitingData = true;
     unsigned short cycledVarForWaitingData = 0;
     unsigned long lastReceivedDateAt = 0;
     unsigned long lastUpdatedBatteryLevelAt = 0;
+    unsigned long lastLcdSwitchingAt = 0;
     bool lsdIsOn = true;
+    bool isDebugMode = false;
 } globalState;
+
 
 void setup() {
     Serial.begin(9600);
     initLcd();
     radioTransmitter.init();
     radioTransmitter.powerUp();
-    pinMode(mhPin, INPUT);
+    pinMode(PIN_MH, INPUT);
     showLaunchScreen();
-    printInCenter(msgForWaitingData);
+    printInCenter(MSG_FOR_WAITING_DATA);
 }
 
-
 void loop() {
+    checkSerialInput();
+
     if (radioTransmitter.hasInputData()) {
         processInputData();
     }
@@ -62,8 +69,7 @@ void loop() {
         printMsgForWaitingData();
     }
 
-    if (globalState.lastUpdatedBatteryLevelAt == 0 ||
-        millis() - globalState.lastUpdatedBatteryLevelAt > 60 * 1000) {
+    if (millis() - globalState.lastUpdatedBatteryLevelAt > 60 * 1000) {
         printBatteryLevel(LCD_WIDTH - 1, 0);
         globalState.lastUpdatedBatteryLevelAt = millis();
     }
@@ -84,6 +90,27 @@ void printInCenter(String text) {
     lcd.clear();
     lcd.setCursor((LCD_WIDTH - text.length()) / 2, LCD_HEIGHT / 2);
     lcd.print(text);
+}
+
+void checkSerialInput() {
+    if (Serial.available() == 0) {
+        return;
+    }
+
+    String input = Serial.readString();
+    input.trim();
+
+    if (input == "debug=on") {
+        globalState.isDebugMode = true;
+        radioTransmitter.isDebugMode = true;
+        Serial.println("Debug enabled.");
+    } else if (input == "debug=off") {
+        globalState.isDebugMode = false;
+        radioTransmitter.isDebugMode = false;
+        Serial.println("Debug disabled.");
+    } else {
+        Serial.println("Unknown command.");
+    }
 }
 
 void printSensorsData() {
@@ -215,7 +242,6 @@ void printBatteryLevel(const unsigned short xPos, const unsigned short yPos) {
     lcd.write(byte(0));
 }
 
-
 void printMsgForWaitingData() {
     const short c = 400 / MSG_DELAY;
 
@@ -235,15 +261,18 @@ void printMsgForWaitingData() {
     }
 }
 
-
 void processInputData() {
-    Serial.println("Has something");
+    if (globalState.isDebugMode) {
+        Serial.println("Has something");
+    }
 
     if (radioTransmitter.read(jsonBuffer)) {
-        serializeJson(jsonBuffer, Serial);
-        Serial.println();
+        if (globalState.isDebugMode) {
+            serializeJson(jsonBuffer, Serial);
+            Serial.println();
+        }
 
-        if (jsonBuffer["t"].as<String>() == typeSensors) {
+        if (jsonBuffer["t"].as<String>() == TYPE_SENSORS) {
             if (globalState.isWaitingData) {
                 globalState.isWaitingData = false;
                 lcd.clear();
@@ -252,7 +281,7 @@ void processInputData() {
 
             printSensorsData();
             globalState.lastReceivedDateAt = millis();
-        } else if (jsonBuffer["t"].as<String>() == typeSilentMode) {
+        } else if (jsonBuffer["t"].as<String>() == TYPE_SILENT_MODE) {
             if (jsonBuffer["v"].as<String>() == ON) {
                 lcd.noBacklight();
                 lcd.clear();
@@ -260,7 +289,7 @@ void processInputData() {
                 delay(jsonBuffer["s"].as<int>() * 60 * 1000);
             } else if (jsonBuffer["v"].as<String>() == OFF) {
                 globalState.isWaitingData = true;
-                printInCenter(msgForWaitingData);
+                printInCenter(MSG_FOR_WAITING_DATA);
                 lcd.backlight();
                 radioTransmitter.powerUp();
             }
@@ -269,21 +298,30 @@ void processInputData() {
         jsonBuffer.clear();
     }
 
-//        Serial.print("Available memory: ");
-//        Serial.print(availableMemory());
-//        Serial.println("b");
+
+    if (globalState.isDebugMode) {
+       Serial.print("Available memory: ");
+       Serial.print(availableMemory());
+       Serial.print(" b.");
+    }
 }
 
 void processMhSensor() {
-    if (digitalRead(mhPin) == HIGH) {
+    if (millis() - globalState.lastLcdSwitchingAt > 3 * 1000) {
+        return;
+    }
+
+    if (digitalRead(PIN_MH) == HIGH) {
         if (globalState.lsdIsOn) {
             globalState.lsdIsOn = false;
             lcd.noBacklight();
+            globalState.lastLcdSwitchingAt = millis();
         }
     } else {
         if (!globalState.lsdIsOn) {
             globalState.lsdIsOn = true;
             lcd.backlight();
+            globalState.lastLcdSwitchingAt = millis();
         }
     }
 }
@@ -296,7 +334,7 @@ void showLaunchScreen() {
             lcd.print(">");
         }
 
-        delay(50);
+        delay(40);
     }
 
     delay(100);
@@ -307,4 +345,3 @@ void clearLcd(unsigned short n) {
         lcd.print(" ");
     }
 }
-

@@ -34,30 +34,31 @@ void RadioTransmitter::init() {
 bool RadioTransmitter::send(StaticJsonDocument<MSG_SIZE> &jsonBuffer) {
     _radio->stopListening();
 
-#if DEBUG
-    Serial.println("Start sending...");
-#endif
+    if (isDebugMode) {
+        Serial.println("Start sending...");
+    }
 
     if (!_radio->write(&startedBytes, sizeof(startedBytes))) {
-#if DEBUG
-        Serial.println("Not delivered.");
-#endif
+        if (isDebugMode) {
+            Serial.println("Not delivered.");
+        }
+
         return false;
     }
 
     delay(MSG_DELAY);
 
-#if DEBUG
-    Serial.println("Serializing JSON...");
-#endif
+    if (isDebugMode) {
+        Serial.println("Serializing JSON...");
+    }
 
     char buffer[MSG_SIZE];
     serializeJson(jsonBuffer, buffer);
 
-#if DEBUG
-    Serial.print("Buffer for sending: ");
-    Serial.println(buffer);
-#endif
+    if (isDebugMode) {
+        Serial.print("Buffer for sending: ");
+        Serial.println(buffer);
+    }
 
     for (unsigned int i = 0; i < MSG_SIZE; i += BLOCK_SIZE) {
         bool isLastBlock = false;
@@ -69,50 +70,53 @@ bool RadioTransmitter::send(StaticJsonDocument<MSG_SIZE> &jsonBuffer) {
             }
         }
 
-#if DEBUG
-        Serial.print("Block for process:");
-        Serial.println(i / BLOCK_SIZE + 1);
-#endif
+        if (isDebugMode) {
+            Serial.print("Block for process:");
+            Serial.println(i / BLOCK_SIZE + 1);
+        }
 
         if (!_radio->write(&buffer[i], BLOCK_SIZE)) {
-#if DEBUG
-            Serial.println("Not delivered.");
-#endif
+            if (isDebugMode) {
+                Serial.println("Not delivered.");
+            }
+
             return false;
         }
 
         delay(MSG_DELAY);
 
         if (isLastBlock) {
-#if DEBUG
-            Serial.println("Was the last block.");
-#endif
+            if (isDebugMode) {
+                Serial.println("It was the last block.");
+            }
+
             break;
         }
     }
 
-#if DEBUG
-    Serial.print("availableMemory=");
-    Serial.println(availableMemory());
-    Serial.println("Sending the finished bytes...");
-#endif
+    if (isDebugMode) {
+        Serial.print("availableMemory=");
+        Serial.println(availableMemory());
+        Serial.println("Sending the finished bytes...");
+    }
 
     if (!_radio->write(&finishedBytes, sizeof(finishedBytes))) {
-#if DEBUG
-        Serial.println("Not delivered.");
-#endif
+        if (isDebugMode) {
+            Serial.println("Not delivered.");
+        }
+
         return false;
     }
 
-#if DEBUG
-    Serial.println("Starting listening...");
-#endif
+    if (isDebugMode) {
+        Serial.println("Starting listening...");
+    }
 
     _radio->startListening();
 
-#if DEBUG
-    Serial.println("Success sending!");
-#endif
+    if (isDebugMode) {
+        Serial.println("Success sending!");
+    }
 
     return true;
 }
@@ -123,18 +127,19 @@ bool RadioTransmitter::read(StaticJsonDocument<MSG_SIZE> &jsonBuffer) {
 
     _radio->read(&blockBuffer, BLOCK_SIZE);
 
-#if DEBUG
-    Serial.print("Read block: ");
-    Serial.println(blockBuffer);
-#endif
+    if (isDebugMode) {
+        Serial.print("Read block: ");
+        Serial.println(blockBuffer);
+    }
 
     // Don't start process messages without the started bytes.
     if (strcmp(blockBuffer, startedBytes) != 0) {
-#if DEBUG
-        Serial.print("\"");
-        Serial.print(blockBuffer);
-        Serial.println("\" - it is not started bytes.");
-#endif
+        if (isDebugMode) {
+            Serial.print("\"");
+            Serial.print(blockBuffer);
+            Serial.println("\" - it is not started bytes.");
+        }
+
         return false;
     }
 
@@ -150,12 +155,14 @@ bool RadioTransmitter::read(StaticJsonDocument<MSG_SIZE> &jsonBuffer) {
         }
 
         _radio->read(&blockBuffer, BLOCK_SIZE);
-#if DEBUG
-        Serial.print("Read block: ");
-        Serial.println(blockBuffer);
-        Serial.print("availableMemory=");
-        Serial.println(availableMemory());
-#endif
+
+        if (isDebugMode) {
+            Serial.print("Read block: ");
+            Serial.println(blockBuffer);
+            Serial.print("Available memory: ");
+            Serial.println(availableMemory());
+            Serial.print(" b.");
+        }
 
         if (strcmp(blockBuffer, startedBytes) == 0) {
             Serial.println("Got started bytes.");
@@ -166,35 +173,42 @@ bool RadioTransmitter::read(StaticJsonDocument<MSG_SIZE> &jsonBuffer) {
         }
 
         if (strcmp(blockBuffer, finishedBytes) == 0) {
-#if DEBUG
-            Serial.println("Got finished bytes.");
-#endif
+            if (isDebugMode) {
+                Serial.println("Got finished bytes.");
+            }
+
             deserializeJson(jsonBuffer, buffer);
             return true;
         }
 
-#if DEBUG
-        Serial.println("Saving block...");
-#endif
+
+        if (isDebugMode) {
+            Serial.println("Saving block...");
+        }
 
         strncpy(buffer + part, blockBuffer, BLOCK_SIZE);
 
-#if DEBUG
-        Serial.print("Part: ");
-        Serial.println(part);
-#endif
+
+        if (isDebugMode) {
+            Serial.print("Part: ");
+            Serial.println(part);
+        }
 
         part += BLOCK_SIZE;
 
-#if DEBUG
-        Serial.print("All buffer: ");
-        Serial.println(buffer);
-#endif
+
+        if (isDebugMode) {
+            Serial.print("All buffer: ");
+            Serial.println(buffer);
+        }
 
         startGettingAt = millis();
     }
 
-    Serial.print("Time limit.");
+    if (isDebugMode) {
+        Serial.print("Time limit.");
+    }
+
     return false;
 }
 

@@ -2,38 +2,41 @@
 #include <DHT.h>  // https://github.com/adafruit/DHT-sensor-library
 #include <ArduinoJson.h>  // https://arduinojson.org/
 
-// For radio
+// For radio:
 #include "radio_transmitter/radio_transmitter.cpp"
 
-
+// Pins for radio:
 #define PIN_CE 7
 #define PIN_CSN 8
 
+// Other pins:
 #define PIR_SENSOR_PIN A0
 #define DHT_SENSOR_PIN 2
 
+// Vars:
+#define TYPE_SET_SETTINGS "set_settings"
+#define TYPE_GET_SETTINGS "get_settings"
+#define TYPE_SETTINGS "settings"
+#define TYPE_SENSORS "sensors"
 
+// Global objects:
 RF24 radio(PIN_CE, PIN_CSN);
 RadioTransmitter radioTransmitter(radio);
-
-
-#define typeSetSettings "set_settings"
-#define typeGetSettings "get_settings"
-#define typeSettings "settings"
-#define typeSensors "sensors"
-
-const unsigned short sendingDelay = 10 * 1000;
-const unsigned short detectionDelay = 1 * 1000;
-const unsigned short radioDelay = 20 * 1000;
-unsigned long lastSentAt = 0;
-unsigned long lastRadioAt = 0;
-
-bool isSilentMode = true;
-bool isSilentModeInViewer = false;
-
 StaticJsonDocument<MSG_SIZE> jsonBuffer;
-
 DHT dhtSensor(DHT_SENSOR_PIN, DHT22);
+
+// Global state:
+struct {
+    const unsigned short sendingDelay = 10 * 1000;
+    const unsigned short detectionDelay = 1 * 1000;
+    const unsigned short radioDelay = 20 * 1000;
+    unsigned long lastSentAt = 0;
+    unsigned long lastRadioAt = 0;
+
+    bool isSilentMode = true;
+    bool isSilentModeInViewer = false;
+    bool isDebugMode = false;
+} globalState;
 
 
 void setup() {
@@ -46,65 +49,89 @@ void loop() {
 //     if (Serial.available() > 0) {
 //       deserializeJson(jsonBuffer, Serial);
 //
-//       if (jsonBuffer["type"] == typeSetSettings) {
-//           sendingDelay = jsonBuffer["payload"]["data_delay"];
-//       } else if (jsonBuffer["type"] == typeGetSettings) {
+//       if (jsonBuffer["type"] == TYPE_SET_SETTINGS) {
+//           globalState.sendingDelay = jsonBuffer["payload"]["data_delay"];
+//       } else if (jsonBuffer["type"] == TYPE_GET_SETTINGS) {
 //           jsonBuffer.clear();
-//           jsonBuffer["type"] = typeSettings;
-//           jsonBuffer["payload"]["data_delay"] = sendingDelay;
-//           sendJsonBuffer();
+//           jsonBuffer["type"] = TYPE_SETTINGS;
+//           jsonBuffer["payload"]["data_delay"] = globalState.sendingDelay;
+//           sendJsonBufferViaSerial();
 //       }
 //
 //       jsonBuffer.clear();
 //     }
+    checkSerialInput();
 
-    const int pirSensor = analogRead(PIR_SENSOR_PIN);
-    const unsigned long diff = millis() - lastSentAt;
-    const bool needToSend = (pirSensor > 20 && diff >= detectionDelay) || (diff >= sendingDelay);
+    const unsigned short pirSensor = analogRead(PIR_SENSOR_PIN);
+    const unsigned long diff = millis() - globalState.lastSentAt;
+    const bool needToSend = (pirSensor > 20 && diff >= globalState.detectionDelay) || (diff >= globalState.sendingDelay);
 
     if (needToSend) {
-        jsonBuffer["t"] = typeSensors;
+        jsonBuffer["t"] = TYPE_SENSORS;
         jsonBuffer["p"]["p"] = pirSensor;
         jsonBuffer["p"]["h"] = dhtSensor.readHumidity();
         jsonBuffer["p"]["t"] = dhtSensor.readTemperature();
-        sendJsonBuffer();
+        sendJsonBufferViaSerial();
 
-        if (millis() - lastRadioAt >= radioDelay) {
+        if (millis() - globalState.lastRadioAt >= globalState.radioDelay) {
             radioTransmitter.powerUp();
             radioTransmitter.send(jsonBuffer);
             radioTransmitter.powerDown();
-            lastRadioAt = millis();
+            globalState.lastRadioAt = millis();
 
-//            Serial.print("Available memory: ");
-//            Serial.print(availableMemory());
-//            Serial.println("b");
+            if (globalState.isDebugMode) {
+               Serial.print("Available memory: ");
+               Serial.print(availableMemory());
+               Serial.println("b");
+            }
         }
 
         jsonBuffer.clear();
 
-        lastSentAt = millis();
+        globalState.lastSentAt = millis();
     }
 
-//    if (isSilentMode && !isSilentModeInViewer) {
-//        isSilentModeInViewer = turnOnSilentModeForViewer();
+//    if (globalState.isSilentMode && !globalState.isSilentModeInViewer) {
+//        globalState.isSilentModeInViewer = turnOnSilentModeForViewer();
 //
-//        if (isSilentModeInViewer) {
-//            isSilentModeInViewer = !pingViewer();
+//        if (globalState.isSilentModeInViewer) {
+//            globalState.isSilentModeInViewer = !pingViewer();
 //        }
 //    }
 //
-//    if (!isSilentMode && isSilentModeInViewer) {
-//        isSilentModeInViewer = !turnOffSilentModeForViewer();
+//    if (!globalState.isSilentMode && globalState.isSilentModeInViewer) {
+//        globalState.isSilentModeInViewer = !turnOffSilentModeForViewer();
 //
-//        if (!isSilentModeInViewer) {
-//            isSilentModeInViewer = pingViewer();
+//        if (!globalState.isSilentModeInViewer) {
+//            globalState.isSilentModeInViewer = pingViewer();
 //        }
 //    }
 
     delay(200);
 }
 
-void sendJsonBuffer() {
+void checkSerialInput() {
+    if (Serial.available() == 0) {
+        return;
+    }
+
+    String input = Serial.readString();
+    input.trim();
+
+    if (input == "debug=on") {
+        globalState.isDebugMode = true;
+        radioTransmitter.isDebugMode = true;
+        Serial.println("Debug enabled.");
+    } else if (input == "debug=off") {
+        globalState.isDebugMode = false;
+        radioTransmitter.isDebugMode = false;
+        Serial.println("Debug disabled.");
+    } else {
+        Serial.println("Unknown command.");
+    }
+}
+
+void sendJsonBufferViaSerial() {
     serializeJson(jsonBuffer, Serial);
     Serial.println();
 }
