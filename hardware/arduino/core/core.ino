@@ -29,7 +29,7 @@ DHT dhtSensor(DHT_SENSOR_PIN, DHT22);
 struct {
     const unsigned short sendingDelay = 10 * 1000;
     const unsigned short detectionDelay = 1 * 1000;
-    const unsigned short radioDelay = 20 * 1000;
+    const unsigned short radioDelay = 20 * 1000;  // TODO: Set 60
     unsigned long lastSentAt = 0;
     unsigned long lastRadioAt = 0;
 
@@ -43,6 +43,7 @@ void setup() {
     Serial.begin(9600);
     dhtSensor.begin();
     radioTransmitter.init();
+    delay(1000);  // To warm up
 }
 
 void loop() {

@@ -29,6 +29,7 @@ void RadioTransmitter::init() {
     _radio->openReadingPipe(0, (const uint8_t *) RADIO_ADDRESS);
     _radio->setAutoAck(true);
     _radio->startListening();
+    isOn = true;
 }
 
 bool RadioTransmitter::send(StaticJsonDocument<MSG_SIZE> &jsonBuffer) {
@@ -219,11 +220,14 @@ bool RadioTransmitter::hasInputData() {
 
 void RadioTransmitter::powerUp() {
     _radio->powerUp();
+    _radio->startListening();
+    isOn = true;
     delay(5);
 }
 
 void RadioTransmitter::powerDown() {
     _radio->powerDown();
+    isOn = false;
     delay(5);
 }
 
