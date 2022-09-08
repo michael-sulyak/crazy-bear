@@ -34,7 +34,7 @@ StaticJsonDocument<MSG_SIZE> jsonBuffer;
 
 // Global state:
 struct {
-    const unsigned short radioSleep = 20 * 1000 - 5 * 1000;  // radioDelay - 5 sec.
+    const unsigned short radioSleep = 60 * 1000 - 5 * 1000;  // radioDelay - 5 sec.
     const unsigned short resetAfter = 3 * 60 * 1000;
     bool isWaitingData = true;
     unsigned short cycledVarForWaitingData = 0;
@@ -83,11 +83,6 @@ void loop() {
     if (globalState.isWaitingData) {
         printMsgForWaitingData();
     }
-
-//     if (millis() - globalState.lastUpdatedBatteryLevelAt > 60 * 1000) {
-//         printBatteryLevel(LCD_WIDTH - 1, 0);
-//         globalState.lastUpdatedBatteryLevelAt = millis();
-//     }
 
     printHeadIcons();
 
@@ -415,20 +410,20 @@ void printHeadIcons() {
 void printBatteryLevel(const unsigned short xPos, const unsigned short yPos) {
     const float currentVolt = readVolt();
 
-    if (currentVolt >= 4.6) {
-        printChar(0, xPos, yPos);
-    } else if (currentVolt <= 4.6 && currentVolt > 4.2) {
-        printChar(1, xPos, yPos);
-    } else if (currentVolt <= 4.2 && currentVolt > 3.8) {
-        printChar(2, xPos, yPos);
-    } else if (currentVolt <= 3.8 && currentVolt > 3.6) {
-        printChar(3, xPos, yPos);
-    } else if (currentVolt <= 3.6 && currentVolt > 3.4) {
-        printChar(4, xPos, yPos);
-    } else if (currentVolt <= 3.4 && currentVolt > 3.2) {
-        printChar(5, xPos, yPos);
-    } else if (currentVolt <= 3.2) {
+    if (currentVolt <= 3.4) {
         printChar(6, xPos, yPos);
+    } else if (currentVolt <= 3.6) {
+        printChar(5, xPos, yPos);
+    }  else if (currentVolt <= 3.8 ) {
+        printChar(4, xPos, yPos);
+    } else if (currentVolt <= 4.0) {
+        printChar(3, xPos, yPos);
+    } else if (currentVolt <= 4.2) {
+        printChar(2, xPos, yPos);
+    } else if (currentVolt <= 4.4) {
+        printChar(1, xPos, yPos);
+    } else {
+        printChar(0, xPos, yPos);
     }
 }
 
