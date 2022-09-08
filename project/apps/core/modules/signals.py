@@ -86,6 +86,7 @@ class Signals(BaseModule):
             constants.WEATHER_HUMIDITY,
             constants.CPU_TEMPERATURE,
             constants.RAM_USAGE,
+            constants.FREE_DISK_SPACE,
             ArduinoSensorTypes.TEMPERATURE,
             ArduinoSensorTypes.HUMIDITY,
         )

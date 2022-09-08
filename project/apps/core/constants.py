@@ -7,6 +7,7 @@ CPU_TEMPERATURE = 'cpu_temperature'
 WEATHER_TEMPERATURE = 'weather_temperature'
 WEATHER_HUMIDITY = 'weather_humidity'
 RAM_USAGE = 'ram_usage'
+FREE_DISK_SPACE = 'free_disk_space'
 TASK_QUEUE_DELAY = 'task_queue_delay'
 USER_IS_CONNECTED_TO_ROUTER = 'user_is_connected_to_router'
 

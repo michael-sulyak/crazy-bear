@@ -5,6 +5,7 @@ import queue
 import threading
 import traceback
 import typing
+import datetime
 from functools import partial
 from time import sleep
 
@@ -24,7 +25,7 @@ from . import events
 from .base import BaseMessenger
 from .mixins import CVMixin
 from .utils import escape_markdown
-from ..common.utils import synchronized_method
+from ..common.utils import synchronized_method, current_time
 from ..core.base import Command, Message
 from ... import config
 
@@ -67,6 +68,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
     _webhook_server: WebhookServer
     _worker: threading.Thread
     _last_message_id: typing.Any = None
+    _last_sent_at: typing.Optional[datetime.datetime] = None
 
     def __init__(self, *,
                  request: typing.Optional[TelegramRequest] = None,
@@ -84,6 +86,11 @@ class TelegramMessenger(CVMixin, BaseMessenger):
     @synchronized_method
     def last_message_id(self) -> typing.Any:
         return self._last_message_id
+
+    @property
+    @synchronized_method
+    def last_sent_at(self) -> typing.Optional[datetime.datetime]:
+        return self._last_sent_at
 
     def close(self) -> None:
         self._worker.join(0)
@@ -114,6 +121,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         )
 
         self._last_message_id = message_id or result.message_id
+        self._last_sent_at = current_time()
 
         return message_id or result.message_id
 
@@ -126,6 +134,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
             caption=caption,
         )
         self._last_message_id = result.message_id
+        self._last_sent_at = current_time()
 
     @synchronized_method
     @handel_telegram_exceptions
@@ -139,6 +148,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         )
 
         self._last_message_id = results[-1].message_id
+        self._last_sent_at = current_time()
 
     @synchronized_method
     @handel_telegram_exceptions
@@ -149,6 +159,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
             caption=caption,
         )
         self._last_message_id = result.message_id
+        self._last_sent_at = current_time()
 
     def error(self, text: str, *, title: str = 'Error') -> None:
         logging.warning(text)
@@ -169,6 +180,9 @@ class TelegramMessenger(CVMixin, BaseMessenger):
     @handel_telegram_exceptions
     def remove_message(self, message_id: int) -> None:
         self._bot.delete_message(chat_id=self.chat_id, message_id=message_id)
+
+        if self._last_message_id == message_id:
+            self._last_message_id = None
 
     def _run_worker(self) -> None:
         def _worker() -> typing.NoReturn:
@@ -209,7 +223,8 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         if username != config.TELEGRAM_USERNAME:
             text = update.message.text.replace("`", "\\`")
             self.error(
-                f'User "{update.effective_user.name}" (@{update.effective_user.username}) sent '
+                f'User "{update.effective_user.name}" '
+                f'(@{update.effective_user.username}) sent '
                 f'in chat #{update.effective_chat.id}:\n'
                 f'```\n{text}\n```'
             )

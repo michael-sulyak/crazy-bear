@@ -298,6 +298,10 @@ def get_ram_usage() -> float:
     return 1 - free / total
 
 
+def get_free_disk_space() -> int:
+    return int(os.popen('df / --output=avail -B M |tail -n 1 |tr -d M |awk \'{print $1}\'').readlines()[0])
+
+
 @contextmanager
 def mock_var(module: object, attribute: str, new: typing.Any) -> typing.Generator:
     prev_value = getattr(module, attribute)

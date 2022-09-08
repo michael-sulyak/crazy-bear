@@ -13,7 +13,7 @@ from ... import db
 from ...common import doc
 from ...common.utils import (
     convert_params_to_date_range, create_plot, get_cpu_temp,
-    get_ram_usage, get_weather, synchronized_method,
+    get_ram_usage, get_weather, synchronized_method, get_free_disk_space, current_time,
 )
 from ...core import constants
 from ...messengers.utils import ProgressBar, escape_markdown
@@ -63,6 +63,7 @@ class Report(BaseModule):
         now = datetime.datetime.now()
         self._last_cpu_notification = now
         self._last_ram_notification = now
+        self._last_disk_space_notification = now
         self._lock_for_status = threading.RLock()
 
         self.task_queue.put(
@@ -90,6 +91,11 @@ class Report(BaseModule):
                 interval=datetime.timedelta(minutes=10),
             ),
             IntervalTask(
+                target=self._save_free_disk_space,
+                priority=TaskPriorities.LOW,
+                interval=datetime.timedelta(minutes=10),
+            ),
+            IntervalTask(
                 target=self._update_status,
                 priority=TaskPriorities.LOW,
                 interval=datetime.timedelta(minutes=1),
@@ -102,6 +108,7 @@ class Report(BaseModule):
             events.request_for_statistics.connect(self._create_cpu_temp_stats),
             events.request_for_statistics.connect(self._create_task_queue_stats),
             events.request_for_statistics.connect(self._create_ram_stats),
+            events.request_for_statistics.connect(self._create_free_disk_space_stats),
         )
 
     def process_command(self, command: Command) -> typing.Any:
@@ -167,6 +174,13 @@ class Report(BaseModule):
                 self._message_id_for_status = None
 
             if not self._message_id_for_status:
+                if (
+                        self.messenger.last_sent_at
+                        and current_time() - self.messenger.last_sent_at > datetime.timedelta(minutes=5)
+                ):
+                    logging.info('Send status after 5 min.')
+                    self._send_status()
+
                 return
 
             logging.info('Update status')
@@ -266,6 +280,27 @@ class Report(BaseModule):
         return create_plot(title='RAM usage (%)', x_attr='aggregated_time', y_attr='value', stats=ram_stats)
 
     @staticmethod
+    def _create_free_disk_space_stats(date_range: typing.Tuple[datetime.datetime, datetime.datetime],
+                                      components: typing.Set[str]) -> typing.Optional[io.BytesIO]:
+        if 'inner_stats' not in components:
+            return None
+
+        free_disk_space_stats = Signal.get_aggregated(
+            signal_type=constants.FREE_DISK_SPACE,
+            datetime_range=date_range,
+        )
+
+        if not free_disk_space_stats:
+            return None
+
+        return create_plot(
+            title='Free disk space (MB)',
+            x_attr='aggregated_time',
+            y_attr='value',
+            stats=free_disk_space_stats,
+        )
+
+    @staticmethod
     def _create_task_queue_stats(date_range: typing.Tuple[datetime.datetime, datetime.datetime],
                                  components: typing.Set[str]) -> typing.Optional[io.BytesIO]:
         if 'inner_stats' not in components:
@@ -328,6 +363,22 @@ class Report(BaseModule):
             self.messenger.send_message('Running out of RAM!')
 
         self._last_ram_notification = now
+
+    def _save_free_disk_space(self) -> None:
+        disk_space_usage = get_free_disk_space()
+        Signal.add(signal_type=constants.FREE_DISK_SPACE, value=disk_space_usage)
+
+        now = datetime.datetime.now()
+        diff = now - self._last_disk_space_notification
+
+        if disk_space_usage < 100 * 1024 and diff > datetime.timedelta(hours=1):
+            self.messenger.send_message('Running out of the disk space!!!')
+        elif disk_space_usage < 200 * 1024 and diff > datetime.timedelta(hours=2):
+            self.messenger.send_message('Running out of the disk space!!!')
+        elif disk_space_usage < 500 * 1024 and diff > datetime.timedelta(hours=3):
+            self.messenger.send_message('Running out of the disk space!')
+
+        self._last_disk_space_notification = now
 
     def _send_report(self) -> None:
         now = datetime.datetime.now()
