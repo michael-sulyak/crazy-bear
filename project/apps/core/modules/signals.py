@@ -1,4 +1,5 @@
 import datetime
+import io
 import typing
 
 from crontab import CronTab
@@ -31,9 +32,9 @@ class Signals(BaseModule):
     _supreme_signal_handler: SupremeSignalHandler
 
     def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
+        self._supreme_signal_handler = SupremeSignalHandler(messenger=kwargs['context'].messenger)
 
-        self._supreme_signal_handler = SupremeSignalHandler(messenger=self.messenger)
+        super().__init__(*args, **kwargs)
 
         now = datetime.datetime.now()
 

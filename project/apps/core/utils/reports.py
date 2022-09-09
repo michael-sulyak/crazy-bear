@@ -144,7 +144,7 @@ class ShortTextReport:
     def _free_space_info(self) -> str:
         free_space = get_free_disk_space() / 1024
         mark = self._get_mark(free_space, (1, float("inf"),), (0.5, float("inf"),))
-        return f'{round(free_space, 2)} GB {mark}'
+        return f'{round(free_space, 2)}GB {mark}'
 
     @property
     def _cpu_temperature_info(self) -> str:

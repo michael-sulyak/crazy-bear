@@ -33,11 +33,7 @@ class BaseSignalHandler(abc.ABC):
                 target=self.process,
                 priority=TaskPriorities.LOW,
                 interval=self.task_interval,
-            ),
-            IntervalTask(
-                target=self.compress,
-                priority=TaskPriorities.LOW,
-                interval=datetime.timedelta(hours=1),
+                run_after=datetime.datetime.now() + datetime.timedelta(seconds=10),
             ),
         )
 
@@ -66,15 +62,6 @@ class BaseAdvancedSignalHandler(BaseSignalHandler, abc.ABC):
     compress_by_time: bool
     approximation_value: float = 0
     _last_notified_at: datetime.datetime = datetime.datetime.min
-
-    def get_tasks(self) -> tuple[Task, ...]:
-        return (
-            IntervalTask(
-                target=self.process,
-                priority=TaskPriorities.LOW,
-                interval=self.task_interval,
-            ),
-        )
 
     def process(self) -> None:
         value = self.get_value()
@@ -176,9 +163,11 @@ class WeatherHandler(BaseSignalHandler):
 
     def process(self) -> None:
         weather = get_weather()
+        now = current_time()
+
         Signal.bulk_add((
-            Signal(type=constants.WEATHER_TEMPERATURE, value=weather['main']['temp']),
-            Signal(type=constants.WEATHER_HUMIDITY, value=weather['main']['humidity']),
+            Signal(type=constants.WEATHER_TEMPERATURE, value=weather['main']['temp'], received_at=now),
+            Signal(type=constants.WEATHER_HUMIDITY, value=weather['main']['humidity'], received_at=now),
         ))
 
     def compress(self) -> None:
@@ -256,12 +245,12 @@ class FreeDiskSpaceHandler(BaseAdvancedSignalHandler):
     compress_by_time = True
     list_of_notification_params = (
         NotificationParams(
-            condition=lambda x: x < 100 * 1024,
+            condition=lambda x: x < 1024,
             message='There is very little disk space left!',
             delay=datetime.timedelta(hours=1),
         ),
         NotificationParams(
-            condition=lambda x: x < 500 * 1024,
+            condition=lambda x: x < 500,
             message='There is little disk space left!',
             delay=datetime.timedelta(hours=6),
         ),
