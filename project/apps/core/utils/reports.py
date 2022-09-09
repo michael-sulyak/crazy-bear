@@ -10,7 +10,7 @@ from ..constants import (
 from ...arduino.constants import ArduinoSensorTypes
 from ...common.constants import INITED_AT
 from ...common.state import State
-from ...common.utils import current_time, get_ram_usage, get_cpu_temp
+from ...common.utils import current_time, get_ram_usage, get_cpu_temp, get_free_disk_space
 from ...devices.utils import get_connected_devices_to_router
 from ...messengers.utils import escape_markdown
 from ...signals.models import Signal
@@ -57,7 +57,8 @@ class ShortTextReport:
             f'Humidity: `{escape_markdown(self._humidity_info)}`\n'
             f'Temperature: `{escape_markdown(self._temperature_info)}`\n'
             f'CPU Temperature: `{escape_markdown(self._cpu_temperature_info)}`\n'
-            f'RAM usage: `{escape_markdown(self._ram_usage_info)}`\n\n'
+            f'RAM usage: `{escape_markdown(self._ram_usage_info)}`\n'
+            f'Free space: `{escape_markdown(self._free_space_info)}`\n\n'
 
             f'{emojize(":clipboard:")} *Other info*\n'
             f'Recommendation system: {self.YES if self.state[RECOMMENDATION_SYSTEM_IS_ENABLED] else self.NO}\n'
@@ -140,6 +141,12 @@ class ShortTextReport:
         return f'{round(ram_usage, 1)}%{self._get_mark(ram_usage, (0, 60,), (0, 80,))}'
 
     @property
+    def _free_space_info(self) -> str:
+        free_space = get_free_disk_space() / 1024
+        mark = self._get_mark(free_space, (1, float("inf"),), (0.5, float("inf"),))
+        return f'{round(free_space, 2)} GB {mark}'
+
+    @property
     def _cpu_temperature_info(self) -> str:
         try:
             cpu_temperature = get_cpu_temp()
@@ -151,12 +158,13 @@ class ShortTextReport:
         return cpu_temperature_info
 
     @staticmethod
-    def _get_mark(value: float, first_range: tuple[float, float], second_range: tuple[float, float]) -> str:
-        is_not_good = not (first_range[0] <= value <= first_range[1])
-        is_bad = not (second_range[0] <= value <= second_range[1])
+    def _get_mark(value: float, good_range: tuple[float, float], acceptable_range: tuple[float, float]) -> str:
+        is_not_acceptable = not (acceptable_range[0] <= value <= acceptable_range[1])
 
-        if is_bad:
+        if is_not_acceptable:
             return emojize(':red_exclamation_mark:')
+        
+        is_not_good = not (good_range[0] <= value <= good_range[1])
 
         if is_not_good:
             return emojize(':white_exclamation_mark:')

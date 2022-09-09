@@ -10,6 +10,7 @@ from .utils import synchronized_method
 
 __all__ = (
     'Event',
+    'Receiver',
 )
 
 

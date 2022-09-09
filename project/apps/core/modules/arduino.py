@@ -1,16 +1,15 @@
 import datetime
-import io
 import typing
 
 import serial
 
 from ..base import BaseModule, Command
-from ..constants import ARDUINO_IS_ENABLED, BotCommands, MotionTypeSources, WEATHER_HUMIDITY, WEATHER_TEMPERATURE
+from ..constants import ARDUINO_IS_ENABLED, BotCommands, MotionTypeSources
 from ...arduino.base import ArduinoConnector
 from ...arduino.constants import ArduinoSensorTypes
 from ...common import doc
 from ...common.constants import OFF, ON
-from ...common.utils import create_plot, synchronized_method, with_throttling
+from ...common.utils import synchronized_method, with_throttling
 from ...core import events
 from ...core.constants import SECURITY_IS_ENABLED
 from ...messengers.utils import escape_markdown
@@ -52,7 +51,6 @@ class Arduino(BaseModule):
     def subscribe_to_events(self) -> tuple:
         return (
             *super().subscribe_to_events(),
-            events.request_for_statistics.connect(self._create_arduino_sensor_stats),
             events.new_arduino_data.connect(self._process_new_arduino_logs),
         )
 
@@ -114,72 +112,6 @@ class Arduino(BaseModule):
             self.messenger.send_message('Arduino is off')
         else:
             self.messenger.send_message('Arduino is already off')
-
-    @staticmethod
-    def _create_arduino_sensor_stats(date_range: typing.Tuple[datetime.datetime, datetime.datetime],
-                                     components: typing.Set[str]) -> typing.Optional[typing.List[io.BytesIO]]:
-        if 'arduino' not in components:
-            return None
-
-        humidity_stats = Signal.get_aggregated(ArduinoSensorTypes.HUMIDITY, datetime_range=date_range)
-        temperature_stats = Signal.get_aggregated(ArduinoSensorTypes.TEMPERATURE, datetime_range=date_range)
-
-        weather_temperature = None
-        weather_humidity = None
-
-        if 'extra_data' in components:
-            if len(temperature_stats) >= 2:
-                weather_humidity = Signal.get_aggregated(
-                    signal_type=WEATHER_HUMIDITY,
-                    datetime_range=(humidity_stats[0].aggregated_time, humidity_stats[-1].aggregated_time,),
-                )
-
-            if len(temperature_stats) >= 2:
-                weather_temperature = Signal.get_aggregated(
-                    signal_type=WEATHER_TEMPERATURE,
-                    datetime_range=(temperature_stats[0].aggregated_time, temperature_stats[-1].aggregated_time,),
-                )
-
-        plots = []
-
-        if temperature_stats:
-            plots.append(create_plot(
-                title='Temperature',
-                x_attr='aggregated_time',
-                y_attr='value',
-                stats=temperature_stats,
-                additional_plots=(
-                    ({'x_attr': 'aggregated_time', 'y_attr': 'value', 'stats': weather_temperature},)
-                    if weather_temperature else None
-                ),
-                legend=(
-                    ('Inside', 'Outside',)
-                    if weather_temperature else None
-                ),
-            ))
-
-        if humidity_stats:
-            plots.append(create_plot(
-                title='Humidity',
-                x_attr='aggregated_time',
-                y_attr='value',
-                stats=humidity_stats,
-                additional_plots=(
-                    ({'x_attr': 'aggregated_time', 'y_attr': 'value', 'stats': weather_humidity},)
-                    if weather_humidity else None
-                ),
-                legend=(
-                    ('Inside', 'Outside',)
-                    if weather_humidity else None
-                ),
-            ))
-
-        pir_stats = Signal.get(ArduinoSensorTypes.PIR_SENSOR, datetime_range=date_range)
-
-        if pir_stats:
-            plots.append(create_plot(title='PIR Sensor', x_attr='received_at', y_attr='value', stats=pir_stats))
-
-        return plots
 
     @synchronized_method
     def _process_new_arduino_logs(self, signals: typing.List[Signal]) -> None:

@@ -1,5 +1,4 @@
 import datetime
-import io
 import logging
 import threading
 import typing
@@ -12,8 +11,7 @@ from ..utils.reports import ShortTextReport
 from ... import db
 from ...common import doc
 from ...common.utils import (
-    convert_params_to_date_range, create_plot, get_cpu_temp,
-    get_ram_usage, get_weather, synchronized_method, get_free_disk_space, current_time,
+    convert_params_to_date_range, get_weather, current_time,
 )
 from ...core import constants
 from ...messengers.utils import ProgressBar, escape_markdown
@@ -38,16 +36,6 @@ class Report(BaseModule):
         ),
     )
 
-    _signals_for_clearing = (
-        constants.CPU_TEMPERATURE,
-        constants.TASK_QUEUE_DELAY,
-        constants.RAM_USAGE,
-        constants.WEATHER_TEMPERATURE,
-        constants.WEATHER_HUMIDITY,
-    )
-    _timedelta_for_ping: datetime.timedelta = datetime.timedelta(seconds=30)
-    _last_cpu_notification: datetime.datetime
-    _last_ram_notification: datetime.datetime
     _stats_flags_map = {
         'a': 'arduino',
         'e': 'extra_data',
@@ -60,55 +48,15 @@ class Report(BaseModule):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-        now = datetime.datetime.now()
-        self._last_cpu_notification = now
-        self._last_ram_notification = now
-        self._last_disk_space_notification = now
         self._lock_for_status = threading.RLock()
-
-        self.task_queue.put(
-            self._ping_task_queue,
-            kwargs={'sent_at': now},
-            priority=TaskPriorities.LOW,
-            run_after=now + self._timedelta_for_ping,
-        )
 
     def init_repeatable_tasks(self) -> tuple:
         return (
-            IntervalTask(
-                target=self._save_cpu_temperature,
-                priority=TaskPriorities.LOW,
-                interval=datetime.timedelta(seconds=10),
-            ),
-            IntervalTask(
-                target=self._save_weather_data,
-                priority=TaskPriorities.LOW,
-                interval=datetime.timedelta(minutes=5),
-            ),
-            IntervalTask(
-                target=self._save_ram_usage,
-                priority=TaskPriorities.LOW,
-                interval=datetime.timedelta(minutes=10),
-            ),
-            IntervalTask(
-                target=self._save_free_disk_space,
-                priority=TaskPriorities.LOW,
-                interval=datetime.timedelta(minutes=10),
-            ),
             IntervalTask(
                 target=self._update_status,
                 priority=TaskPriorities.LOW,
                 interval=datetime.timedelta(minutes=1),
             ),
-        )
-
-    def subscribe_to_events(self) -> tuple:
-        return (
-            *super().subscribe_to_events(),
-            events.request_for_statistics.connect(self._create_cpu_temp_stats),
-            events.request_for_statistics.connect(self._create_task_queue_stats),
-            events.request_for_statistics.connect(self._create_ram_stats),
-            events.request_for_statistics.connect(self._create_free_disk_space_stats),
         )
 
     def process_command(self, command: Command) -> typing.Any:
@@ -218,21 +166,6 @@ class Report(BaseModule):
 
         yield None
 
-    @synchronized_method
-    def _ping_task_queue(self, *, sent_at: datetime.datetime) -> None:
-        now = datetime.datetime.now()
-        diff = datetime.datetime.now() - sent_at - self._timedelta_for_ping
-        Signal.add(signal_type=constants.TASK_QUEUE_DELAY, value=diff.total_seconds(), received_at=now)
-
-        now = datetime.datetime.now()
-
-        self.task_queue.put(
-            self._ping_task_queue,
-            kwargs={'sent_at': now},
-            priority=TaskPriorities.LOW,
-            run_after=now + self._timedelta_for_ping,
-        )
-
     def _send_status(self) -> None:
         report = ShortTextReport(state=self.state)
         message = report.generate()
@@ -246,139 +179,6 @@ class Report(BaseModule):
                 message_id=self._message_id_for_status,
                 use_markdown=True,
             )
-
-    @staticmethod
-    def _create_cpu_temp_stats(date_range: typing.Tuple[datetime.datetime, datetime.datetime],
-                               components: typing.Set[str]) -> typing.Optional[io.BytesIO]:
-        if 'inner_stats' not in components:
-            return None
-
-        cpu_temp_stats = Signal.get_aggregated(
-            signal_type=constants.CPU_TEMPERATURE,
-            datetime_range=date_range,
-        )
-
-        if not cpu_temp_stats:
-            return None
-
-        return create_plot(title='CPU temperature', x_attr='aggregated_time', y_attr='value', stats=cpu_temp_stats)
-
-    @staticmethod
-    def _create_ram_stats(date_range: typing.Tuple[datetime.datetime, datetime.datetime],
-                          components: typing.Set[str]) -> typing.Optional[io.BytesIO]:
-        if 'inner_stats' not in components:
-            return None
-
-        ram_stats = Signal.get_aggregated(
-            signal_type=constants.RAM_USAGE,
-            datetime_range=date_range,
-        )
-
-        if not ram_stats:
-            return None
-
-        return create_plot(title='RAM usage (%)', x_attr='aggregated_time', y_attr='value', stats=ram_stats)
-
-    @staticmethod
-    def _create_free_disk_space_stats(date_range: typing.Tuple[datetime.datetime, datetime.datetime],
-                                      components: typing.Set[str]) -> typing.Optional[io.BytesIO]:
-        if 'inner_stats' not in components:
-            return None
-
-        free_disk_space_stats = Signal.get_aggregated(
-            signal_type=constants.FREE_DISK_SPACE,
-            datetime_range=date_range,
-        )
-
-        if not free_disk_space_stats:
-            return None
-
-        return create_plot(
-            title='Free disk space (MB)',
-            x_attr='aggregated_time',
-            y_attr='value',
-            stats=free_disk_space_stats,
-        )
-
-    @staticmethod
-    def _create_task_queue_stats(date_range: typing.Tuple[datetime.datetime, datetime.datetime],
-                                 components: typing.Set[str]) -> typing.Optional[io.BytesIO]:
-        if 'inner_stats' not in components:
-            return None
-
-        task_queue_size_stats = Signal.get(
-            signal_type=constants.TASK_QUEUE_DELAY,
-            datetime_range=date_range,
-        )
-
-        if not task_queue_size_stats:
-            return None
-
-        return create_plot(
-            title='Task queue delay stats (sec.)',
-            x_attr='received_at',
-            y_attr='value',
-            stats=task_queue_size_stats,
-        )
-
-    @synchronized_method
-    def _save_weather_data(self) -> None:
-        weather = get_weather()
-        Signal.add(signal_type=constants.WEATHER_TEMPERATURE, value=weather['main']['temp'])
-        Signal.add(signal_type=constants.WEATHER_HUMIDITY, value=weather['main']['humidity'])
-
-    @synchronized_method
-    def _save_cpu_temperature(self) -> None:
-        try:
-            cpu_temperature = get_cpu_temp()
-        except RuntimeError:
-            return
-
-        Signal.add(signal_type=constants.CPU_TEMPERATURE, value=cpu_temperature)
-
-        now = datetime.datetime.now()
-        diff = now - self._last_cpu_notification
-
-        if cpu_temperature > 90 and diff > datetime.timedelta(minutes=5):
-            self.messenger.send_message('CPU temperature is very high!')
-        elif cpu_temperature > 70 and diff > datetime.timedelta(minutes=20):
-            self.messenger.send_message('CPU temperature is very high!')
-        elif cpu_temperature > 60 and diff > datetime.timedelta(minutes=60):
-            self.messenger.send_message('CPU temperature is high!')
-
-        self._last_cpu_notification = now
-
-    def _save_ram_usage(self) -> None:
-        ram_usage = round(get_ram_usage() * 100, 2)
-        Signal.add(signal_type=constants.RAM_USAGE, value=ram_usage)
-
-        now = datetime.datetime.now()
-        diff = now - self._last_ram_notification
-
-        if ram_usage > 90 and diff > datetime.timedelta(hours=1):
-            self.messenger.send_message('Running out of RAM!!!')
-        elif ram_usage > 80 and diff > datetime.timedelta(hours=2):
-            self.messenger.send_message('Running out of RAM!!!')
-        elif ram_usage > 60 and diff > datetime.timedelta(hours=3):
-            self.messenger.send_message('Running out of RAM!')
-
-        self._last_ram_notification = now
-
-    def _save_free_disk_space(self) -> None:
-        disk_space_usage = get_free_disk_space()
-        Signal.add(signal_type=constants.FREE_DISK_SPACE, value=disk_space_usage)
-
-        now = datetime.datetime.now()
-        diff = now - self._last_disk_space_notification
-
-        if disk_space_usage < 100 * 1024 and diff > datetime.timedelta(hours=1):
-            self.messenger.send_message('Running out of the disk space!!!')
-        elif disk_space_usage < 200 * 1024 and diff > datetime.timedelta(hours=2):
-            self.messenger.send_message('Running out of the disk space!!!')
-        elif disk_space_usage < 500 * 1024 and diff > datetime.timedelta(hours=3):
-            self.messenger.send_message('Running out of the disk space!')
-
-        self._last_disk_space_notification = now
 
     def _send_report(self) -> None:
         now = datetime.datetime.now()
