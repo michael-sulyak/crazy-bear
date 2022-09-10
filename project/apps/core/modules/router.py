@@ -1,20 +1,13 @@
-import datetime
-import io
 import logging
 import typing
-
-from requests import ReadTimeout
 
 from ..base import BaseModule, Command
 from ...common import doc
 from ...common.routers.mi import mi_wifi
 from ...common.routers.tplink import TpLink
-from ...common.utils import create_plot, is_sleep_hours, synchronized_method
 from ...core import constants, events
 from ...devices.utils import check_if_host_is_at_home
 from ...messengers.utils import escape_markdown
-from ...signals.models import Signal
-from ...task_queue import IntervalTask, TaskPriorities
 from .... import config
 
 
@@ -30,21 +23,6 @@ class Router(BaseModule):
             doc.CommandDef(constants.BotCommands.RAW_WIFI_DEVICES),
         ),
     )
-
-    _last_connected_at: datetime.datetime
-    _timedelta_for_connection: datetime.timedelta = datetime.timedelta(seconds=10)
-
-    _check_after: datetime.datetime
-    _errors_count: int = 0
-    _timedelta_for_checking: datetime.timedelta = datetime.timedelta(seconds=10)
-
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-
-        now = datetime.datetime.now()
-
-        self._last_connected_at = now
-        self._check_after = now
 
     @property
     def initial_state(self) -> typing.Dict[str, typing.Any]:
@@ -67,17 +45,6 @@ class Router(BaseModule):
                 (True, False,): lambda name: events.user_is_disconnected_to_router.send(),
                 (None, True,): lambda name: events.user_is_connected_to_router.send(),
             }),
-            events.request_for_statistics.connect(self._create_router_stats),
-            events.check_if_user_is_at_home.connect(self._check_user_status),
-        )
-
-    def init_repeatable_tasks(self) -> tuple:
-        return (
-            IntervalTask(
-                target=events.check_if_user_is_at_home.send,
-                priority=TaskPriorities.HIGH,
-                interval=datetime.timedelta(seconds=5),
-            ),
         )
 
     def process_command(self, command: Command) -> typing.Any:
@@ -86,68 +53,6 @@ class Router(BaseModule):
             return True
 
         return False
-
-    @synchronized_method
-    def _check_user_status(self, *, force: bool = False) -> None:
-        now = datetime.datetime.now()
-
-        need_to_recheck = force or self._check_after <= now
-
-        if not need_to_recheck:
-            return
-
-        try:
-            is_connected = check_if_host_is_at_home()
-        except (ConnectionError, ReadTimeout,) as e:
-            logging.warning(e)
-            is_connected = False
-            self._errors_count += 1
-        except Exception as e:
-            logging.exception(e)
-            is_connected = False
-            self._errors_count += 1
-        else:
-            self._errors_count = 0
-
-        if self._errors_count > 0:
-            delta = self._timedelta_for_checking + datetime.timedelta(seconds=self._errors_count * 10)
-
-            if delta > datetime.timedelta(minutes=10):
-                delta = datetime.timedelta(minutes=10)
-
-            self._check_after = now + delta
-        elif is_sleep_hours():
-            self._check_after = now + self._timedelta_for_checking + datetime.timedelta(seconds=10)
-        else:
-            self._check_after = now + self._timedelta_for_checking
-
-        Signal.add(signal_type=constants.USER_IS_CONNECTED_TO_ROUTER, value=int(is_connected))
-        self._last_saving = now
-
-        if is_connected:
-            self._last_connected_at = now
-            self.state[constants.USER_IS_CONNECTED_TO_ROUTER] = True
-
-        can_reset_connection = now - self._last_connected_at >= self._timedelta_for_connection
-
-        if not is_connected and can_reset_connection:
-            self.state[constants.USER_IS_CONNECTED_TO_ROUTER] = False
-
-    @staticmethod
-    def _create_router_stats(date_range: typing.Tuple[datetime.datetime, datetime.datetime],
-                             components: typing.Set[str]) -> typing.Optional[io.BytesIO]:
-        if 'router_usage' not in components:
-            return None
-
-        stats = Signal.get(
-            signal_type=constants.USER_IS_CONNECTED_TO_ROUTER,
-            datetime_range=date_range,
-        )
-
-        if not stats:
-            return None
-
-        return create_plot(title='User is connected to router', x_attr='received_at', y_attr='value', stats=stats)
 
     def _send_wifi_connected_devices(self) -> None:
         message = ''

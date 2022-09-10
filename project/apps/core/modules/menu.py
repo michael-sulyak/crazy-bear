@@ -169,12 +169,8 @@ class AllFuncsPage(BasePage):
 
         return (
             camera_line,
-            (
-                f'{constants.BotCommands.RECOMMENDATION_SYSTEM}'
-                f' {OFF if self.state[constants.RECOMMENDATION_SYSTEM_IS_ENABLED] else ON}',
-            ),
             (f'{constants.BotCommands.ARDUINO} {OFF if self.state[constants.ARDUINO_IS_ENABLED] else ON}',),
-            (constants.BotCommands.STATS, constants.BotCommands.DB_STATS, constants.BotCommands.CHECK_DB,),
+            (constants.BotCommands.STATS, constants.BotCommands.DB_STATS, constants.BotCommands.COMPRESS_DB,),
             (constants.BotCommands.RAW_WIFI_DEVICES, constants.BotCommands.WIFI_DEVICES,),
             (constants.BotCommands.RESTART,),
             (constants.BotCommands.HELP, constants.BotCommands.RETURN,),

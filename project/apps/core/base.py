@@ -31,7 +31,7 @@ class BaseModule(abc.ABC):
     task_queue: BaseTaskQueue
     _subscribers_to_events: typing.Tuple[BaseReceiver, ...]
     _repeatable_tasks: typing.Tuple[RepeatableTask, ...]
-    _lock: typing.Union[threading.Lock, threading.RLock]
+    _lock: threading.RLock
 
     def __init__(self, *, context: ModuleContext) -> None:
         self._lock = threading.RLock()

@@ -4,7 +4,6 @@ from .report import *
 from .menu import *
 from .auto_security import *
 from .router import *
-from .recommendation_system import *
 from .signals import *
 from .wifi_devices import *
 from .smart_lamp_controller import *

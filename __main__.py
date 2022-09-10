@@ -108,7 +108,6 @@ def main():
             modules.Report,
             modules.AutoSecurity,
             modules.Router,
-            modules.RecommendationSystem,
             modules.Signals,
             modules.WiFiDevices,
             modules.SmartLampController,
@@ -136,7 +135,6 @@ def main():
     initial_commands = (
         Command(name=BotCommands.ARDUINO, args=(ON,)),
         Command(name=BotCommands.SECURITY, args=(AUTO, ON,)),
-        Command(name=BotCommands.RECOMMENDATION_SYSTEM, args=(ON,)),
         Command(name=BotCommands.STATUS),
     )
 

@@ -40,11 +40,10 @@ class BotCommands:
 
     TO = '/to'
     RAW_WIFI_DEVICES = '/raw_wifi_devices'
-    RECOMMENDATION_SYSTEM = '/recommendation_system'
     HELP = '/help'
     RESTART = '/restart'
     WIFI_DEVICES = '/wifi_devices'
-    CHECK_DB = '/check_db'
+    COMPRESS_DB = '/compress_db'
     DB_STATS = '/db_stats'
     RETURN = '/return'
     TIMER = '/timer'

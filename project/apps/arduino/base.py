@@ -83,9 +83,6 @@ class ArduinoConnector:
             if response.type == constants.ArduinoResponseTypes.SETTINGS:
                 self._settings = response.payload
 
-        if signals:
-            Signal.bulk_add(signals)
-
         return signals
 
     def close(self) -> None:
