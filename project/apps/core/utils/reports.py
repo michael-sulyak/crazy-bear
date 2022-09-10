@@ -61,7 +61,6 @@ class ShortTextReport:
             f'Free space: `{escape_markdown(self._free_space_info)}`\n\n'
 
             f'{emojize(":clipboard:")} *Other info*\n'
-            f'Recommendation system: {self.YES if self.state[RECOMMENDATION_SYSTEM_IS_ENABLED] else self.NO}\n'
             f'Started at: `{escape_markdown(self.state[INITED_AT].strftime("%d.%m.%Y, %H:%M:%S"))}`'
         )
 

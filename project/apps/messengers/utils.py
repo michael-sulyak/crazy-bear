@@ -9,6 +9,8 @@ class ProgressBar:
     messenger: BaseMessenger
     title: str
     message_id: int
+    _last_progress: float
+    _last_title: str
 
     def __init__(self, messenger: BaseMessenger, *, title: typing.Optional[str] = None) -> None:
         self.messenger = messenger
@@ -20,6 +22,8 @@ class ProgressBar:
             reply_markup=None,
             use_markdown=True,
         )
+        self._last_progress = 0
+        self._last_title = self.title
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -32,12 +36,17 @@ class ProgressBar:
             else:
                 self.title = f'{title}\n'
 
-        self.messenger.send_message(
-            f'{self.title}{self._generate_bar(progress)}',
-            message_id=self.message_id,
-            reply_markup=None,
-            use_markdown=True,
-        )
+        progress = round(progress, 2)
+
+        if self._last_title != self.title or self._last_progress != progress:
+            self.messenger.send_message(
+                f'{self.title}{self._generate_bar(progress)}',
+                message_id=self.message_id,
+                reply_markup=None,
+                use_markdown=True,
+            )
+            self._last_progress = progress
+            self._last_title = self.title
 
     @staticmethod
     def _generate_bar(progress: float) -> str:

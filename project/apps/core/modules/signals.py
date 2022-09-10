@@ -50,7 +50,7 @@ class Signals(BaseModule):
     def init_repeatable_tasks(self) -> tuple:
         return (
             IntervalTask(
-                target=self._compress_db,
+                target=lambda: tuple(self._compress_db()),
                 priority=TaskPriorities.LOW,
                 interval=datetime.timedelta(minutes=30),
                 run_immediately=False,
@@ -89,11 +89,13 @@ class Signals(BaseModule):
     def process_command(self, command: Command) -> typing.Any:
         if command.name == constants.BotCommands.COMPRESS_DB:
             with ProgressBar(self.messenger, title='Checking DB\\.\\.\\.') as progress_bar:
-                self._compress_db()
+                for progress in self._compress_db():
+                    progress_bar.set(progress * 0.5)
+
                 progress_bar.set(0.5, title='Run `VACUUM FULL`\\.\\.\\.')
                 db.vacuum()
                 progress_bar.set(1)
-                self.messenger.send_message('Checking DB is finished')
+                self.messenger.send_message('Compressing of DB is finished')
 
             return True
 
@@ -134,8 +136,9 @@ class Signals(BaseModule):
             stats=task_queue_size_stats,
         )
 
-    def _compress_db(self) -> None:
-        self._supreme_signal_handler.compress()
+    def _compress_db(self) -> typing.Generator:
+        for progress in self._supreme_signal_handler.compress():
+            yield progress * 0.8
 
         now = current_time()
 
@@ -157,6 +160,8 @@ class Signals(BaseModule):
             datetime_range=datetime_range,
             approximation_time=datetime.timedelta(minutes=10),
         )
+
+        yield 1
 
         # TODO: Figure out how to clean old signals
         # db.db_session().query(Signal).filter(
