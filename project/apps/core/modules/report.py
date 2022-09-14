@@ -11,7 +11,7 @@ from ..utils.reports import ShortTextReport
 from ... import db
 from ...common import doc
 from ...common.utils import (
-    convert_params_to_date_range, get_weather, current_time,
+    convert_params_to_date_range, get_weather, current_time, is_sleep_hours,
 )
 from ...core import constants
 from ...messengers.utils import ProgressBar, escape_markdown
@@ -125,6 +125,8 @@ class Report(BaseModule):
                 if (
                         self.messenger.last_sent_at
                         and current_time() - self.messenger.last_sent_at > datetime.timedelta(minutes=5)
+                        and not is_sleep_hours()
+
                 ):
                     logging.info('Send status after 5 min.')
                     self._send_status()

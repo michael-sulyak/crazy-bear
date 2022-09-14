@@ -168,30 +168,27 @@ class ArduinoHandler(BaseSignalHandler):
         if humidity is not None:
             can_send_warning = self._can_send_warning('humidity', datetime.timedelta(hours=3))
 
-            if humidity < config.NORMAL_HUMIDITY_RANGE[0] and can_send_warning:
+            if humidity < 30 and can_send_warning:
                 self._messenger.send_message(f'There is low humidity in the room ({humidity}%)!')
                 self._mark_as_sent('humidity')
 
-            if humidity > config.NORMAL_HUMIDITY_RANGE[1] and can_send_warning:
+            if humidity > 70 and can_send_warning:
                 self._messenger.send_message(f'There is high humidity in the room ({humidity}%)!')
                 self._mark_as_sent('humidity')
 
         if temperature is not None:
             can_send_warning = self._can_send_warning('temperature', datetime.timedelta(hours=3))
 
-            if temperature < config.NORMAL_TEMPERATURE_RANGE[0] and can_send_warning:
+            if temperature < 18 and can_send_warning:
                 self._messenger.send_message(f'There is a low temperature in the room ({temperature})!')
                 self._mark_as_sent('temperature')
 
-            if temperature > config.NORMAL_TEMPERATURE_RANGE[1] and can_send_warning:
+            if temperature > 28 and can_send_warning:
                 self._messenger.send_message(f'There is a high temperature in the room ({temperature})!')
                 self._mark_as_sent('temperature')
 
     def _can_send_warning(self, name: str, timedelta_for_sending: datetime.timedelta) -> bool:
         now = datetime.datetime.now()
-
-        if utils.is_sleep_hours(now):
-            return False
 
         if now - self._last_sent_at_map[name] <= timedelta_for_sending:
             return False

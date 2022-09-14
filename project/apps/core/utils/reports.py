@@ -1,11 +1,14 @@
 import datetime
 import logging
+import math
+import typing
+from functools import cached_property
 
 from emoji.core import emojize
 
 from ..constants import (
     ARDUINO_IS_ENABLED, CAMERA_IS_AVAILABLE, USE_CAMERA, VIDEO_RECORDING_IS_ENABLED,
-    SECURITY_IS_ENABLED, AUTO_SECURITY_IS_ENABLED, VIDEO_SECURITY, RECOMMENDATION_SYSTEM_IS_ENABLED, CURRENT_FPS,
+    SECURITY_IS_ENABLED, AUTO_SECURITY_IS_ENABLED, VIDEO_SECURITY_IS_ENABLED, CURRENT_FPS,
 )
 from ...arduino.constants import ArduinoSensorTypes
 from ...common.constants import INITED_AT
@@ -35,51 +38,79 @@ class ShortTextReport:
         )
 
     def generate(self) -> str:
+        camera_is_used = emojize(':camera_with_flash:') if self.state[USE_CAMERA] else ''
+        video_recording_is_on = emojize(':film_frames:') if self.state[VIDEO_RECORDING_IS_ENABLED] else ''
+        additional_camera_status = (
+            f' {camera_is_used}{video_recording_is_on}'
+            if camera_is_used or video_recording_is_on else ''
+        )
+
+        auto_security_is_enabled = (
+            emojize(':counterclockwise_arrows_button:')
+            if self.state[AUTO_SECURITY_IS_ENABLED] else ''
+        )
+        video_security_is_enabled = emojize(':film_frames:') if self.state[VIDEO_SECURITY_IS_ENABLED] else ''
+        additional_security_status = (
+            f' {auto_security_is_enabled}{video_security_is_enabled}'
+            if auto_security_is_enabled or video_security_is_enabled else ''
+        )
+
         return (
             f'️*Crazy Bear* `v{escape_markdown(config.VERSION)}`\n\n'
 
             f'{emojize(":floppy_disk:")} *Devices*\n'
-            f'Arduino: {self.YES if self.state[ARDUINO_IS_ENABLED] else self.NO}\n\n'
-
-            f'{emojize(":camera:")} *Camera*\n'
-            f'Has camera: {self.YES if self.state[CAMERA_IS_AVAILABLE] else self.NO}\n'
-            f'Camera is used: {self.YES if self.state[USE_CAMERA] else self.NO}\n'
-            f'Video recording: {self.YES if self.state[VIDEO_RECORDING_IS_ENABLED] else self.NO}\n'
+            f'Arduino: {self.YES if self.state[ARDUINO_IS_ENABLED] else self.NO}\n'
+            f'Camera: `{self.YES if self.state[CAMERA_IS_AVAILABLE] else self.NO}{additional_camera_status}`\n'
             f'FPS: `{escape_markdown(self._fps_info)}`\n\n'
 
             f'{emojize(":shield:")} *Security*\n'
-            f'Security: {self.YES if self.state[SECURITY_IS_ENABLED] else self.NO}\n'
-            f'Auto security: {self.YES if self.state[AUTO_SECURITY_IS_ENABLED] else self.NO}\n'
-            f'Video security: {self.YES if self.state[VIDEO_SECURITY] else self.NO}\n'
-            f'WiFi: {self._connected_devices_info}\n\n'
+            f'Security: `{self.YES if self.state[SECURITY_IS_ENABLED] else self.NO}'
+            f'{additional_security_status}`\n\n'
 
             f'{emojize(":bar_chart:")} *Sensors*\n'
             f'Humidity: `{escape_markdown(self._humidity_info)}`\n'
             f'Temperature: `{escape_markdown(self._temperature_info)}`\n'
+            f'Temperature\\*: `{escape_markdown(self._effective_temperature_info)}`\n'
             f'CPU Temperature: `{escape_markdown(self._cpu_temperature_info)}`\n'
             f'RAM usage: `{escape_markdown(self._ram_usage_info)}`\n'
             f'Free space: `{escape_markdown(self._free_space_info)}`\n\n'
 
             f'{emojize(":clipboard:")} *Other info*\n'
+            f'WiFi: {self._connected_devices_info}\n'
             f'Started at: `{escape_markdown(self.state[INITED_AT].strftime("%d.%m.%Y, %H:%M:%S"))}`'
         )
 
-    @property
-    def _humidity_info(self) -> str:
-        humidity = Signal.get_one_aggregated(ArduinoSensorTypes.HUMIDITY)
+    @cached_property
+    def _humidity(self) -> typing.Optional[float]:
+        return Signal.get_one_aggregated(ArduinoSensorTypes.HUMIDITY)
 
-        if humidity is None:
-            return self.NOTHING
-
-        humidity_info = f'{round(humidity, 1)}%{self._get_mark(humidity, (40, 60,), (30, 60,))}'
-
-        second_humidity = Signal.get_one_aggregated(
+    @cached_property
+    def _second_humidity(self) -> typing.Optional[float]:
+        return Signal.get_one_aggregated(
             ArduinoSensorTypes.HUMIDITY,
             datetime_range=self._datetime_range_for_second_aggregation,
         )
 
-        if second_humidity is not None:
-            diff = round(humidity - second_humidity, 1)
+    @cached_property
+    def _temperature(self) -> typing.Optional[float]:
+        return Signal.get_one_aggregated(ArduinoSensorTypes.TEMPERATURE)
+
+    @cached_property
+    def _second_temperature(self) -> typing.Optional[float]:
+        return Signal.get_one_aggregated(
+            ArduinoSensorTypes.TEMPERATURE,
+            datetime_range=self._datetime_range_for_second_aggregation,
+        )
+
+    @property
+    def _humidity_info(self) -> str:
+        if self._humidity is None:
+            return self.NOTHING
+
+        humidity_info = f'{round(self._humidity, 1)}%{self._get_mark(self._humidity, (30, 45,), (30, 60,))}'
+
+        if self._second_humidity is not None:
+            diff = round(self._humidity - self._second_humidity, 1)
 
             if diff != 0:
                 humidity_info += f' ({"+" if diff > 0 else ""}{diff})'
@@ -88,17 +119,40 @@ class ShortTextReport:
 
     @property
     def _temperature_info(self) -> str:
-        temperature = Signal.get_one_aggregated(ArduinoSensorTypes.TEMPERATURE)
-
-        if temperature is None:
+        if self._temperature is None:
             return self.NOTHING
 
-        temperature_info = f'{round(temperature, 1)}℃{self._get_mark(temperature, (19, 22.5,), (18, 25.5,))}'
-
-        second_temperature = Signal.get_one_aggregated(
-            ArduinoSensorTypes.TEMPERATURE,
-            datetime_range=self._datetime_range_for_second_aggregation,
+        temperature_info = (
+            f'{round(self._temperature, 1)}℃{self._get_mark(self._temperature, (20, 22,), (18, 24,))}'
         )
+
+        if self._second_temperature is not None:
+            diff = round(self._temperature - self._second_temperature, 1)
+
+            if diff != 0:
+                temperature_info += f' ({"+" if diff > 0 else ""}{diff})'
+
+        return temperature_info
+
+    @property
+    def _effective_temperature_info(self) -> str:
+        if self._temperature is None or self._humidity is None:
+            return self.NOTHING
+
+        temperature = self._get_effective_temperature(
+            temperature=self._temperature,
+            humidity=self._humidity,
+        )
+
+        temperature_info = f'{round(temperature, 1)}℃{self._get_mark(temperature, (18, 22,), (16, 26,))}'
+
+        if self._second_temperature is not None and self._second_humidity is not None:
+            second_temperature = self._get_effective_temperature(
+                temperature=self._second_temperature,
+                humidity=self._second_humidity,
+            )
+        else:
+            second_temperature = None
 
         if second_temperature is not None:
             diff = round(temperature - second_temperature, 1)
@@ -107,6 +161,15 @@ class ShortTextReport:
                 temperature_info += f' ({"+" if diff > 0 else ""}{diff})'
 
         return temperature_info
+
+    @staticmethod
+    def _get_effective_temperature(*, humidity: float, temperature: float) -> float:
+        """
+        See https://planetcalc.ru/2089/
+        """
+
+        e = humidity / 100 * 6.105 * math.e ** ((17.27 * temperature) / (237.7 + temperature))
+        return temperature + 0.348 * e - 4.25
 
     @property
     def _fps_info(self) -> str:
@@ -162,7 +225,7 @@ class ShortTextReport:
 
         if is_not_acceptable:
             return emojize(':red_exclamation_mark:')
-        
+
         is_not_good = not (good_range[0] <= value <= good_range[1])
 
         if is_not_good:

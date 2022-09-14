@@ -18,7 +18,7 @@ from ...common.utils import (
 )
 from ...core import events
 from ...core.constants import (
-    CAMERA_IS_AVAILABLE, CURRENT_FPS, SECURITY_IS_ENABLED, USE_CAMERA, VIDEO_RECORDING_IS_ENABLED, VIDEO_SECURITY,
+    CAMERA_IS_AVAILABLE, CURRENT_FPS, SECURITY_IS_ENABLED, USE_CAMERA, VIDEO_RECORDING_IS_ENABLED, VIDEO_SECURITY_IS_ENABLED,
 )
 from ...guard.video_guard import VideoGuard
 from ...task_queue import IntervalTask
@@ -41,7 +41,7 @@ class Camera(BaseModule):
     )
 
     initial_state = {
-        VIDEO_SECURITY: None,
+        VIDEO_SECURITY_IS_ENABLED: None,
         USE_CAMERA: False,
         CAMERA_IS_AVAILABLE: True,
         CURRENT_FPS: None,
@@ -124,7 +124,7 @@ class Camera(BaseModule):
 
     @synchronized_method
     def check(self) -> None:
-        video_guard: typing.Optional[VideoGuard] = self.state[VIDEO_SECURITY]
+        video_guard: typing.Optional[VideoGuard] = self.state[VIDEO_SECURITY_IS_ENABLED]
         use_camera: bool = self.state[USE_CAMERA]
         security_is_enabled: bool = self.state[SECURITY_IS_ENABLED]
 
@@ -144,7 +144,7 @@ class Camera(BaseModule):
     def disable(self) -> None:
         super().disable()
 
-        if self.state[VIDEO_SECURITY]:
+        if self.state[VIDEO_SECURITY_IS_ENABLED]:
             self._disable_security()
 
         if self.state[VIDEO_RECORDING_IS_ENABLED]:
@@ -175,7 +175,7 @@ class Camera(BaseModule):
 
         self.messenger.send_message('The camera is on')
 
-        if self.state[VIDEO_SECURITY]:
+        if self.state[VIDEO_SECURITY_IS_ENABLED]:
             self._enable_security()
 
     @synchronized_method
@@ -199,7 +199,7 @@ class Camera(BaseModule):
         if not self.state[USE_CAMERA]:
             return
 
-        video_guard: VideoGuard = self.state[VIDEO_SECURITY]
+        video_guard: VideoGuard = self.state[VIDEO_SECURITY_IS_ENABLED]
 
         if video_guard:
             self.messenger.send_message('Video security is already enabled')
@@ -211,18 +211,18 @@ class Camera(BaseModule):
                 task_queue=self.task_queue,
                 motion_detected_callback=events.motion_detected.send,
             )
-            self.state[VIDEO_SECURITY] = video_guard
+            self.state[VIDEO_SECURITY_IS_ENABLED] = video_guard
             video_guard.start()
 
         self.messenger.send_message('Video security is enabled')
 
     @synchronized_method
     def _disable_security(self) -> None:
-        video_guard: VideoGuard = self.state[VIDEO_SECURITY]
+        video_guard: VideoGuard = self.state[VIDEO_SECURITY_IS_ENABLED]
 
         if video_guard:
             video_guard.stop()
-            self.state[VIDEO_SECURITY] = None
+            self.state[VIDEO_SECURITY_IS_ENABLED] = None
             self.messenger.send_message('Video security is stopped')
         elif self.state[USE_CAMERA]:
             self.messenger.send_message('Video security is already disabled')
@@ -321,7 +321,7 @@ class Camera(BaseModule):
 
     @synchronized_method
     def _process_frame(self, frame, fps: float) -> None:
-        video_guard: VideoGuard = self.state[VIDEO_SECURITY]
+        video_guard: VideoGuard = self.state[VIDEO_SECURITY_IS_ENABLED]
 
         if video_guard:
             try:
