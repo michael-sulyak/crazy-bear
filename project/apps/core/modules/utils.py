@@ -11,13 +11,16 @@ from ...task_queue import TaskPriorities
 
 
 __all__ = (
-    'ExtraCommands',
+    'Utils',
 )
 
 
-class ExtraCommands(BaseModule):
-    doc = doc.generate_doc(
-        title='ExtraCommands',
+class Utils(BaseModule):
+    doc = doc.Doc(
+        title='Utils',
+        description=(
+            'The module provides additional utils.'
+        ),
         commands=(
             doc.CommandDef(
                 BotCommands.TIMER,

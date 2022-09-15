@@ -20,8 +20,11 @@ from ...task_queue import IntervalTask, TaskPriorities
 
 
 class Report(BaseModule):
-    doc = doc.generate_doc(
+    doc = doc.Doc(
         title='Report',
+        description=(
+            'The module provides a short report with needed data.'
+        ),
         commands=(
             doc.CommandDef(constants.BotCommands.STATUS),
             doc.CommandDef(constants.BotCommands.REPORT),
@@ -31,7 +34,13 @@ class Report(BaseModule):
                 constants.BotCommands.STATS,
                 doc.VarDef('number', type='int'),
                 doc.OptionsDef('days', 'hours', 'minutes', 'seconds'),
-                flags=(doc.FlagDef('f'), doc.FlagDef('s'), doc.FlagDef('e'), doc.FlagDef('a'), doc.FlagDef('r'),),
+                flags=(
+                    doc.FlagDef('f'),
+                    doc.FlagDef('s'),
+                    doc.FlagDef('e'),
+                    doc.FlagDef('a'),
+                    doc.FlagDef('r'),
+                ),
             ),
         ),
     )
@@ -111,7 +120,9 @@ class Report(BaseModule):
             return True
 
         if command.name == constants.BotCommands.HELP:
-            self.messenger.send_message('\n\n'.join(events.getting_doc.process()[0]), use_markdown=True)
+            docs = sorted(events.getting_doc.process()[0], key=lambda x: x.title)
+            message = '\n\n'.join(doc_.to_str() for doc_ in docs)
+            self.messenger.send_message(message, use_markdown=True)
             return True
 
         return False

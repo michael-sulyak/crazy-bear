@@ -41,7 +41,6 @@ class BotCommands:
     TO = '/to'
     RAW_WIFI_DEVICES = '/raw_wifi_devices'
     HELP = '/help'
-    RESTART = '/restart'
     WIFI_DEVICES = '/wifi_devices'
     COMPRESS_DB = '/compress_db'
     DB_STATS = '/db_stats'

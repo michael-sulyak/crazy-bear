@@ -2,6 +2,7 @@ import datetime
 import functools
 import io
 import logging
+import math
 import os
 import threading
 import typing
@@ -331,3 +332,12 @@ def with_throttling(period: datetime.timedelta, *, count: int = 1) -> typing.Cal
         return _wrapper
 
     return _decorator
+
+
+def get_effective_temperature(*, humidity: float, temperature: float) -> float:
+    """
+    See https://planetcalc.ru/2089/
+    """
+
+    e = humidity / 100 * 6.105 * math.e ** ((17.27 * temperature) / (237.7 + temperature))
+    return temperature + 0.348 * e - 4.25

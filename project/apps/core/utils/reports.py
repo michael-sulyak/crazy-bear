@@ -1,6 +1,5 @@
 import datetime
 import logging
-import math
 import typing
 from functools import cached_property
 
@@ -13,7 +12,7 @@ from ..constants import (
 from ...arduino.constants import ArduinoSensorTypes
 from ...common.constants import INITED_AT
 from ...common.state import State
-from ...common.utils import current_time, get_ram_usage, get_cpu_temp, get_free_disk_space
+from ...common.utils import current_time, get_ram_usage, get_cpu_temp, get_free_disk_space, get_effective_temperature
 from ...devices.utils import get_connected_devices_to_router
 from ...messengers.utils import escape_markdown
 from ...signals.models import Signal
@@ -107,7 +106,7 @@ class ShortTextReport:
         if self._humidity is None:
             return self.NOTHING
 
-        humidity_info = f'{round(self._humidity, 1)}%{self._get_mark(self._humidity, (30, 45,), (30, 60,))}'
+        humidity_info = f'{round(self._humidity, 1)}%{self._get_mark(self._humidity, (30, 45.5,), (30, 60.5,))}'
 
         if self._second_humidity is not None:
             diff = round(self._humidity - self._second_humidity, 1)
@@ -123,7 +122,7 @@ class ShortTextReport:
             return self.NOTHING
 
         temperature_info = (
-            f'{round(self._temperature, 1)}℃{self._get_mark(self._temperature, (20, 22,), (18, 24,))}'
+            f'{round(self._temperature, 1)}℃{self._get_mark(self._temperature, (20, 22.5,), (18, 24.5,))}'
         )
 
         if self._second_temperature is not None:
@@ -139,15 +138,15 @@ class ShortTextReport:
         if self._temperature is None or self._humidity is None:
             return self.NOTHING
 
-        temperature = self._get_effective_temperature(
+        temperature = get_effective_temperature(
             temperature=self._temperature,
             humidity=self._humidity,
         )
 
-        temperature_info = f'{round(temperature, 1)}℃{self._get_mark(temperature, (18, 22,), (16, 26,))}'
+        temperature_info = f'{round(temperature, 1)}℃{self._get_mark(temperature, (18, 22.5,), (16, 26.5,))}'
 
         if self._second_temperature is not None and self._second_humidity is not None:
-            second_temperature = self._get_effective_temperature(
+            second_temperature = get_effective_temperature(
                 temperature=self._second_temperature,
                 humidity=self._second_humidity,
             )
@@ -161,15 +160,6 @@ class ShortTextReport:
                 temperature_info += f' ({"+" if diff > 0 else ""}{diff})'
 
         return temperature_info
-
-    @staticmethod
-    def _get_effective_temperature(*, humidity: float, temperature: float) -> float:
-        """
-        See https://planetcalc.ru/2089/
-        """
-
-        e = humidity / 100 * 6.105 * math.e ** ((17.27 * temperature) / (237.7 + temperature))
-        return temperature + 0.348 * e - 4.25
 
     @property
     def _fps_info(self) -> str:

@@ -17,8 +17,11 @@ __all__ = (
 
 
 class Router(BaseModule):
-    doc = doc.generate_doc(
+    doc = doc.Doc(
         title='Router',
+        description=(
+            'The module provides an integration with a router.'
+        ),
         commands=(
             doc.CommandDef(constants.BotCommands.RAW_WIFI_DEVICES),
         ),

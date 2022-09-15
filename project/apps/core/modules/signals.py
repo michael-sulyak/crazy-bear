@@ -21,8 +21,11 @@ __all__ = (
 
 
 class Signals(BaseModule):
-    doc = doc.generate_doc(
+    doc = doc.Doc(
         title='Signals',
+        description=(
+            'The module processes input signals.'
+        ),
         commands=(
             doc.CommandDef(constants.BotCommands.COMPRESS_DB),
         ),

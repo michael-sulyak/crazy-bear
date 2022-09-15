@@ -172,16 +172,17 @@ class AllFuncsPage(BasePage):
             (f'{constants.BotCommands.ARDUINO} {OFF if self.state[constants.ARDUINO_IS_ENABLED] else ON}',),
             (constants.BotCommands.STATS, constants.BotCommands.DB_STATS, constants.BotCommands.COMPRESS_DB,),
             (constants.BotCommands.RAW_WIFI_DEVICES, constants.BotCommands.WIFI_DEVICES,),
-            (constants.BotCommands.RESTART,),
             (constants.BotCommands.HELP, constants.BotCommands.RETURN,),
         )
 
 
 class Menu(BaseModule):
-    doc = doc.generate_doc(
-        title='AutoSecurity',
+    doc = doc.Doc(
+        title='Menu',
+        description=(
+            'The module provides the menu.'
+        ),
         commands=(
-            doc.CommandDef(constants.BotCommands.RESTART),
             doc.CommandDef(constants.BotCommands.RETURN),
             doc.CommandDef(constants.BotCommands.TO, doc.VarDef('name')),
         ),
@@ -191,10 +192,6 @@ class Menu(BaseModule):
     PREV = emojize(':BACK_arrow:')
 
     def process_command(self, command: Command) -> typing.Any:
-        if command.name == constants.BotCommands.RESTART:
-            os.kill(os.getpid(), signal.SIGTERM)
-            return True
-
         if command.name == constants.BotCommands.RETURN:
             menu = self.state[TelegramMenu.menu_state_name]
 

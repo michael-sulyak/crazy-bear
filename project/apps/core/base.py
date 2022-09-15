@@ -5,6 +5,7 @@ import typing
 from dataclasses import dataclass, field
 
 from . import events, constants
+from ..common import doc
 from ..common.base import BaseReceiver
 from ..common.state import State
 from ..common.types import FrozenDict
@@ -24,6 +25,7 @@ class ModuleContext:
 
 
 class BaseModule(abc.ABC):
+    doc: doc.Doc
     initial_state = {}
     context: ModuleContext
     messenger: BaseMessenger
@@ -34,6 +36,9 @@ class BaseModule(abc.ABC):
     _lock: threading.RLock
 
     def __init__(self, *, context: ModuleContext) -> None:
+        if not hasattr(self, 'doc'):
+            self.doc = doc.Doc(title=self.__class__.__name__)
+
         self._lock = threading.RLock()
         self.context = context
         self.messenger = self.context.messenger

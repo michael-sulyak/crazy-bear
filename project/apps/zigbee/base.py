@@ -3,6 +3,7 @@ import json
 import threading
 import typing
 from collections import defaultdict
+
 from paho.mqtt.client import Client, MQTTMessage, MQTTMessageInfo, MQTTv5
 
 from . import constants, exceptions
@@ -70,7 +71,7 @@ class ZigBee:
     @synchronized_method
     def open(self) -> None:
         if self._mq is not None:
-            raise Exception('MQ was created')
+            raise exceptions.ZigBeeError('MQ was created.')
 
         mq = Client('mqtt5_client', protocol=MQTTv5)
         mq.on_message = self._on_message
@@ -92,7 +93,7 @@ class ZigBee:
     @synchronized_method
     def close(self) -> None:
         if self.mq is None:
-            raise Exception('MQ wasn\'t created')
+            raise exceptions.ZigBeeError('MQ wasn\'t created.')
 
         self.mq.loop_stop()
 

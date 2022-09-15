@@ -18,7 +18,8 @@ from ...common.utils import (
 )
 from ...core import events
 from ...core.constants import (
-    CAMERA_IS_AVAILABLE, CURRENT_FPS, SECURITY_IS_ENABLED, USE_CAMERA, VIDEO_RECORDING_IS_ENABLED, VIDEO_SECURITY_IS_ENABLED,
+    CAMERA_IS_AVAILABLE, CURRENT_FPS, SECURITY_IS_ENABLED, USE_CAMERA, VIDEO_RECORDING_IS_ENABLED,
+    VIDEO_SECURITY_IS_ENABLED,
 )
 from ...guard.video_guard import VideoGuard
 from ...task_queue import IntervalTask
@@ -31,8 +32,11 @@ __all__ = (
 
 
 class Camera(BaseModule):
-    doc = doc.generate_doc(
+    doc = doc.Doc(
         title='Camera',
+        description=(
+            'The module provides integration with a camera.'
+        ),
         commands=(
             doc.CommandDef(BotCommands.CAMERA, doc.OptionsDef(ON, OFF)),
             doc.CommandDef(BotCommands.CAMERA, 'photo'),

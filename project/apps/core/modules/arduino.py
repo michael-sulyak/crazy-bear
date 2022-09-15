@@ -23,8 +23,11 @@ __all__ = (
 
 
 class Arduino(BaseModule):
-    doc = doc.generate_doc(
+    doc = doc.Doc(
         title='Arduino',
+        description=(
+            'The module processes data from Arduino. Also it contains logic for the security mode.'
+        ),
         commands=(
             doc.CommandDef(BotCommands.ARDUINO, doc.OptionsDef(ON, OFF)),
         ),

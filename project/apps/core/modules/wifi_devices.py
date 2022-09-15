@@ -16,8 +16,11 @@ __all__ = (
 
 
 class WiFiDevices(BaseModule):
-    doc = doc.generate_doc(
-        title='SmartLampController',
+    doc = doc.Doc(
+        title='WiFiDevices',
+        description=(
+            'The module manages connected devices to WiFi.'
+        ),
         commands=(
             doc.CommandDef(BotCommands.WIFI_DEVICES),
             doc.CommandDef(

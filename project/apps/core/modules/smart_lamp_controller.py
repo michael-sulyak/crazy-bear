@@ -21,8 +21,12 @@ __all__ = (
 
 
 class SmartLampController(BaseModule):
-    doc = doc.generate_doc(
+    doc = doc.Doc(
         title='SmartLampController',
+        description=(
+            'The module provides an interface for working with the smart lamp. '
+            'Also, it\'s a part of the smart home.'
+        ),
         commands=(
             doc.CommandDef(constants.BotCommands.LAMP, doc.OptionsDef(ON, OFF)),
             doc.CommandDef(constants.BotCommands.LAMP, 'test'),

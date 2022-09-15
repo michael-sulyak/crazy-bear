@@ -19,8 +19,11 @@ __all__ = (
 
 
 class AutoSecurity(BaseModule):
-    doc = doc.generate_doc(
+    doc = doc.Doc(
         title='AutoSecurity',
+        description=(
+            'The module turns on the security mode and the camera after the owner leaves the house.'
+        ),
         commands=(
             doc.CommandDef(BotCommands.SECURITY, AUTO, doc.OptionsDef(ON, OFF)),
         ),
