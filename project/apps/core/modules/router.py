@@ -1,13 +1,13 @@
 import logging
 import typing
 
+from libs.messengers.utils import escape_markdown
 from ..base import BaseModule, Command
 from ...common import doc
 from ...common.routers.mi import mi_wifi
 from ...common.routers.tplink import TpLink
 from ...core import constants, events
 from ...devices.utils import check_if_host_is_at_home
-from ...messengers.utils import escape_markdown
 from .... import config
 
 

@@ -4,6 +4,7 @@ import threading
 import typing
 from dataclasses import dataclass, field
 
+from libs.messengers.base import BaseMessenger
 from libs.task_queue import BaseTaskQueue
 from libs.task_queue.dto import RepeatableTask
 from libs.zigbee.base import ZigBee
@@ -12,8 +13,6 @@ from ..common import doc
 from ..common.base import BaseReceiver
 from ..common.state import State
 from ..common.types import FrozenDict
-from ..messengers import events as messenger_events
-from ..messengers.base import BaseMessenger
 
 
 @dataclass
@@ -62,7 +61,7 @@ class BaseModule(abc.ABC):
 
         if self.__class__.process_command is not BaseModule.process_command:
             # Process input commands if it's overwritten.
-            subscribers += (messenger_events.input_command.connect(self.process_command),)
+            subscribers += (events.input_command.connect(self.process_command),)
 
         if hasattr(self, 'doc'):
             subscribers += (events.getting_doc.connect(lambda: self.doc),)
@@ -83,7 +82,7 @@ class BaseModule(abc.ABC):
 
     @staticmethod
     def _run_command(name: str, *args, **kwargs) -> None:
-        messenger_events.input_command.send(command=Command(name=name, args=args, kwargs=kwargs))
+        events.input_command.send(command=Command(name=name, args=args, kwargs=kwargs))
 
 
 @dataclass

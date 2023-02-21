@@ -3,6 +3,8 @@ import typing
 
 import serial
 
+from libs.messengers.utils import escape_markdown
+from libs.task_queue import IntervalTask, TaskPriorities
 from ..base import BaseModule, Command
 from ..constants import ARDUINO_IS_ENABLED, BotCommands, MotionTypeSources
 from ...arduino.base import ArduinoConnector
@@ -12,9 +14,7 @@ from ...common.constants import OFF, ON
 from ...common.utils import synchronized_method, with_throttling
 from ...core import events
 from ...core.constants import SECURITY_IS_ENABLED
-from ...messengers.utils import escape_markdown
 from ...signals.models import Signal
-from libs.task_queue import IntervalTask, TaskPriorities
 
 
 __all__ = (

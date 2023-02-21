@@ -4,9 +4,9 @@ import typing
 import numpy as np
 
 from libs import task_queue as tq
+from libs.messengers.base import BaseMessenger
 from .motion_detector import MotionDetector
 from ..common.storage import file_storage
-from ..messengers.base import BaseMessenger
 from ... import config
 
 

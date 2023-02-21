@@ -5,11 +5,11 @@ import io
 import typing
 
 from libs import task_queue
+from libs.messengers.base import BaseMessenger
 from .. import events
 from ...common import utils
 from ...common.events import Receiver
 from ...common.state import State
-from ...messengers.base import BaseMessenger
 from ...signals.models import Signal
 from ....config.utils import NOTHING
 

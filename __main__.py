@@ -9,6 +9,8 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from sentry_sdk.integrations.threading import ThreadingIntegration
 
+from libs.messengers.telegram import TelegramMessenger
+from libs.task_queue import TaskPriorities, DelayedTask, ScheduledTask
 from project import config
 from project.apps import db
 from project.apps.common.constants import AUTO, INITED_AT, ON
@@ -21,9 +23,6 @@ from project.apps.core.base import Command, Message
 from project.apps.core.commander import Commander
 from project.apps.core.constants import BotCommands
 from project.apps.core.modules import TelegramMenu
-from project.apps.messengers.telegram import TelegramMessenger
-from libs.task_queue import TaskPriorities
-from libs.task_queue import DelayedTask, ScheduledTask
 
 
 logging_level = logging.DEBUG if config.DEBUG else logging.INFO

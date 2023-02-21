@@ -1,5 +1,6 @@
 import typing
 
+from libs.messengers.utils import escape_markdown
 from ..base import BaseModule, Command
 from ..constants import (
     BotCommands,
@@ -7,7 +8,6 @@ from ..constants import (
 from ...common import doc
 from ...devices.dto import Device
 from ...devices.utils import device_manager
-from ...messengers.utils import escape_markdown
 
 
 __all__ = (

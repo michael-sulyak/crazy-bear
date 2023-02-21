@@ -4,6 +4,7 @@ import typing
 
 from crontab import CronTab
 
+from libs.messengers.utils import ProgressBar
 from libs.task_queue import IntervalTask, ScheduledTask, TaskPriorities
 from .. import constants, events
 from ..base import BaseModule, Command
@@ -11,7 +12,6 @@ from ..signals.supreme_handler import SupremeSignalHandler
 from ... import db
 from ...common import doc
 from ...common.utils import current_time, create_plot
-from ...messengers.utils import ProgressBar
 from ...signals.models import Signal
 
 

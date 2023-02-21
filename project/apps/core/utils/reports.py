@@ -5,6 +5,7 @@ from functools import cached_property
 
 from emoji.core import emojize
 
+from libs.messengers.utils import escape_markdown
 from ..constants import (
     ARDUINO_IS_ENABLED, CAMERA_IS_AVAILABLE, USE_CAMERA, VIDEO_RECORDING_IS_ENABLED,
     SECURITY_IS_ENABLED, AUTO_SECURITY_IS_ENABLED, VIDEO_SECURITY_IS_ENABLED, CURRENT_FPS,
@@ -14,7 +15,6 @@ from ...common.constants import INITED_AT
 from ...common.state import State
 from ...common.utils import current_time, get_ram_usage, get_cpu_temp, get_free_disk_space, get_effective_temperature
 from ...devices.utils import get_connected_devices_to_router
-from ...messengers.utils import escape_markdown
 from ...signals.models import Signal
 from .... import config
 

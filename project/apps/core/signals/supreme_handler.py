@@ -1,6 +1,7 @@
 import typing
 
 from libs import task_queue
+from libs.messengers.base import BaseMessenger
 from .arduino import ArduinoHandler
 from .base import BaseAdvancedSignalHandler
 from .cpu_temp import CpuTempHandler
@@ -10,7 +11,6 @@ from .router import RouterHandler
 from .weather import WeatherHandler
 from ...common.events import Receiver
 from ...common.state import State
-from ...messengers.base import BaseMessenger
 
 
 class SupremeSignalHandler:

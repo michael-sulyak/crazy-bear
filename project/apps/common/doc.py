@@ -2,7 +2,7 @@ import abc
 import dataclasses
 import typing
 
-from ..messengers.utils import escape_markdown
+from libs.messengers.utils import escape_markdown
 
 
 @dataclasses.dataclass

@@ -4,19 +4,18 @@ import typing
 
 from telegram.error import NetworkError
 
+from libs.messengers.base import BaseMessenger
+from libs.messengers.events import new_message
 from libs.task_queue import BaseTaskQueue, BaseWorker, MemTaskQueue, ThreadWorker
 from libs.task_queue.middlewares import ConcreteRetries, SupportOfRetries, ExceptionLogging
 from libs.zigbee.base import ZigBee
-from . import events as core_events
+from . import events as core_events, events
 from .base import BaseModule, ModuleContext
 from ..common.base import BaseReceiver
 from ..common.exceptions import Shutdown
 from ..common.state import State
 from ..common.utils import log_performance
 from ..db import close_db_session
-from ..messengers import events
-from ..messengers.base import BaseMessenger
-from ..messengers.events import new_message
 from ... import config
 
 

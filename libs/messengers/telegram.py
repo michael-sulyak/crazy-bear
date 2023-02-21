@@ -1,3 +1,4 @@
+import datetime
 import functools
 import json
 import logging
@@ -5,7 +6,6 @@ import queue
 import threading
 import traceback
 import typing
-import datetime
 from functools import partial
 from time import sleep
 
@@ -21,13 +21,13 @@ from telegram.error import (
 from telegram.ext.utils.webhookhandler import WebhookServer
 from telegram.utils.request import Request as TelegramRequest
 
+from project import config
+from project.apps.common.utils import synchronized_method, current_time
+from project.apps.core.base import Command, Message
 from . import events
 from .base import BaseMessenger
 from .mixins import CVMixin
 from .utils import escape_markdown
-from ..common.utils import synchronized_method, current_time
-from ..core.base import Command, Message
-from ... import config
 
 
 __all__ = (
@@ -92,6 +92,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
     def last_sent_at(self) -> typing.Optional[datetime.datetime]:
         return self._last_sent_at
 
+    @synchronized_method
     def close(self) -> None:
         self._worker.join(0)
 
