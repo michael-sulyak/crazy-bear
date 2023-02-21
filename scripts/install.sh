@@ -54,6 +54,13 @@ sudo apt install -y \
     libhdf5-103 \
     python3-pyqt5
 
+echo "Installing dependencies for Arduino..."
+curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh && \
+  export PATH="$PATH:/home/ubuntu/bin" && \
+  arduino-cli core update-index && \
+  arduino-cli core install arduino:avr && \
+  arduino-cli lib install RF24 "DHT sensor library" Crypto ArduinoJson "LiquidCrystal I2C"
+
 echo "Building app..."
 docker-compose -p crazy_bear -f docker-compose.prod.yml build
 
