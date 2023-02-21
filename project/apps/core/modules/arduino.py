@@ -14,7 +14,7 @@ from ...core import events
 from ...core.constants import SECURITY_IS_ENABLED
 from ...messengers.utils import escape_markdown
 from ...signals.models import Signal
-from ...task_queue import IntervalTask, TaskPriorities
+from libs.task_queue import IntervalTask, TaskPriorities
 
 
 __all__ = (

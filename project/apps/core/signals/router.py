@@ -6,9 +6,9 @@ import typing
 
 from requests import ReadTimeout
 
+from libs import task_queue
 from .base import BaseAdvancedSignalHandler
 from .. import constants, events
-from ... import task_queue
 from ...common import utils
 from ...common.events import Receiver
 from ...common.utils import is_sleep_hours, create_plot
@@ -87,9 +87,9 @@ class RouterHandler(BaseAdvancedSignalHandler):
         if not is_connected and can_reset_connection:
             self._state[constants.USER_IS_CONNECTED_TO_ROUTER] = False
 
-    def create_plots(self, *,
-                     date_range: typing.Tuple[datetime.datetime, datetime.datetime],
-                     components: typing.Set[str]) -> typing.Optional[typing.Sequence[io.BytesIO]]:
+    def generate_plots(self, *,
+                       date_range: typing.Tuple[datetime.datetime, datetime.datetime],
+                       components: typing.Set[str]) -> typing.Optional[typing.Sequence[io.BytesIO]]:
 
         if 'router_usage' not in components:
             return None

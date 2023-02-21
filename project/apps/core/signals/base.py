@@ -4,8 +4,8 @@ import datetime
 import io
 import typing
 
+from libs import task_queue
 from .. import events
-from ... import task_queue
 from ...common import utils
 from ...common.events import Receiver
 from ...common.state import State
@@ -43,7 +43,7 @@ class BaseSignalHandler(abc.ABC):
 
     def get_signals(self) -> tuple[Receiver, ...]:
         return (
-            events.request_for_statistics.connect(self.create_plots),
+            events.request_for_statistics.connect(self.generate_plots),
         )
 
     @abc.abstractmethod
@@ -54,9 +54,9 @@ class BaseSignalHandler(abc.ABC):
     def compress(self) -> None:
         pass
 
-    def create_plots(self, *,
-                     date_range: typing.Tuple[datetime.datetime, datetime.datetime],
-                     components: typing.Set[str]) -> typing.Optional[typing.Sequence[io.BytesIO]]:
+    def generate_plots(self, *,
+                       date_range: typing.Tuple[datetime.datetime, datetime.datetime],
+                       components: typing.Set[str]) -> typing.Optional[typing.Sequence[io.BytesIO]]:
         return None
 
 

@@ -6,9 +6,10 @@ from functools import partial
 import numpy as np
 from imutils.video import VideoStream
 
+from libs import task_queue
+from libs.task_queue import IntervalTask
 from ..base import BaseModule, Command
 from ..constants import BotCommands, MotionTypeSources
-from ... import task_queue
 from ...common import doc
 from ...common.camera import VideoCamera
 from ...common.constants import OFF, ON
@@ -22,7 +23,6 @@ from ...core.constants import (
     VIDEO_SECURITY_IS_ENABLED,
 )
 from ...guard.video_guard import VideoGuard
-from ...task_queue import IntervalTask
 from .... import config
 
 

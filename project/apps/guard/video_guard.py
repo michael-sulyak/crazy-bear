@@ -3,8 +3,8 @@ import typing
 
 import numpy as np
 
+from libs import task_queue as tq
 from .motion_detector import MotionDetector
-from .. import task_queue as tq
 from ..common.storage import file_storage
 from ..messengers.base import BaseMessenger
 from ... import config

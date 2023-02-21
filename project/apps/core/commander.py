@@ -4,6 +4,9 @@ import typing
 
 from telegram.error import NetworkError
 
+from libs.task_queue import BaseTaskQueue, BaseWorker, MemTaskQueue, ThreadWorker
+from libs.task_queue.middlewares import ConcreteRetries, SupportOfRetries, ExceptionLogging
+from libs.zigbee.base import ZigBee
 from . import events as core_events
 from .base import BaseModule, ModuleContext
 from ..common.base import BaseReceiver
@@ -14,9 +17,7 @@ from ..db import close_db_session
 from ..messengers import events
 from ..messengers.base import BaseMessenger
 from ..messengers.events import new_message
-from ..task_queue import BaseTaskQueue, BaseWorker, MemTaskQueue, ThreadWorker
-from ..task_queue.middlewares import ConcreteRetries, SupportOfRetries, ExceptionLogging
-from ..zigbee.base import ZigBee
+from ... import config
 
 
 class Commander:
@@ -49,7 +50,10 @@ class Commander:
         )
         self.messenger = messenger
         self.state = state
-        self.zig_bee = ZigBee()
+        self.zig_bee = ZigBee(
+            mq_host=config.ZIGBEE_MQ_HOST,
+            mq_port=config.ZIGBEE_MQ_PORT,
+        )
 
         module_context = ModuleContext(
             messenger=self.messenger,

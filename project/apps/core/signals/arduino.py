@@ -4,16 +4,15 @@ import threading
 import typing
 from collections import defaultdict
 
+from libs import task_queue
 from .base import BaseSignalHandler
 from .. import events
-from ... import task_queue
 from ...arduino.constants import ArduinoSensorTypes
 from ...common import utils
 from ...common.events import Receiver
 from ...common.utils import create_plot
 from ...core import constants
 from ...signals.models import Signal
-from .... import config
 
 
 class ArduinoHandler(BaseSignalHandler):
@@ -80,9 +79,9 @@ class ArduinoHandler(BaseSignalHandler):
                 approximation_time=datetime.timedelta(hours=1),
             )
 
-    def create_plots(self, *,
-                     date_range: typing.Tuple[datetime.datetime, datetime.datetime],
-                     components: typing.Set[str]) -> typing.Optional[typing.Sequence[io.BytesIO]]:
+    def generate_plots(self, *,
+                       date_range: typing.Tuple[datetime.datetime, datetime.datetime],
+                       components: typing.Set[str]) -> typing.Optional[typing.Sequence[io.BytesIO]]:
         if 'arduino' not in components:
             return None
 

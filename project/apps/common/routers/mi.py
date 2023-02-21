@@ -78,31 +78,31 @@ class MiWiFi:
         response.raise_for_status()
         self.token = None
 
-    def status(self):
-        return self.get_data('misystem/status')
+    def status(self) -> dict:
+        return self._get_data('misystem/status')
 
-    def device_list(self):
-        return self.get_data('misystem/devicelist')
+    def device_list(self) -> dict:
+        return self._get_data('misystem/devicelist')
 
-    def bandwidth_test(self):
-        return self.get_data('misystem/bandwidth_test')
+    def bandwidth_test(self) -> dict:
+        return self._get_data('misystem/bandwidth_test')
 
-    def pppoe_status(self):
-        return self.get_data('xqnetwork/pppoe_status')
+    def pppoe_status(self) -> dict:
+        return self._get_data('xqnetwork/pppoe_status')
 
     def wifi_detail_all(self):
-        return self.get_data('xqnetwork/wifi_detail_all')
+        return self._get_data('xqnetwork/wifi_detail_all')
 
-    def country_code(self):
-        return self.get_data('xqsystem/country_code')
+    def country_code(self) -> dict:
+        return self._get_data('xqsystem/country_code')
 
-    def wan_info(self):
-        return self.get_data('xqsystem/wan_info')
+    def wan_info(self) -> dict:
+        return self._get_data('xqsystem/wan_info')
 
-    def check_wan_type(self):
-        return self.get_data('xqsystem/check_wan_type')
+    def check_wan_type(self) -> dict:
+        return self._get_data('xqsystem/check_wan_type')
 
-    def get_data(self, endpoint: str,*, _update_token: bool = True) -> dict:
+    def _get_data(self, endpoint: str, *, _update_token: bool = True) -> dict:
         assert self.token is not None
 
         response = requests.get(
@@ -116,7 +116,7 @@ class MiWiFi:
             if _update_token:
                 # Try to update token.
                 mi_wifi.login()
-                return self.get_data(endpoint, _update_token=False)
+                return self._get_data(endpoint, _update_token=False)
 
             raise Exception('Invalid request')
 

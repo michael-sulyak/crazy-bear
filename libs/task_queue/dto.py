@@ -7,8 +7,8 @@ from dataclasses import dataclass, field
 
 from crontab import CronTab
 
+from project.apps.common.utils import synchronized_method
 from . import constants, exceptions
-from ..common.utils import synchronized_method
 
 
 __all__ = (

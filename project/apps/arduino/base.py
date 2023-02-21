@@ -36,8 +36,8 @@ class ArduinoResponse:
 
 
 class ArduinoConnector:
-    terminator: bytes = b'\r\n'
     is_active: bool = False
+    _terminator: bytes = b'\r\n'
     _serial: serial.Serial
     _empty_string: bytes = b''
     _buffer: bytes = _empty_string
@@ -94,8 +94,8 @@ class ArduinoConnector:
 
         lines = []
 
-        if self.terminator in self._buffer:
-            lines = self._buffer.split(self.terminator)
+        if self._terminator in self._buffer:
+            lines = self._buffer.split(self._terminator)
 
             if lines[-1] == self._empty_string:
                 self._buffer = self._empty_string

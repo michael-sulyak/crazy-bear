@@ -1,13 +1,13 @@
 import datetime
 import typing
 
+from libs.task_queue import TaskPriorities
 from ..base import BaseModule, Command
 from ..constants import (
     BotCommands,
 )
 from ...common import doc
 from ...messengers.utils import escape_markdown
-from ...task_queue import TaskPriorities
 
 
 __all__ = (

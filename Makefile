@@ -1,6 +1,11 @@
 arduino_list:
 	arduino-cli board list
 
+arduino_compile:
+	echo "Compiling..." && \
+	arduino-cli compile ./hardware/arduino/viewer --port /dev/ttyUSB0 --fqbn arduino:avr:nano:cpu=atmega328old --verify && \
+	echo "Done."
+
 arduino_build:
 	echo "Compiling..." && \
 	arduino-cli compile ./hardware/arduino/viewer --port /dev/ttyUSB0 --fqbn arduino:avr:nano:cpu=atmega328old --verify && \

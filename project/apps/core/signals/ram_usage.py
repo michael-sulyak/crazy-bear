@@ -28,9 +28,9 @@ class RamUsageHandler(BaseAdvancedSignalHandler):
     def get_value(self) -> typing.Any:
         return round(utils.get_ram_usage() * 100, 2)
 
-    def create_plots(self, *,
-                     date_range: typing.Tuple[datetime.datetime, datetime.datetime],
-                     components: typing.Set[str]) -> typing.Optional[typing.Sequence[io.BytesIO]]:
+    def generate_plots(self, *,
+                       date_range: typing.Tuple[datetime.datetime, datetime.datetime],
+                       components: typing.Set[str]) -> typing.Optional[typing.Sequence[io.BytesIO]]:
         if 'inner_stats' not in components:
             return None
 

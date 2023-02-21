@@ -5,6 +5,7 @@ import typing
 
 from emoji import emojize
 
+from libs.task_queue import IntervalTask, TaskPriorities
 from .. import events
 from ..base import BaseModule, Command
 from ..utils.reports import ShortTextReport
@@ -16,7 +17,6 @@ from ...common.utils import (
 from ...core import constants
 from ...messengers.utils import ProgressBar, escape_markdown
 from ...signals.models import Signal
-from ...task_queue import IntervalTask, TaskPriorities
 
 
 class Report(BaseModule):

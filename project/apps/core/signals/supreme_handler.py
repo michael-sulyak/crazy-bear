@@ -1,12 +1,13 @@
 import typing
 
+from libs import task_queue
 from .arduino import ArduinoHandler
 from .base import BaseAdvancedSignalHandler
 from .cpu_temp import CpuTempHandler
 from .free_disk_space import FreeDiskSpaceHandler
 from .ram_usage import RamUsageHandler
+from .router import RouterHandler
 from .weather import WeatherHandler
-from ... import task_queue
 from ...common.events import Receiver
 from ...common.state import State
 from ...messengers.base import BaseMessenger
@@ -19,6 +20,7 @@ class SupremeSignalHandler:
         RamUsageHandler,
         FreeDiskSpaceHandler,
         ArduinoHandler,
+        RouterHandler,
     )
     _inited_handlers: tuple[BaseAdvancedSignalHandler, ...]
 

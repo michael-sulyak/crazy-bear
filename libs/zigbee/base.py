@@ -6,20 +6,24 @@ from collections import defaultdict
 
 from paho.mqtt.client import Client, MQTTMessage, MQTTMessageInfo, MQTTv5
 
+from project.apps.common.utils import synchronized_method
 from . import constants, exceptions
-from ..common.utils import synchronized_method
-from ... import config
 
 
 class ZigBee:
+    _mq_host: str
+    _mq_port: int
     _mq: typing.Optional[Client] = None
     _subscribers_map: typing.Dict[str, typing.List[typing.Callable]]
     _permanent_subscribers_map: typing.Dict[str, typing.List[typing.Callable]]
     _topic_results_map: typing.Dict[str, typing.Any]
     _lock: threading.RLock
 
-    def __init__(self) -> None:
+    def __init__(self, *, mq_host: str, mq_port: int) -> None:
         self._lock = threading.RLock()
+
+        self._mq_host = mq_host
+        self._mq_port = mq_port
 
     @property
     @synchronized_method
@@ -76,7 +80,7 @@ class ZigBee:
         mq = Client('mqtt5_client', protocol=MQTTv5)
         mq.on_message = self._on_message
         mq.on_disconnect = self._on_disconnect
-        mq.connect(config.ZIGBEE_MQ_HOST, port=config.ZIGBEE_MQ_PORT)
+        mq.connect(self._mq_host, port=self._mq_port)
         mq.loop_start()
 
         self._subscribers_map = defaultdict(list)

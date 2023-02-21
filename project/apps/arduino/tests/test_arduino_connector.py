@@ -50,7 +50,7 @@ def test_process_updates(test_db):
     arduino_connector.open()
     assert ser._is_open is True
 
-    ser._write_message(b'{"t":"sensors","p":{"p": 100,"h": 20,"t":30}}' + arduino_connector.terminator)
+    ser._write_message(b'{"t":"sensors","p":{"p": 100,"h": 20,"t":30}}' + arduino_connector._terminator)
     arduino_connector.process_updates()
 
     humidity = Signal.get_one_aggregated(ArduinoSensorTypes.HUMIDITY)

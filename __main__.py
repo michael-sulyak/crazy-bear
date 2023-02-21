@@ -22,8 +22,8 @@ from project.apps.core.commander import Commander
 from project.apps.core.constants import BotCommands
 from project.apps.core.modules import TelegramMenu
 from project.apps.messengers.telegram import TelegramMessenger
-from project.apps.task_queue import TaskPriorities
-from project.apps.task_queue.dto import DelayedTask, ScheduledTask
+from libs.task_queue import TaskPriorities
+from libs.task_queue import DelayedTask, ScheduledTask
 
 
 logging_level = logging.DEBUG if config.DEBUG else logging.INFO

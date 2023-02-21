@@ -3,16 +3,16 @@ import threading
 import typing
 from functools import partial
 
+from libs.task_queue import ScheduledTask, TaskPriorities
+from libs.zigbee.exceptions import ZigBeeTimeoutError
+from libs.zigbee.lamps.life_control import LCSmartLamp
 from project import config
 from . import constants
 from ..base import BaseModule, Command
 from ..constants import BotCommands
+from ...common import doc
 from ...common.constants import OFF, ON
 from ...common.utils import current_time, get_sunrise_time, synchronized_method
-from ...task_queue import ScheduledTask, TaskPriorities
-from ...zigbee.exceptions import ZigBeeTimeoutError
-from ...zigbee.lamps.life_control import LCSmartLamp
-from ...common import doc
 
 
 __all__ = (

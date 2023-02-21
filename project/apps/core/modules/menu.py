@@ -1,6 +1,4 @@
 import abc
-import os
-import signal
 import typing
 
 from emoji.core import emojize

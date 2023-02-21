@@ -4,8 +4,8 @@ import threading
 import typing
 from time import sleep
 
+from project.apps.common.utils import synchronized_method
 from ..base import ZigBee
-from ...common.utils import synchronized_method
 
 
 __all__ = (
@@ -31,6 +31,12 @@ def method_with_transition(func: typing.Callable) -> typing.Callable:
 
 
 class LCSmartLamp:
+    """
+    This class is made to support LifeControl MCLH-01.
+
+    Note: MCLH-01 has unstable behaviour in some cases.
+    """
+
     friendly_name: str
     zig_bee: ZigBee
     color_temps = (

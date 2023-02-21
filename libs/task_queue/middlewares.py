@@ -3,8 +3,8 @@ import datetime
 import logging
 import typing
 
+from project.apps.common.utils import log_performance
 from . import BaseTaskQueue, Task, constants, exceptions as task_exceptions
-from ..common.utils import log_performance
 
 
 class BaseMiddleware(abc.ABC):

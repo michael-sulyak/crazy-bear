@@ -1,6 +1,7 @@
 import datetime
 import typing
 
+from libs.task_queue import IntervalTask, TaskPriorities
 from .. import events
 from ..base import BaseModule, Command
 from ..constants import (
@@ -10,7 +11,6 @@ from ..constants import (
 from ...common import doc
 from ...common.constants import AUTO, OFF, ON
 from ...common.utils import single_synchronized, synchronized_method
-from ...task_queue import IntervalTask, TaskPriorities
 
 
 __all__ = (
