@@ -6,8 +6,8 @@ from collections import defaultdict
 
 from paho.mqtt.client import Client, MQTTMessage, MQTTMessageInfo, MQTTv5
 
-from project.apps.common.utils import synchronized_method
 from . import constants, exceptions
+from ..casual_utils.parallel_computing import synchronized_method
 
 
 class ZigBee:

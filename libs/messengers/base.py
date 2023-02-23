@@ -1,6 +1,7 @@
 import abc
 import datetime
 import typing
+from dataclasses import dataclass
 
 from . import mixins
 
@@ -43,3 +44,21 @@ class BaseMessenger(mixins.BaseCVMixin, abc.ABC):
     @abc.abstractmethod
     def remove_message(self, message_id: int) -> None:
         pass
+
+
+@dataclass
+class UserInfo:
+    username: typing.Optional[str]
+    name: typing.Optional[str]
+
+
+@dataclass
+class ChatInfo:
+    id: int
+
+
+@dataclass
+class MessageInfo:
+    user: UserInfo
+    chat: ChatInfo
+    text: str

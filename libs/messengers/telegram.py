@@ -19,15 +19,13 @@ from telegram.error import (
     NetworkError as TelegramNetworkError,
 )
 from telegram.ext.utils.webhookhandler import WebhookServer
-from telegram.utils.request import Request as TelegramRequest
 
 from project import config
-from project.apps.common.utils import synchronized_method, current_time
-from project.apps.core.base import Command, Message
-from . import events
-from .base import BaseMessenger
+from .base import BaseMessenger, MessageInfo, UserInfo, ChatInfo
 from .mixins import CVMixin
 from .utils import escape_markdown
+from ..casual_utils.parallel_computing import synchronized_method
+from ..casual_utils.time import get_current_time
 
 
 __all__ = (
@@ -69,18 +67,17 @@ class TelegramMessenger(CVMixin, BaseMessenger):
     _worker: threading.Thread
     _last_message_id: typing.Any = None
     _last_sent_at: typing.Optional[datetime.datetime] = None
+    _message_handler: typing.Callable
 
     def __init__(self, *,
-                 request: typing.Optional[TelegramRequest] = None,
+                 message_handler: typing.Callable,
                  default_reply_markup: typing.Optional = None) -> None:
         self.default_reply_markup = default_reply_markup
-        self._bot = telegram.Bot(
-            token=config.TELEGRAM_TOKEN,
-            request=request,
-        )
+        self._bot = telegram.Bot(token=config.TELEGRAM_TOKEN)
         self._lock = threading.RLock()
         self._update_queue = queue.Queue()
         self._run_worker()
+        self._message_handler = message_handler
 
     @property
     @synchronized_method
@@ -122,7 +119,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         )
 
         self._last_message_id = message_id or result.message_id
-        self._last_sent_at = current_time()
+        self._last_sent_at = get_current_time()
 
         return message_id or result.message_id
 
@@ -135,7 +132,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
             caption=caption,
         )
         self._last_message_id = result.message_id
-        self._last_sent_at = current_time()
+        self._last_sent_at = get_current_time()
 
     @synchronized_method
     @handel_telegram_exceptions
@@ -149,7 +146,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         )
 
         self._last_message_id = results[-1].message_id
-        self._last_sent_at = current_time()
+        self._last_sent_at = get_current_time()
 
     @synchronized_method
     @handel_telegram_exceptions
@@ -160,7 +157,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
             caption=caption,
         )
         self._last_message_id = result.message_id
-        self._last_sent_at = current_time()
+        self._last_sent_at = get_current_time()
 
     def error(self, text: str, *, title: str = 'Error') -> None:
         logging.warning(text)
@@ -219,25 +216,15 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         self._worker.start()
 
     def _process_telegram_message(self, update: TelegramUpdate) -> None:
-        username = update.message and update.message.from_user and update.message.from_user.username
-
-        if username != config.TELEGRAM_USERNAME:
-            text = update.message.text.replace("`", "\\`")
-            self.error(
-                f'User "{update.effective_user.name}" '
-                f'(@{update.effective_user.username}) sent '
-                f'in chat #{update.effective_chat.id}:\n'
-                f'```\n{text}\n```'
-            )
-            return
-
-        events.new_message.send(message=self._parse_update(update))
-
-    @staticmethod
-    def _parse_update(update: TelegramUpdate) -> Message:
-        return Message(
-            username=update.message.from_user.username,
-            chat_id=update.message.chat_id,
+        message = MessageInfo(
+            user=UserInfo(
+                name=update.effective_user.name,
+                username=update.effective_user.username,
+            ),
+            chat=ChatInfo(
+                id=update.effective_chat.id,
+            ),
             text=update.message.text,
-            command=Command.from_string(update.message.text),
         )
+
+        self._message_handler(message, messanger=self)

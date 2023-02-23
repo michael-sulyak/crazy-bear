@@ -1,7 +1,7 @@
 import unittest
 from datetime import timedelta
 
-from project.apps.common.fps import FPSTracker
+from libs.camera.fps import FPSTracker
 
 
 class TestFPSTracker(unittest.TestCase):

@@ -7,9 +7,9 @@ import typing
 from requests import ReadTimeout
 
 from libs import task_queue
+from libs.casual_utils.parallel_computing import synchronized_method
 from .base import BaseAdvancedSignalHandler
 from .. import constants, events
-from ...common import utils
 from ...common.events import Receiver
 from ...common.utils import is_sleep_hours, create_plot
 from ...devices.utils import check_if_host_is_at_home
@@ -42,7 +42,7 @@ class RouterHandler(BaseAdvancedSignalHandler):
     def get_value(self) -> typing.Any:
         pass
 
-    @utils.synchronized_method
+    @synchronized_method
     def process(self) -> None:
         now = datetime.datetime.now()
 

@@ -3,7 +3,7 @@ import typing
 
 from imutils.video import VideoStream
 
-from .fps import FPSTracker
+from libs.camera.fps import FPSTracker
 
 
 class VideoCamera:

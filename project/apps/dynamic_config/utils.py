@@ -1,10 +1,10 @@
 import threading
 import typing
 
+from libs.casual_utils.parallel_computing import synchronized_method
 from . import models
 from .events import dynamic_config_is_updated
 from .models import DynamicConstant
-from ..common.utils import synchronized_method
 
 
 def get_config() -> typing.Dict[str, typing.Any]:

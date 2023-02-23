@@ -9,7 +9,7 @@ from ... import config
 __all__ = (
     'Base',
     'db_engine',
-    'db_session',
+    'get_db_session',
     'close_db_session',
     'vacuum',
 )
@@ -25,7 +25,7 @@ session_factory = sessionmaker(bind=db_engine, autocommit=True, autoflush=True)
 MySession = scoped_session(session_factory)
 
 
-def db_session() -> Session:
+def get_db_session() -> Session:
     return MySession()
 
 

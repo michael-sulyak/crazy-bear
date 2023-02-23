@@ -5,10 +5,11 @@ import typing
 from collections import defaultdict
 
 from libs import task_queue
+from libs.casual_utils.parallel_computing import synchronized_method
+from libs.casual_utils.time import get_current_time
 from .base import BaseSignalHandler
 from .. import events
 from ...arduino.constants import ArduinoSensorTypes
-from ...common import utils
 from ...common.events import Receiver
 from ...common.utils import create_plot
 from ...core import constants
@@ -51,7 +52,7 @@ class ArduinoHandler(BaseSignalHandler):
 
         Signal.clear(signal_types)
 
-        now = utils.current_time()
+        now = get_current_time()
 
         datetime_range = (
             now - datetime.timedelta(hours=3),
@@ -145,7 +146,7 @@ class ArduinoHandler(BaseSignalHandler):
 
         return plots
 
-    @utils.synchronized_method
+    @synchronized_method
     def _process_new_arduino_logs(self, signals: typing.List[Signal]) -> None:
         last_signal_data = {}
 

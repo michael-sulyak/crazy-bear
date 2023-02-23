@@ -3,6 +3,7 @@ import typing
 
 import serial
 
+from libs.casual_utils.parallel_computing import synchronized_method
 from libs.messengers.utils import escape_markdown
 from libs.task_queue import IntervalTask, TaskPriorities
 from ..base import BaseModule, Command
@@ -11,7 +12,7 @@ from ...arduino.base import ArduinoConnector
 from ...arduino.constants import ArduinoSensorTypes
 from ...common import doc
 from ...common.constants import OFF, ON
-from ...common.utils import synchronized_method, with_throttling
+from ...common.utils import with_throttling
 from ...core import events
 from ...core.constants import SECURITY_IS_ENABLED
 from ...signals.models import Signal

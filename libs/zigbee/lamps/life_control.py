@@ -4,7 +4,7 @@ import threading
 import typing
 from time import sleep
 
-from project.apps.common.utils import synchronized_method
+from ...casual_utils.parallel_computing import synchronized_method
 from ..base import ZigBee
 
 

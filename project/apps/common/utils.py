@@ -4,7 +4,6 @@ import io
 import logging
 import math
 import os
-import threading
 import typing
 from collections import deque
 from contextlib import contextmanager
@@ -13,14 +12,13 @@ import cv2
 import matplotlib
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 import pytz
 import requests
-import sentry_sdk
 from matplotlib.dates import DateFormatter
 from matplotlib.ticker import AutoLocator, MaxNLocator
 
+from libs.casual_utils.time import get_current_time
 from ... import config
 
 
@@ -182,31 +180,6 @@ def get_sunrise_time() -> datetime.datetime:
     return pytz.UTC.localize(sunrise_dt)
 
 
-def synchronized_method(func: typing.Callable) -> typing.Callable:
-    @functools.wraps(func)
-    def _wrapper(self, *args, **kwargs) -> typing.Any:
-        try:
-            lock = self._lock
-        except AttributeError as e:
-            raise Exception(f'"{func.__name__}" doesn\'t contain "_lock".') from e
-
-        with lock:
-            return func(self, *args, **kwargs)
-
-    return _wrapper
-
-
-def single_synchronized(func: typing.Callable) -> typing.Callable:
-    lock = threading.RLock()
-
-    @functools.wraps(func)
-    def _wrapper(*args, **kwargs) -> typing.Any:
-        with lock:
-            return func(*args, **kwargs)
-
-    return _wrapper
-
-
 def is_sleep_hours(timestamp: typing.Optional[datetime.datetime] = None) -> bool:
     if timestamp is None:
         timestamp = datetime.datetime.now()
@@ -221,7 +194,7 @@ def is_sleep_hours(timestamp: typing.Optional[datetime.datetime] = None) -> bool
 
 def convert_params_to_date_range(delta_value: int = 24,
                                  delta_type: str = 'hours') -> typing.Tuple[datetime.datetime, datetime.datetime]:
-    now = current_time()
+    now = get_current_time()
     return now - datetime.timedelta(**{delta_type: delta_value}), now
 
 
@@ -256,42 +229,6 @@ def get_my_ip() -> str:
     response = requests.get('https://api.ipify.org')
     response.raise_for_status()
     return response.content.decode('utf8')
-
-
-@contextmanager
-def log_performance(operation_type: str, name: str) -> typing.Generator:
-    with sentry_sdk.start_transaction(op=operation_type, name=name):
-        yield
-
-
-def log_func_performance(operation_type: str) -> typing.Callable:
-    def decorate(func: typing.Callable) -> typing.Callable:
-        func_name = f'{func.__module__}.{func.__qualname__}'
-
-        @functools.wraps(func)
-        def wrap_func(*args, **kwargs) -> typing.Any:
-            with log_performance(operation_type, func_name):
-                return func(*args, **kwargs)
-
-        return wrap_func
-
-    return decorate
-
-
-def current_time() -> datetime.datetime:
-    return datetime.datetime.now().astimezone()
-
-
-def add_timestamp_in_frame(frame: np.array) -> None:
-    cv2.putText(
-        img=frame,
-        text=datetime.datetime.now().strftime('%d.%m.%Y, %H:%M:%S'),
-        org=(10, frame.shape[0] - 10,),
-        fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-        fontScale=0.5,
-        color=(0, 0, 255,),
-        thickness=1,
-    )
 
 
 def get_ram_usage() -> float:

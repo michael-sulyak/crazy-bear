@@ -5,6 +5,7 @@ import typing
 
 from emoji import emojize
 
+from libs.casual_utils.time import get_current_time
 from libs.messengers.utils import ProgressBar, escape_markdown
 from libs.task_queue import IntervalTask, TaskPriorities
 from .. import events
@@ -13,7 +14,7 @@ from ..utils.reports import ShortTextReport
 from ... import db
 from ...common import doc
 from ...common.utils import (
-    convert_params_to_date_range, get_weather, current_time, is_sleep_hours,
+    convert_params_to_date_range, get_weather, is_sleep_hours,
 )
 from ...core import constants
 from ...signals.models import Signal
@@ -135,7 +136,7 @@ class Report(BaseModule):
             if not self._message_id_for_status:
                 if (
                         self.messenger.last_sent_at
-                        and current_time() - self.messenger.last_sent_at > datetime.timedelta(minutes=5)
+                        and get_current_time() - self.messenger.last_sent_at > datetime.timedelta(minutes=5)
                         and not is_sleep_hours()
 
                 ):

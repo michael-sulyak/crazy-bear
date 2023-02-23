@@ -1,4 +1,3 @@
-import datetime
 import io
 import os
 import tempfile
@@ -8,7 +7,8 @@ import dropbox
 import numpy as np
 from pandas import DataFrame
 
-from .utils import current_time, single_synchronized
+from libs.casual_utils.parallel_computing import single_synchronized
+from libs.casual_utils.time import get_current_time
 from ... import config
 
 
@@ -19,7 +19,7 @@ class FileStorage:
         self._dbx = dropbox.Dropbox(config.DROPBOX_TOKEN, timeout=10)
 
     def upload(self, file_name: str, content: bytes) -> None:
-        now = current_time()
+        now = get_current_time()
         file_name = os.path.join('/', now.strftime('%Y-%m-%d'), file_name)
         self._dbx.files_upload(content, file_name)
 

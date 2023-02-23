@@ -1,6 +1,7 @@
 import datetime
 import typing
 
+from libs.casual_utils.parallel_computing import synchronized_method, single_synchronized
 from libs.task_queue import IntervalTask, TaskPriorities
 from .. import events
 from ..base import BaseModule, Command
@@ -10,7 +11,6 @@ from ..constants import (
 )
 from ...common import doc
 from ...common.constants import AUTO, OFF, ON
-from ...common.utils import single_synchronized, synchronized_method
 
 
 __all__ = (

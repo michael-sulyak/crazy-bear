@@ -1,5 +1,6 @@
 import datetime
 
+from libs.casual_utils.time import get_current_time
 from .base import BaseSignalHandler
 from .. import constants
 from ...common import utils
@@ -11,7 +12,7 @@ class WeatherHandler(BaseSignalHandler):
 
     def process(self) -> None:
         weather = utils.get_weather()
-        now = utils.current_time()
+        now = get_current_time()
 
         Signal.bulk_add((
             Signal(type=constants.WEATHER_TEMPERATURE, value=weather['main']['temp'], received_at=now),
@@ -25,7 +26,7 @@ class WeatherHandler(BaseSignalHandler):
         )
         Signal.clear(signal_types)
 
-        now = utils.current_time()
+        now = get_current_time()
 
         datetime_range = (
             now - datetime.timedelta(hours=3),

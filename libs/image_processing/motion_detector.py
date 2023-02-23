@@ -10,16 +10,16 @@ import numpy as np
 class MotionDetector:
     target_frame: typing.Optional[np.array] = None
     marked_frame: typing.Optional[np.array] = None
-    max_fps: int
-    min_area: int = 500
-    movement_ttl = datetime.timedelta(seconds=20)
     is_occupied: bool = False
-    last_change_timestamp: typing.Optional[datetime.datetime] = None
-    show_frames: bool
+    _max_fps: int
+    _min_area: int = 500
+    _movement_ttl = datetime.timedelta(seconds=20)
+    _last_changed_at: typing.Optional[datetime.datetime] = None
+    _need_to_show_frames: bool
 
     def __init__(self, *, show_frames: bool, max_fps: int) -> None:
-        self.show_frames = show_frames
-        self.max_fps = max_fps
+        self._need_to_show_frames = show_frames
+        self._max_fps = max_fps
 
     def process_new_frame(self, frame: np.array, *, fps: float) -> None:
         now = datetime.datetime.now()
@@ -30,9 +30,9 @@ class MotionDetector:
         self.is_occupied = False
 
         # If the target frame is None, initialize it
-        if self.target_frame is None or (now - self.last_change_timestamp) > self.movement_ttl:
+        if self.target_frame is None or (now - self._last_changed_at) > self._movement_ttl:
             self.target_frame = gray
-            self.last_change_timestamp = now
+            self._last_changed_at = now
             return
 
         # Compute the absolute difference between the current frame and first frame
@@ -52,7 +52,7 @@ class MotionDetector:
         # Loop over the contours
         for contour in contours:
             # If the contour is too small, ignore it
-            if cv2.contourArea(contour) < self.min_area:
+            if cv2.contourArea(contour) < self._min_area:
                 continue
 
             # Compute the bounding box for the contour, draw it on the frame,
@@ -61,13 +61,18 @@ class MotionDetector:
             cv2.rectangle(frame, (x, y,), (x + w, y + h,), (0, 0, 255,), 1)
             self.is_occupied = True
 
-        self._draw_result(frame=frame, thresh=thresh, frame_delta=frame_delta, fps=fps)
+        self._draw_result(
+            frame=frame,
+            thresh=thresh,
+            frame_delta=frame_delta,
+            fps=fps,
+        )
 
-        if self.show_frames:
+        if self._need_to_show_frames:
             cv2.waitKey(1)
 
     def realese(self) -> None:
-        if self.show_frames:
+        if self._need_to_show_frames:
             cv2.destroyAllWindows()
 
     def _draw_result(self, *, frame: np.array, thresh: np.array, frame_delta: np.array, fps: float) -> None:
@@ -89,7 +94,7 @@ class MotionDetector:
             org=(10, 50,),
             fontFace=cv2.FONT_HERSHEY_SIMPLEX,
             fontScale=0.5,
-            color=(0, 0, 255,) if self.max_fps - current_fps > 0.1 else (0, 255, 0,),
+            color=(0, 0, 255,) if self._max_fps - current_fps > 0.1 else (0, 255, 0,),
             thickness=1,
         )
         cv2.putText(
@@ -102,7 +107,7 @@ class MotionDetector:
             thickness=1,
         )
 
-        if self.show_frames:
+        if self._need_to_show_frames:
             cv2.imshow('Security Feed', self.marked_frame)
             cv2.imshow('Thresh', thresh)
             cv2.imshow('Frame Delta', frame_delta)

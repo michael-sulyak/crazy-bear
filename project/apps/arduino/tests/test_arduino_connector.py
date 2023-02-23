@@ -34,7 +34,7 @@ class TestSerial:
 
 def test_connection():
     ser = TestSerial()
-    arduino_connector = ArduinoConnector(ser=ser)
+    arduino_connector = ArduinoConnector(serial=ser)
 
     arduino_connector.open()
     assert ser._is_open is True
@@ -45,7 +45,7 @@ def test_connection():
 
 def test_process_updates(test_db):
     ser = TestSerial()
-    arduino_connector = ArduinoConnector(ser=ser)
+    arduino_connector = ArduinoConnector(serial=ser)
 
     arduino_connector.open()
     assert ser._is_open is True

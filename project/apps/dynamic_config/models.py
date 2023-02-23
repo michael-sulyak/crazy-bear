@@ -19,20 +19,24 @@ class DynamicConstant(db.Base):
 
     @classmethod
     def all(cls) -> typing.List['DynamicConstant']:
-        return db.db_session().query(
+        return db.get_db_session().query(
             cls.name,
             cls.value,
         ).all()
 
     @classmethod
     def set(cls, name: str, value: typing.Any) -> None:
-        with db.db_session().begin():
-            if db.db_session().query(cls).filter(cls.name == name).first() is None:
-                db.db_session().add(cls(name=name, value=value))
+        session = db.get_db_session()
+
+        with session.begin():
+            if session.query(cls).filter(cls.name == name).first() is None:
+                session.add(cls(name=name, value=value))
             else:
-                db.db_session().query(cls).filter(cls.name == name).update({cls.value: value})
+                session.query(cls).filter(cls.name == name).update({cls.value: value})
 
     @classmethod
     def delete(cls, name: str) -> None:
-        with db.db_session().begin():
-            db.db_session().query(cls).filter(cls.name == name).delete()
+        session = db.get_db_session()
+
+        with session.begin():
+            session.query(cls).filter(cls.name == name).delete()

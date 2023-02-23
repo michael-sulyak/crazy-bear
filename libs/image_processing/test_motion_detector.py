@@ -1,7 +1,7 @@
 import cv2
 
-from ..motion_detector import MotionDetector
-from .... import config
+from libs.image_processing.motion_detector import MotionDetector
+from project import config
 
 
 def test_motion_detector():

@@ -4,6 +4,7 @@ import typing
 
 from crontab import CronTab
 
+from libs.casual_utils.time import get_current_time
 from libs.messengers.utils import ProgressBar
 from libs.task_queue import IntervalTask, ScheduledTask, TaskPriorities
 from .. import constants, events
@@ -11,7 +12,7 @@ from ..base import BaseModule, Command
 from ..signals.supreme_handler import SupremeSignalHandler
 from ... import db
 from ...common import doc
-from ...common.utils import current_time, create_plot
+from ...common.utils import create_plot
 from ...signals.models import Signal
 
 
@@ -61,8 +62,8 @@ class Signals(BaseModule):
             IntervalTask(
                 target=lambda: Signal.backup(
                     datetime_range=(
-                        current_time() - datetime.timedelta(days=1),
-                        current_time(),
+                        get_current_time() - datetime.timedelta(days=1),
+                        get_current_time(),
                     ),
                 ),
                 priority=TaskPriorities.LOW,
@@ -143,12 +144,12 @@ class Signals(BaseModule):
         for progress in self._supreme_signal_handler.compress():
             yield progress * 0.8
 
-        now = current_time()
+        now = get_current_time()
 
         Signal.clear((constants.TASK_QUEUE_DELAY,))
 
-        with db.db_session().begin():
-            db.db_session().query(Signal).filter(
+        with db.get_db_session().begin():
+            db.get_db_session().query(Signal).filter(
                 Signal.type == constants.TASK_QUEUE_DELAY,
                 Signal.received_at <= now - datetime.timedelta(days=2),
             ).delete()

@@ -4,10 +4,10 @@ import logging
 import typing
 from dataclasses import dataclass, field
 
-import serial
+import serial as serial_lib
 
+from libs.casual_utils.time import get_current_time
 from . import constants
-from ..common.utils import current_time
 from ..signals.models import Signal
 from ... import config
 
@@ -16,40 +16,24 @@ from ... import config
 class ArduinoResponse:
     type: str
     payload: typing.Optional[dict] = None
-    received_at: datetime.datetime = field(default_factory=current_time)
-
-
-# @dataclass
-# class ArduinoRequest:
-#     type: str
-#     payload: typing.Optional[dict] = None
-#
-#     @classmethod
-#     def request_settings(cls) -> 'ArduinoRequest':
-#         return cls(type=constants.ArduinoRequestTypes.REQUEST_SETTINGS)
-#
-#     @classmethod
-#     def update_data_delay(cls, data_delay: int) -> 'ArduinoRequest':
-#         assert data_delay >= 0
-#
-#         return cls(type=constants.ArduinoRequestTypes.UPDATE_SETTINGS, payload={'data_delay': data_delay})
+    received_at: datetime.datetime = field(
+        default_factory=get_current_time,
+    )
 
 
 class ArduinoConnector:
     is_active: bool = False
     _terminator: bytes = b'\r\n'
-    _serial: serial.Serial
+    _serial: serial_lib.Serial
     _empty_string: bytes = b''
     _buffer: bytes = _empty_string
-    _settings: dict
 
-    def __init__(self, ser: typing.Optional[serial.Serial] = None) -> None:
-        if ser is None:
-            ser = serial.Serial()
-            ser.setPort(config.ARDUINO_TTY)
+    def __init__(self, serial: typing.Optional[serial_lib.Serial] = None) -> None:
+        if serial is None:
+            serial = serial_lib.Serial()
+            serial.setPort(config.ARDUINO_TTY)
 
-        self._serial = ser
-        self._settings = {}
+        self._serial = serial
 
     def open(self) -> None:
         if self.is_active:
@@ -79,9 +63,6 @@ class ArduinoConnector:
                         continue
 
                     signals.append(Signal(type=name, value=value, received_at=response.received_at))
-
-            if response.type == constants.ArduinoResponseTypes.SETTINGS:
-                self._settings = response.payload
 
         return signals
 

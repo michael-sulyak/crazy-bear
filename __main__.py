@@ -23,6 +23,7 @@ from project.apps.core.base import Command, Message
 from project.apps.core.commander import Commander
 from project.apps.core.constants import BotCommands
 from project.apps.core.modules import TelegramMenu
+from project.apps.core.utils.messages import process_telegram_message
 
 
 logging_level = logging.DEBUG if config.DEBUG else logging.INFO
@@ -93,6 +94,7 @@ def main():
     })
 
     messenger = TelegramMessenger(
+        message_handler=process_telegram_message,
         default_reply_markup=TelegramMenu(state=state),
     )
 

@@ -7,15 +7,17 @@ import numpy as np
 from imutils.video import VideoStream
 
 from libs import task_queue
+from libs.camera.base import VideoCamera
+from libs.casual_utils.parallel_computing import synchronized_method
+from libs.image_processing.utils import add_timestamp_in_frame
 from libs.task_queue import IntervalTask
 from ..base import BaseModule, Command
 from ..constants import BotCommands, MotionTypeSources
 from ...common import doc
-from ...common.camera import VideoCamera
 from ...common.constants import OFF, ON
 from ...common.storage import file_storage
 from ...common.utils import (
-    add_timestamp_in_frame, camera_is_available, synchronized_method, with_throttling,
+    camera_is_available, with_throttling,
 )
 from ...core import events
 from ...core.constants import (

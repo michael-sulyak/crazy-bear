@@ -30,3 +30,5 @@ def get_connected_macs_to_router() -> typing.Generator[str, None, None]:
 
         for device in connected_devices:
             yield device['mac']
+    else:
+        raise RuntimeError(f'Unexpected router type ({config.ROUTER_TYPE})')

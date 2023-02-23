@@ -5,9 +5,9 @@ import io
 import typing
 
 from libs import task_queue
+from libs.casual_utils.time import get_current_time
 from libs.messengers.base import BaseMessenger
 from .. import events
-from ...common import utils
 from ...common.events import Receiver
 from ...common.state import State
 from ...signals.models import Signal
@@ -83,7 +83,7 @@ class BaseAdvancedSignalHandler(BaseSignalHandler, abc.ABC):
     def compress(self) -> None:
         Signal.clear((self.signal_type,))
 
-        now = utils.current_time()
+        now = get_current_time()
 
         datetime_range = (
             now - datetime.timedelta(hours=3),

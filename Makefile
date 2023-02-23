@@ -1,12 +1,26 @@
 # Commands for working with the server
 
-deploy: bump_version scp fast_stop rewrite up
+deploy:
+	@$(MAKE) --no-print-directory bump_version
+	@$(MAKE) --no-print-directory scp
+	@$(MAKE) --no-print-directory fast_stop
+	@$(MAKE) --no-print-directory rewrite
+	@$(MAKE) --no-print-directory up
 
-push: scp rewrite
 
-compile_arduino: stop fast_compile_arduino up
+push:
+	@$(MAKE) --no-print-directory scp
+	@$(MAKE) --no-print-directory rewrite
 
-fast_compile_arduino: scp rewrite compile_arduino_on_server
+compile_arduino:
+	@$(MAKE) --no-print-directory stop
+	@$(MAKE) --no-print-directory fast_compile_arduino
+	@$(MAKE) --no-print-directory up
+
+fast_compile_arduino:
+	@$(MAKE) --no-print-directory scp
+	@$(MAKE) --no-print-directory rewrite
+	@$(MAKE) --no-print-directory compile_arduino_on_server
 
 compile_arduino_on_server: CMD := "\
 	export PATH='$$PATH:/home/ubuntu/bin' && \
@@ -38,22 +52,17 @@ stop: _run_remote_cmd
 build: CMD = "cd crazy_bear && docker-compose -p crazy_bear -f docker-compose.prod.yml build"
 build: _run_remote_cmd
 
-bump_version:
-	python3 -c "from dotenv import load_dotenv; load_dotenv('envs/local.env'); \
-               from project.config.utils import VersionDetails; \
-               version_details = VersionDetails(); version_details.patch += 1; \
-               version_details.save()"
-
 scp:
-	echo "Creating zip..."
-	zip -r crazy_bear.zip $(shell git ls-files) ./envs/prod.env
-	echo "Coping to RPi..."
-	scp ./crazy_bear.zip pi:~
-	rm ./crazy_bear.zip
+	@echo "Creating zip..."
+	@zip -r crazy_bear.zip $(shell git ls-files) ./envs/prod.env
+	@echo "Coping to RPi..."
+	@scp ./crazy_bear.zip pi:~
+	@echo "Cleaning..."
+	@rm ./crazy_bear.zip
 
 _run_remote_cmd:
-	echo "RUN: $(CMD)"
-	ssh pi $(CMD)
+	@echo "RUN:" $(CMD)
+	@ssh pi $(CMD)
 
 
 # Arduino
@@ -78,6 +87,12 @@ arduino_monitor:
 
 
 # Other
+
+bump_version:
+	python3 -c "from dotenv import load_dotenv; load_dotenv('envs/local.env'); \
+               from project.config.utils import VersionDetails; \
+               version_details = VersionDetails(); version_details.patch += 1; \
+               version_details.save()"
 
 freeze:
 	poetry export -f requirements.txt --output requirements.txt --without-hashes

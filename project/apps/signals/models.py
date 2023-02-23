@@ -5,10 +5,10 @@ import sqlalchemy
 from pandas import DataFrame
 from sqlalchemy import func as sa_func
 
+from libs.casual_utils.time import get_current_time
 from .. import db
 from ..common.storage import file_storage
-from ..common.utils import current_time
-from ..db import db_session
+from ..db import get_db_session
 from ... import config
 
 
@@ -36,27 +36,31 @@ class Signal(db.Base):
 
     @classmethod
     def add(cls, signal_type: str, value: float, *, received_at: typing.Optional[datetime.datetime] = None) -> 'Signal':
+        session = db.get_db_session()
+
         if received_at is None:
-            received_at = current_time()
+            received_at = get_current_time()
 
         item = cls(type=signal_type, value=value, received_at=received_at)
 
-        with db.db_session().begin():
-            db.db_session().add(item)
+        with session.begin():
+            session.add(item)
 
         return item
 
     @classmethod
     def bulk_add(cls, signals: typing.Iterable['Signal']) -> None:
-        with db.db_session().begin():
-            db.db_session().add_all(signals)
+        session = db.get_db_session()
+
+        with session.begin():
+            session.add_all(signals)
 
     @classmethod
     def clear(cls, signal_types: typing.Iterable[str]) -> None:
-        timestamp = current_time() - config.STORAGE_TIME
+        timestamp = get_current_time() - config.STORAGE_TIME
 
-        with db.db_session().begin():
-            db.db_session().query(cls).filter(cls.type.in_(signal_types), cls.received_at <= timestamp).delete()
+        with db.get_db_session().begin():
+            db.get_db_session().query(cls).filter(cls.type.in_(signal_types), cls.received_at <= timestamp).delete()
 
     @classmethod
     def get(cls,
@@ -70,7 +74,7 @@ class Signal(db.Base):
         if not query_data:
             return []
 
-        signals = db.db_session().query(
+        signals = db.get_db_session().query(
             cls.value,
             cls.received_at.label('received_at'),
         ).filter(
@@ -97,7 +101,7 @@ class Signal(db.Base):
         if not query_data:
             return []
 
-        signals = db.db_session().query(
+        signals = db.get_db_session().query(
             aggregate_function(cls.value).label('value'),
             sa_func.date_trunc(query_data['date_trunc'], cls.received_at).label('aggregated_time'),
         ).filter(
@@ -119,12 +123,12 @@ class Signal(db.Base):
                            aggregate_function: typing.Callable = sa_func.avg,
                            datetime_range: typing.Optional[tuple[datetime.datetime, datetime.datetime]] = None,
                            period: datetime.timedelta = datetime.timedelta(minutes=1)) -> typing.Any:
-        now = current_time()
+        now = get_current_time()
 
         if datetime_range is None:
             datetime_range = (now - period, now,)
 
-        result = db.db_session().query(
+        result = db.get_db_session().query(
             aggregate_function(cls.value).label('value'),
         ).filter(
             cls.type == signal_type,
@@ -140,6 +144,8 @@ class Signal(db.Base):
                          signal_type: str, *,
                          datetime_range: typing.Tuple[datetime.datetime, datetime.datetime],
                          aggregate_function: typing.Callable = sa_func.avg) -> None:
+        session = db.get_db_session()
+
         query_data = cls._get_query_data(
             signal_type=signal_type,
             datetime_range=datetime_range,
@@ -148,7 +154,7 @@ class Signal(db.Base):
         if not query_data:
             return
 
-        signals = db.db_session().query(
+        signals = session.query(
             aggregate_function(cls.value).label('aggregated_value'),
             sa_func.date_trunc(query_data['date_trunc'], cls.received_at).label('aggregated_time'),
         ).filter(
@@ -170,13 +176,14 @@ class Signal(db.Base):
             for signal in signals
         )
 
-        with db.db_session().begin():
-            db.db_session().query(cls).filter(
+        with session.begin():
+            session.query(cls).filter(
                 cls.received_at >= query_data['start_time'],
                 cls.received_at <= query_data['end_time'],
                 cls.type == signal_type,
             ).delete()
-            db.db_session().add_all(new_signals)
+
+            session.add_all(new_signals)
 
     @classmethod
     def compress(cls,
@@ -184,6 +191,8 @@ class Signal(db.Base):
                  datetime_range: typing.Tuple[datetime.datetime, datetime.datetime],
                  approximation_value: float = 0,
                  approximation_time: datetime.timedelta = datetime.timedelta(hours=1)) -> None:
+        session = db.get_db_session()
+
         signals = cls.get(signal_type, datetime_range=datetime_range)
 
         if len(signals) < 2:
@@ -206,8 +215,8 @@ class Signal(db.Base):
                 last_saved_value = signals[i]
 
         if received_at_to_remove:
-            with db.db_session().begin():
-                db.db_session().query(cls).filter(
+            with session.begin():
+                session.query(cls).filter(
                     cls.type == signal_type,
                     cls.received_at.in_(received_at_to_remove),
                 ).delete()
@@ -217,6 +226,8 @@ class Signal(db.Base):
                             signal_type: str, *,
                             aggregate_function: typing.Callable = sa_func.avg,
                             datetime_range: typing.Tuple[datetime.datetime, datetime.datetime]) -> None:
+        session = db.get_db_session()
+
         aggregated_data = cls.get_aggregated(
             signal_type,
             aggregate_function=aggregate_function,
@@ -225,7 +236,7 @@ class Signal(db.Base):
 
         start_time, end_time = datetime_range
 
-        query = db.db_session().query(cls).filter(
+        query = db.get_db_session().query(cls).filter(
             cls.received_at >= start_time,
             cls.received_at <= end_time,
             cls.type == signal_type,
@@ -236,10 +247,10 @@ class Signal(db.Base):
         if not count or len(aggregated_data) / count > 0.9:
             return
 
-        with db.db_session().begin():
+        with session.begin():
             query.delete()
 
-            db.db_session().add_all(
+            session.add_all(
                 cls(
                     type=signal_type,
                     value=item.value,
@@ -259,7 +270,7 @@ class Signal(db.Base):
                 cls.received_at <= datetime_range[1],
             )
 
-        all_data = db_session().query(
+        all_data = get_db_session().query(
             cls.type,
             cls.value,
             cls.received_at,
@@ -282,13 +293,15 @@ class Signal(db.Base):
 
     @classmethod
     def get_table_stats(cls) -> typing.Dict[str, int]:
+        session = db.get_db_session()
+
         all_types = (
             item[0]
-            for item in db.db_session().query(cls.type.distinct()).all()
+            for item in session.query(cls.type.distinct()).all()
         )
 
         return {
-            item: db.db_session().query(cls).filter(cls.type == item).count()
+            item: session.query(cls).filter(cls.type == item).count()
             for item in all_types
         }
 
@@ -297,7 +310,7 @@ class Signal(db.Base):
                         signal_type: str, *,
                         datetime_range: typing.Tuple[datetime.datetime, datetime.datetime],
                         ) -> typing.Optional[typing.Dict[str, typing.Any]]:
-        time_filter = db.db_session().query(
+        time_filter = db.get_db_session().query(
             cls.received_at,
         ).filter(
             cls.received_at >= datetime_range[0],

@@ -1,11 +1,5 @@
 class ArduinoResponseTypes:
-    SETTINGS = 'settings'
     SENSORS = 'sensors'
-
-
-class ArduinoRequestTypes:
-    REQUEST_SETTINGS = 'request_settings'
-    UPDATE_SETTINGS = 'update_settings'
 
 
 class ArduinoSensorTypes:

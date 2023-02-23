@@ -3,6 +3,8 @@ import threading
 import typing
 from functools import partial
 
+from libs.casual_utils.parallel_computing import synchronized_method
+from libs.casual_utils.time import get_current_time
 from libs.task_queue import ScheduledTask, TaskPriorities
 from libs.zigbee.exceptions import ZigBeeTimeoutError
 from libs.zigbee.lamps.life_control import LCSmartLamp
@@ -12,7 +14,7 @@ from ..base import BaseModule, Command
 from ..constants import BotCommands
 from ...common import doc
 from ...common.constants import OFF, ON
-from ...common.utils import current_time, get_sunrise_time, synchronized_method
+from ...common.utils import get_sunrise_time
 
 
 __all__ = (
@@ -123,7 +125,7 @@ class SmartLampController(BaseModule):
                 except ZigBeeTimeoutError:
                     self.messenger.send_message('Can\'t connect')
 
-                self._last_manual_action = current_time()
+                self._last_manual_action = get_current_time()
                 self.messenger.send_message('Done')
 
             return True
@@ -171,7 +173,7 @@ class SmartLampController(BaseModule):
             self.smart_lamp.set_color_temp(150)
             self.state[constants.MAIN_LAMP_IS_ON] = True
 
-            self._last_artificial_sunrise_time = current_time()
+            self._last_artificial_sunrise_time = get_current_time()
             _run_next_step(datetime.timedelta(minutes=5))
             return
 
@@ -186,8 +188,8 @@ class SmartLampController(BaseModule):
         self.smart_lamp.set_brightness(brightness, transition=1)
 
         if brightness == self.smart_lamp.MAX_BRIGHTNESS:
-            diff_1 = get_sunrise_time() - current_time()
-            diff_2 = self._last_artificial_sunrise_time + self._sunrise_time - current_time()
+            diff_1 = get_sunrise_time() - get_current_time()
+            diff_2 = self._last_artificial_sunrise_time + self._sunrise_time - get_current_time()
             diff = max(diff_1, diff_2)
 
             if diff < datetime.timedelta(minutes=5):

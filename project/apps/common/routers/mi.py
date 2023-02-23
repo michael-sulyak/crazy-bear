@@ -14,25 +14,6 @@ __all__ = (
     'mi_wifi',
 )
 
-PUBLIC_KEY = 'a2ffa5c9be07488bbb04a3a47d3c5f6a'
-
-
-def sha1(x: str) -> str:
-    return hashlib.sha1(x.encode()).hexdigest()
-
-
-def get_mac_address() -> str:
-    as_hex = f'{uuid.getnode():012x}'
-    return ':'.join(as_hex[i: i + 2] for i in range(0, 12, 2))
-
-
-def generate_nonce(miwifi_type: int = 0) -> str:
-    return f'{miwifi_type}_{get_mac_address()}_{int(time.time())}_{int(random.random() * 1000)}'
-
-
-def generate_password_hash(nonce: str, password: str) -> str:
-    return sha1(nonce + sha1(password + PUBLIC_KEY))
-
 
 class MiWiFi:
     url: str
@@ -48,22 +29,15 @@ class MiWiFi:
         self.password = password
         self.miwifi_type = miwifi_type
 
-    def __enter__(self) -> 'MiWiFi':
-        self.login()
-        return self
-
-    def __exit__(self, *args) -> None:
-        self.logout()
-
     def login(self) -> None:
-        nonce = generate_nonce(self.miwifi_type)
+        nonce = self._generate_nonce()
 
         response = requests.post(
             f'{self.url}/cgi-bin/luci/api/xqsystem/login',
             data={
                 'username': 'admin',
                 'logtype': '2',
-                'password': generate_password_hash(nonce, self.password),
+                'password': self._generate_password_hash(nonce),
                 'nonce': nonce,
             },
             timeout=30,
@@ -121,6 +95,22 @@ class MiWiFi:
             raise Exception('Invalid request')
 
         return data
+
+    def _generate_nonce(self) -> str:
+        return f'{self.miwifi_type}_{self._get_mac_address()}_{int(time.time())}_{int(random.random() * 1000)}'
+
+    def _generate_password_hash(self, nonce: str) -> str:
+        public_key = 'a2ffa5c9be07488bbb04a3a47d3c5f6a'
+        return self._get_sha1(nonce + self._get_sha1(self.password + public_key))
+
+    @staticmethod
+    def _get_sha1(x: str) -> str:
+        return hashlib.sha1(x.encode()).hexdigest()
+
+    @staticmethod
+    def _get_mac_address() -> str:
+        as_hex = f'{uuid.getnode():012x}'
+        return ':'.join(as_hex[i: i + 2] for i in range(0, 12, 2))
 
 
 if config.ROUTER_TYPE == 'mi':
