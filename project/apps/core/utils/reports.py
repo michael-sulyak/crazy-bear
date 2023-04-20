@@ -51,7 +51,7 @@ class ShortTextReport:
         )
         video_security_is_enabled = emojize(':film_frames:') if self.state[VIDEO_SECURITY_IS_ENABLED] else ''
         additional_security_status = (
-            f' {auto_security_is_enabled}{video_security_is_enabled}'
+            f'{auto_security_is_enabled}{video_security_is_enabled}'
             if auto_security_is_enabled or video_security_is_enabled else ''
         )
 
@@ -60,12 +60,11 @@ class ShortTextReport:
 
             f'{emojize(":floppy_disk:")} *Devices*\n'
             f'Arduino: {self.YES if self.state[ARDUINO_IS_ENABLED] else self.NO}\n'
-            f'Camera: `{self.YES if self.state[CAMERA_IS_AVAILABLE] else self.NO}{additional_camera_status}`\n'
-            f'FPS: `{escape_markdown(self._fps_info)}`\n\n'
+            f'Camera: `{self.YES if self.state[CAMERA_IS_AVAILABLE] else self.NO}{additional_camera_status}'
+            f'{f"FPS {escape_markdown(self._fps_info)}" if self.state[CAMERA_IS_AVAILABLE] else ""}`\n'
 
             f'{emojize(":shield:")} *Security*\n'
-            f'Security: `{self.YES if self.state[SECURITY_IS_ENABLED] else self.NO}'
-            f'{additional_security_status}`\n\n'
+            f'Security: `{self.YES if self.state[SECURITY_IS_ENABLED] else self.NO}{additional_security_status}`\n\n'
 
             f'{emojize(":bar_chart:")} *Sensors*\n'
             f'Humidity: `{escape_markdown(self._humidity_info)}`\n'

@@ -14,12 +14,12 @@ class FreeDiskSpaceHandler(BaseAdvancedSignalHandler):
     compress_by_time = True
     list_of_notification_params = (
         NotificationParams(
-            condition=lambda x: x < 1024,
+            condition=lambda x: x < 256,
             message='There is very little disk space left!',
             delay=datetime.timedelta(hours=1),
         ),
         NotificationParams(
-            condition=lambda x: x < 500,
+            condition=lambda x: x < 512,
             message='There is little disk space left!',
             delay=datetime.timedelta(hours=6),
         ),

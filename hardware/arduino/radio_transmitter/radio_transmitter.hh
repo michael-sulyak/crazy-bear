@@ -24,5 +24,5 @@ public:
 private:
     RF24 *_radio;
     const char startedBytes[14] = "#~~~START~~~#";
-    const char finishedBytes[12] = "#~~~END~~~#";
+    const char finishedBytes[12] = "#~~~~END~~~~#";
 };

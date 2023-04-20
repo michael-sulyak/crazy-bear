@@ -30,7 +30,7 @@ services:
 
   zigbee_mq:
     restart: always
-    image: eclipse-mosquitto:2.0
+    image: eclipse-mosquitto:2.0.15
     volumes:
       - "./mosquitto-data:/mosquitto"
     ports:
@@ -40,7 +40,7 @@ services:
 
   zigbee2mqtt:
     restart: always
-    image: koenkk/zigbee2mqtt:1.25.1
+    image: koenkk/zigbee2mqtt:1.30.2
     privileged: true
     depends_on:
       - zigbee_mq

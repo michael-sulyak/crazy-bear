@@ -30,7 +30,7 @@ services:
 
   zigbee_mq:
     restart: always
-    image: eclipse-mosquitto:2.0
+    image: eclipse-mosquitto:2.0.15
     volumes:
       - "./mosquitto-data:/mosquitto"
     ports:
