@@ -61,7 +61,7 @@ class ShortTextReport:
             f'{emojize(":floppy_disk:")} *Devices*\n'
             f'Arduino: {self.YES if self.state[ARDUINO_IS_ENABLED] else self.NO}\n'
             f'Camera: `{self.YES if self.state[CAMERA_IS_AVAILABLE] else self.NO}{additional_camera_status}'
-            f'{f"FPS {escape_markdown(self._fps_info)}" if self.state[CAMERA_IS_AVAILABLE] else ""}`\n'
+            f'{f"FPS {escape_markdown(self._fps_info)}" if self.state[CAMERA_IS_AVAILABLE] else ""}`\n\n'
 
             f'{emojize(":shield:")} *Security*\n'
             f'Security: `{self.YES if self.state[SECURITY_IS_ENABLED] else self.NO}{additional_security_status}`\n\n'

@@ -19,7 +19,7 @@ class RamUsageHandler(BaseAdvancedSignalHandler):
             delay=datetime.timedelta(hours=1),
         ),
         NotificationParams(
-            condition=lambda x: x > 60,
+            condition=lambda x: x > 80,
             message='Running out of RAM!',
             delay=datetime.timedelta(hours=3),
         ),
