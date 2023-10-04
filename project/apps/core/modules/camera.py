@@ -40,9 +40,9 @@ class Camera(BaseModule):
             'The module provides integration with a camera.'
         ),
         commands=(
-            doc.CommandDef(BotCommands.CAMERA, doc.OptionsDef(ON, OFF)),
-            doc.CommandDef(BotCommands.CAMERA, 'photo'),
-            doc.CommandDef(BotCommands.CAMERA, 'record', doc.OptionsDef(ON, OFF)),
+            doc.Command(BotCommands.CAMERA, doc.Choices(ON, OFF)),
+            doc.Command(BotCommands.CAMERA, 'photo'),
+            doc.Command(BotCommands.CAMERA, 'record', doc.Choices(ON, OFF)),
         ),
     )
 

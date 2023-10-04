@@ -3,11 +3,11 @@
 #include <ArduinoJson.h>  // https://arduinojson.org/
 
 // For radio:
-#include "radio_transmitter/radio_transmitter.cpp"
+#include "JsonRadioTransmitter/JsonRadioTransmitter.cpp"
 
 // Pins for radio:
-#define PIN_CE 7
-#define PIN_CSN 8
+#define PIN_CE 10
+#define PIN_CSN 9
 
 // Other pins:
 #define PIR_SENSOR_PIN A0
@@ -21,21 +21,22 @@
 
 // Global objects:
 RF24 radio(PIN_CE, PIN_CSN);
-RadioTransmitter radioTransmitter(radio);
-StaticJsonDocument<MSG_SIZE> jsonBuffer;
+const unsigned int msgSize = 32 * 2;
+RadioTransmitter<StaticJsonDocument<msgSize>> radioTransmitter(radio, "root", "viewer", 88);
+StaticJsonDocument<msgSize> jsonBuffer;
 DHT dhtSensor(DHT_SENSOR_PIN, DHT22);
 
 // Global state:
 struct {
-    const unsigned short sendingDelay = 10 * 1000;
-    const unsigned short detectionDelay = 1 * 1000;
-    const unsigned short radioDelay = 60 * 1000;
+    const unsigned long sendingDelay = 60000;
+    const unsigned long detectionDelay = 1000;
+    const unsigned long radioDelay = 1000;
     unsigned long lastSentAt = 0;
     unsigned long lastRadioAt = 0;
 
-    bool isSilentMode = true;
-    bool isSilentModeInViewer = false;
-    bool isDebugMode = false;
+//     bool isSilentMode = true;
+//     bool isSilentModeInViewer = false;
+    bool debugMode = false;
 } globalState;
 
 
@@ -63,33 +64,33 @@ void loop() {
 //     }
     checkSerialInput();
 
-    const unsigned short pirSensor = analogRead(PIR_SENSOR_PIN);
+    const int pirSensor = analogRead(PIR_SENSOR_PIN);
     const unsigned long diff = millis() - globalState.lastSentAt;
-    const bool needToSend = (pirSensor > 20 && diff >= globalState.detectionDelay) || (diff >= globalState.sendingDelay);
+    const bool needToSendViaSerial = (pirSensor > 20 && diff >= globalState.detectionDelay) || (diff >= globalState.sendingDelay);
+    const bool needToSendViaRadio = millis() - globalState.lastRadioAt >= globalState.radioDelay;
 
-    if (needToSend) {
+    if (needToSendViaSerial || needToSendViaRadio) {
         jsonBuffer["t"] = TYPE_SENSORS;
         jsonBuffer["p"]["p"] = pirSensor;
         jsonBuffer["p"]["h"] = dhtSensor.readHumidity();
         jsonBuffer["p"]["t"] = dhtSensor.readTemperature();
-        sendJsonBufferViaSerial();
 
-        if (millis() - globalState.lastRadioAt >= globalState.radioDelay) {
+        if (needToSendViaSerial) {
+            sendJsonBufferViaSerial();
+            globalState.lastSentAt = millis();
+        }
+
+        if (needToSendViaRadio) {
             radioTransmitter.powerUp();
-            radioTransmitter.send(jsonBuffer);
-            radioTransmitter.powerDown();
-            globalState.lastRadioAt = millis();
 
-            if (globalState.isDebugMode) {
-               Serial.print("Available memory: ");
-               Serial.print(availableMemory());
-               Serial.println("b");
+            if (radioTransmitter.write(jsonBuffer)) {
+                globalState.lastRadioAt = millis();
             }
+
+            radioTransmitter.powerDown();
         }
 
         jsonBuffer.clear();
-
-        globalState.lastSentAt = millis();
     }
 
 //    if (globalState.isSilentMode && !globalState.isSilentModeInViewer) {
@@ -112,7 +113,7 @@ void loop() {
 }
 
 void checkSerialInput() {
-    if (Serial.available() == 0) {
+    if (!Serial.available()) {
         return;
     }
 
@@ -120,12 +121,12 @@ void checkSerialInput() {
     input.trim();
 
     if (input == "debug=on") {
-        globalState.isDebugMode = true;
-        radioTransmitter.isDebugMode = true;
+        globalState.debugMode = true;
+        radioTransmitter.debugMode = true;
         Serial.println("Debug enabled.");
     } else if (input == "debug=off") {
-        globalState.isDebugMode = false;
-        radioTransmitter.isDebugMode = false;
+        globalState.debugMode = false;
+        radioTransmitter.debugMode = false;
         Serial.println("Debug disabled.");
     } else {
         Serial.println("Unknown command.");
@@ -137,36 +138,36 @@ void sendJsonBufferViaSerial() {
     Serial.println();
 }
 
-bool pingViewer() {
-    radioTransmitter.powerUp();
-    const bool result = radioTransmitter.ping();
-    radioTransmitter.powerDown();
-    return result;
-}
+// bool pingViewer() {
+//     radioTransmitter.powerUp();
+//     const bool result = radioTransmitter.ping();
+//     radioTransmitter.powerDown();
+//     return result;
+// }
 
-bool turnOnSilentModeForViewer() {
-    jsonBuffer["t"] = "sm";
-    jsonBuffer["v"] = "on";
-    jsonBuffer["s"] = 1;
+// bool turnOnSilentModeForViewer() {
+//     jsonBuffer["t"] = "sm";
+//     jsonBuffer["v"] = "on";
+//     jsonBuffer["s"] = 1;
+//
+//     radioTransmitter.powerUp();
+//     const bool result = radioTransmitter.write(jsonBuffer);
+//     radioTransmitter.powerDown();
+//
+//     jsonBuffer.clear();
+//
+//     return result;
+// }
 
-    radioTransmitter.powerUp();
-    const bool result = radioTransmitter.send(jsonBuffer);
-    radioTransmitter.powerDown();
-
-    jsonBuffer.clear();
-
-    return result;
-}
-
-bool turnOffSilentModeForViewer() {
-    jsonBuffer["t"] = "sm";
-    jsonBuffer["v"] = "on";
-
-    radioTransmitter.powerUp();
-    const bool result = radioTransmitter.send(jsonBuffer);
-    radioTransmitter.powerDown();
-
-    jsonBuffer.clear();
-
-    return result;
-}
+// bool turnOffSilentModeForViewer() {
+//     jsonBuffer["t"] = "sm";
+//     jsonBuffer["v"] = "on";
+//
+//     radioTransmitter.powerUp();
+//     const bool result = radioTransmitter.write(jsonBuffer) || radioTransmitter.write(jsonBuffer);
+//     radioTransmitter.powerDown();
+//
+//     jsonBuffer.clear();
+//
+//     return result;
+// }

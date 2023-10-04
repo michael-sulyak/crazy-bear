@@ -22,16 +22,16 @@ class WiFiDevices(BaseModule):
             'The module manages connected devices to WiFi.'
         ),
         commands=(
-            doc.CommandDef(BotCommands.WIFI_DEVICES),
-            doc.CommandDef(
+            doc.Command(BotCommands.WIFI_DEVICES),
+            doc.Command(
                 BotCommands.WIFI_DEVICES,
-                doc.VarDef('mac_address'),
+                doc.Value('mac_address'),
             ),
-            doc.CommandDef(
+            doc.Command(
                 BotCommands.WIFI_DEVICES,
-                doc.VarDef('mac_address'),
-                doc.VarDef('name'),
-                doc.OptionsDef('true', 'false'),
+                doc.Value('mac_address'),
+                doc.Value('name'),
+                doc.Choices('true', 'false'),
             ),
         ),
     )

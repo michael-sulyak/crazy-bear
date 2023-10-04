@@ -22,12 +22,12 @@ class Utils(BaseModule):
             'The module provides additional utils.'
         ),
         commands=(
-            doc.CommandDef(
+            doc.Command(
                 BotCommands.TIMER,
-                doc.VarDef('number', type='int'),
-                doc.VarDef('time_type'),
+                doc.Value('number', type='int'),
+                doc.Value('time_type'),
                 '|',
-                doc.VarDef('command'),
+                doc.Value('command'),
             ),
         ),
     )

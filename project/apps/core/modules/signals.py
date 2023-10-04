@@ -28,7 +28,7 @@ class Signals(BaseModule):
             'The module processes input signals.'
         ),
         commands=(
-            doc.CommandDef(constants.BotCommands.COMPRESS_DB),
+            doc.Command(constants.BotCommands.COMPRESS_DB),
         ),
     )
     _timedelta_for_ping: datetime.timedelta = datetime.timedelta(seconds=30)

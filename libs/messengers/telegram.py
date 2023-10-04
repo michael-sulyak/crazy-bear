@@ -52,6 +52,12 @@ def handel_telegram_exceptions(func: typing.Callable) -> typing.Callable:
                 return None
 
             raise
+        # except TimedOut as e:
+        #     if isinstance(e.__cause__, urllib3.exceptions.HTTPError):
+        #         logging.warning(e, exc_info=True)
+        #         return None
+        # 
+        #     raise
 
     return wrap_func
 

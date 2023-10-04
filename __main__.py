@@ -111,7 +111,7 @@ def main():
             modules.Router,
             modules.Signals,
             modules.WiFiDevices,
-            modules.SmartLampController,
+            modules.LampControllerInBedroom,
             modules.Utils,
         ),
         state=state,

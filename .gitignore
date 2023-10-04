@@ -147,3 +147,4 @@ main.db
 certificate/
 hardware/arduino/radio_transmitter/config.hh
 zigbee2mqtt-data/configuration.yaml
+hardware/arduino/*/JsonRadioTransmitter

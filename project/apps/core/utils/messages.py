@@ -1,3 +1,5 @@
+import logging
+
 from libs.messengers.base import MessageInfo
 from libs.messengers.telegram import TelegramMessenger
 from .. import events
@@ -9,12 +11,18 @@ def process_telegram_message(message: MessageInfo, *, messanger: TelegramMesseng
     if message.user.username != config.TELEGRAM_USERNAME:
         text = message.text.replace("`", "\\`")
 
-        messanger.error(
+        error_message = (
             f'User "{message.user.name}" '
             f'(@{message.user.username}) sent '
             f'in chat #{message.chat.id}:\n'
             f'```\n{text}\n```'
         )
+
+        if text == '/start':
+            # Don't need to log "/start", because a lot of users can try to run the bot.
+            logging.warning(error_message)
+        else:
+            messanger.error(error_message)
 
         return
 

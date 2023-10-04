@@ -23,7 +23,7 @@ class Router(BaseModule):
             'The module provides an integration with a router.'
         ),
         commands=(
-            doc.CommandDef(constants.BotCommands.RAW_WIFI_DEVICES),
+            doc.Command(constants.BotCommands.RAW_WIFI_DEVICES),
         ),
     )
 

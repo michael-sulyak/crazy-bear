@@ -181,8 +181,8 @@ class Menu(BaseModule):
             'The module provides the menu.'
         ),
         commands=(
-            doc.CommandDef(constants.BotCommands.RETURN),
-            doc.CommandDef(constants.BotCommands.TO, doc.VarDef('name')),
+            doc.Command(constants.BotCommands.RETURN),
+            doc.Command(constants.BotCommands.TO, doc.Value('name')),
         ),
     )
 

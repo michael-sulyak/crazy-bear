@@ -30,7 +30,7 @@ class Arduino(BaseModule):
             'The module processes data from Arduino. Also it contains logic for the security mode.'
         ),
         commands=(
-            doc.CommandDef(BotCommands.ARDUINO, doc.OptionsDef(ON, OFF)),
+            doc.Command(BotCommands.ARDUINO, doc.Choices(ON, OFF)),
         ),
     )
 

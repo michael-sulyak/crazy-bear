@@ -27,20 +27,20 @@ class Report(BaseModule):
             'The module provides a short report with needed data.'
         ),
         commands=(
-            doc.CommandDef(constants.BotCommands.STATUS),
-            doc.CommandDef(constants.BotCommands.REPORT),
-            doc.CommandDef(constants.BotCommands.HELP),
-            doc.CommandDef(constants.BotCommands.DB_STATS),
-            doc.CommandDef(
+            doc.Command(constants.BotCommands.STATUS),
+            doc.Command(constants.BotCommands.REPORT),
+            doc.Command(constants.BotCommands.HELP),
+            doc.Command(constants.BotCommands.DB_STATS),
+            doc.Command(
                 constants.BotCommands.STATS,
-                doc.VarDef('number', type='int'),
-                doc.OptionsDef('days', 'hours', 'minutes', 'seconds'),
+                doc.Value('number', type='int'),
+                doc.Choices('days', 'hours', 'minutes', 'seconds'),
                 flags=(
-                    doc.FlagDef('f'),
-                    doc.FlagDef('s'),
-                    doc.FlagDef('e'),
-                    doc.FlagDef('a'),
-                    doc.FlagDef('r'),
+                    doc.Flag('f'),
+                    doc.Flag('s'),
+                    doc.Flag('e'),
+                    doc.Flag('a'),
+                    doc.Flag('r'),
                 ),
             ),
         ),

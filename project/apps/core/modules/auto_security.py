@@ -25,7 +25,7 @@ class AutoSecurity(BaseModule):
             'The module turns on the security mode and the camera after the owner leaves the house.'
         ),
         commands=(
-            doc.CommandDef(BotCommands.SECURITY, AUTO, doc.OptionsDef(ON, OFF)),
+            doc.Command(BotCommands.SECURITY, AUTO, doc.Choices(ON, OFF)),
         ),
     )
 

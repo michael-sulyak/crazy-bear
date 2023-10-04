@@ -9,7 +9,7 @@ from libs.messengers.utils import escape_markdown
 class Doc:
     title: str
     description: typing.Optional[str] = None
-    commands: tuple['CommandDef', ...] = ()
+    commands: tuple['Command', ...] = ()
 
     def to_str(self) -> str:
         result = f'*{escape_markdown(self.title)}*'
@@ -24,12 +24,12 @@ class Doc:
         return result
 
 
-class CommandDef:
+class Command:
     name: str
     params: tuple
-    flags: tuple['FlagDef', ...]
+    flags: tuple['Flag', ...]
 
-    def __init__(self, name: str, *params: typing.Union['BaseParam', str], flags: tuple['FlagDef', ...] = ()) -> None:
+    def __init__(self, name: str, *params: typing.Union['BaseParam', str], flags: tuple['Flag', ...] = ()) -> None:
         self.name = name
         self.params = params
         self.flags = flags
@@ -56,7 +56,7 @@ class BaseParam(abc.ABC):
         pass
 
 
-class VarDef(BaseParam):
+class Value(BaseParam):
     name: str
     type: str
 
@@ -68,7 +68,7 @@ class VarDef(BaseParam):
         return f'<{self.name}:{self.type}>'
 
 
-class OptionsDef(BaseParam):
+class Choices(BaseParam):
     options: tuple[str, ...]
 
     def __init__(self, *options: str) -> None:
@@ -78,7 +78,7 @@ class OptionsDef(BaseParam):
         return f'[{"|".join(self.options)}]'
 
 
-class FlagDef:
+class Flag:
     name: str
 
     def __init__(self, name: str) -> None:

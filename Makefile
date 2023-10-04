@@ -1,3 +1,6 @@
+REMOTE_ARDUINO_PORT = /dev/ttyUSB0
+LOCAL_ARDUINO_PORT = /dev/ttyUSB0
+
 # Commands for working with the server
 
 deploy:
@@ -25,12 +28,22 @@ fast_compile_arduino:
 compile_arduino_on_server: CMD := "\
 	export PATH='$$PATH:/home/ubuntu/bin' && \
 	echo 'Compiling...' && \
-	arduino-cli compile ~/crazy_bear/hardware/arduino/core --port /dev/ttyUSB0 --fqbn arduino:avr:nano:cpu=atmega328old --verify && \
+	arduino-cli compile ~/crazy_bear/hardware/arduino/core --port $(REMOTE_ARDUINO_PORT) --fqbn arduino:avr:nano:cpu=atmega328old --verify && \
 	echo 'Uploading...' && \
-	arduino-cli upload ~/crazy_bear/hardware/arduino/core --port /dev/ttyUSB0 --fqbn arduino:avr:nano:cpu=atmega328old --verify && \
+	arduino-cli upload ~/crazy_bear/hardware/arduino/core --port $(REMOTE_ARDUINO_PORT) --fqbn arduino:avr:nano:cpu=atmega328old --verify && \
 	echo 'Done.'\
 "
 compile_arduino_on_server: _run_remote_cmd
+
+arduino_monitor_on_server: CMD := "\
+	export PATH='$$PATH:/home/ubuntu/bin' && \
+	echo 'Compiling...' && \
+	arduino-cli compile ~/crazy_bear/hardware/arduino/core --port $(REMOTE_ARDUINO_PORT) --fqbn arduino:avr:nano:cpu=atmega328old --verify && \
+	echo 'Uploading...' && \
+	arduino-cli upload ~/crazy_bear/hardware/arduino/core --port $(REMOTE_ARDUINO_PORT) --fqbn arduino:avr:nano:cpu=atmega328old --verify && \
+	echo 'Done.'\
+"
+arduino_monitor_on_server: _run_remote_cmd
 
 rewrite: CMD := "\
 	sudo rm ./crazy_bear -r && \
@@ -54,7 +67,11 @@ build: _run_remote_cmd
 
 scp:
 	@echo "Creating zip..."
-	@zip -r crazy_bear.zip $(shell git ls-files) ./envs/prod.env
+	@zip -r crazy_bear.zip \
+	    $(shell git ls-files) \
+	    ./hardware/arduino/core/JsonRadioTransmitter \
+	    ./hardware/arduino/viewer/JsonRadioTransmitter \
+	    ./envs/prod.env
 	@echo "Coping to RPi..."
 	@scp ./crazy_bear.zip pi:~
 	@echo "Cleaning..."
@@ -72,18 +89,18 @@ arduino_list:
 
 arduino_compile:
 	echo "Compiling..."
-	arduino-cli compile ./hardware/arduino/viewer --port /dev/ttyUSB0 --fqbn arduino:avr:nano:cpu=atmega328old --verify
+	arduino-cli compile ./hardware/arduino/viewer --port $(LOCAL_ARDUINO_PORT) --fqbn arduino:avr:nano:cpu=atmega328old --verify
 	echo "Done."
 
 arduino_build:
 	echo "Compiling..."
-	arduino-cli compile ./hardware/arduino/viewer --port /dev/ttyUSB0 --fqbn arduino:avr:nano:cpu=atmega328old --verify
+	arduino-cli compile ./hardware/arduino/viewer --port $(LOCAL_ARDUINO_PORT) --fqbn arduino:avr:nano:cpu=atmega328old --verify
 	echo "Uploading..."
-	arduino-cli upload ./hardware/arduino/viewer --port /dev/ttyUSB0 --fqbn arduino:avr:nano:cpu=atmega328old --verify
+	arduino-cli upload ./hardware/arduino/viewer --port $(LOCAL_ARDUINO_PORT) --fqbn arduino:avr:nano:cpu=atmega328old --verify
 	echo "Done."
 
 arduino_monitor:
-	arduino-cli monitor --port /dev/ttyUSB0 --fqbn arduino:avr:nano:cpu=atmega328old
+	arduino-cli monitor --port $(LOCAL_ARDUINO_PORT) --fqbn arduino:avr:nano:cpu=atmega328old
 
 
 # Other
