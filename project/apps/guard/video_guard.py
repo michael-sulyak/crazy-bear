@@ -36,7 +36,7 @@ class VideoGuard:
 
     def process_frames(self) -> typing.Generator[None, tuple, None]:
         last_is_occupied = False
-        frames = []
+        frames: list[np.array] = []
         send_video = False
         min_frames_for_send_video = None
         last_sent_photo = None

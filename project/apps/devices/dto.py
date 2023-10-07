@@ -9,10 +9,10 @@ class Device:
     is_defining: bool = False
 
     @classmethod
-    def from_dict(cls, data: typing.Dict[str, typing.Any]) -> 'Device':
+    def from_dict(cls, data: dict[str, typing.Any]) -> 'Device':
         return cls(**data)
 
-    def to_dict(self) -> typing.Dict[str, typing.Any]:
+    def to_dict(self) -> dict[str, typing.Any]:
         return {
             'mac_address': self.mac_address,
             'name': self.name,

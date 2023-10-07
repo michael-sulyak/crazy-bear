@@ -2,8 +2,7 @@ import contextlib
 import typing
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import scoped_session, sessionmaker, declarative_base
-from sqlalchemy.orm.session import Session
+from sqlalchemy.orm import scoped_session, sessionmaker, declarative_base, Session
 
 from ... import config
 

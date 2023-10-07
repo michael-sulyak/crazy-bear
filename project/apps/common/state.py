@@ -14,8 +14,8 @@ class StateException(Exception):
 class State:
     _state: dict
     _lock: threading.RLock
-    _subscribers_map: typing.Dict[str, typing.Set[typing.Callable]]
-    _subscriber_locks_map: typing.Dict[str, threading.RLock]
+    _subscribers_map: dict[str, typing.Set[typing.Callable]]
+    _subscriber_locks_map: dict[str, threading.RLock]
 
     def __init__(self, init_state: typing.Optional[dict] = None) -> None:
         self._lock = threading.RLock()
@@ -107,7 +107,7 @@ class State:
     def subscribe_toggle(
             self,
             name: str,
-            methods_map: typing.Dict[tuple[typing.Any, typing.Any], typing.Callable],
+            methods_map: dict[tuple[typing.Any, typing.Any], typing.Callable],
     ) -> 'Subscriber':
         def _subscriber(*, name: str, old_value: typing.Any, new_value: typing.Any):
             methods_map[(old_value, new_value,)](name=name)

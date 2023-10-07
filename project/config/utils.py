@@ -19,13 +19,13 @@ class Env:
         else:
             return os.environ.get(name, default)
 
-    def int(self, name: str, *, default: typing.Any = NOTHING) -> typing.Optional[int]:
+    def int(self, name: str, *, default: typing.Any = NOTHING) -> int | None:
         return self._value(name, default=default, value_converter=int)
 
-    def float(self, name: str, *, default: typing.Any = NOTHING) -> typing.Optional[float]:
+    def float(self, name: str, *, default: typing.Any = NOTHING) -> float | None:
         return self._value(name, default=default, value_converter=float)
 
-    def bool(self, name: str, *, default: typing.Any = NOTHING) -> typing.Optional[int]:
+    def bool(self, name: str, *, default: typing.Any = NOTHING) -> bool | None:
         try:
             result = self(name)
         except KeyError:
@@ -48,7 +48,7 @@ class Env:
               name: str, *,
               default: typing.Any = NOTHING,
               separator: str = ',',
-              value_type: typing.Any = str) -> typing.Optional[tuple]:
+              value_type: typing.Any = str) -> tuple | None:
         try:
             result = self(name)
         except KeyError:
@@ -94,6 +94,8 @@ class Env:
 
             return default
 
+        assert result is not None
+
         return datetime.timedelta(**{result[1]: int(result[0])})
 
     def range(self,
@@ -108,10 +110,12 @@ class Env:
 
             return default
 
+        assert result is not None
+
         if len(result) != 2:
             raise ValueError
 
-        return result
+        return result  # type: ignore
 
     def time_range(self, name: str, *, default: typing.Any = NOTHING) -> typing.Tuple[datetime.time, datetime.time]:
         return self.range(name, default=default, value_type=datetime.time.fromisoformat)
@@ -159,6 +163,21 @@ class VersionDetails:
     def parsed_version(self) -> tuple[int, int, int]:
         return self.major, self.minor, self.patch
 
+    def increase(self) -> None:
+        """
+        `YY.MM.MICRO` style, where:
+            * `YY` - Short year - 6, 16, 106;
+            * `MM` - Short month - 1, 2 ... 11, 12;
+            * `MICRO` - Version in the month.
+        """
+
+        now = datetime.datetime.now(datetime.timezone.utc)
+
+        if self.major != now.year or self.minor != now.month:
+            self.major, self.minor, self.patch = now.year, now.month, 1
+        else:
+            self.patch += 1
+
     def save(self) -> None:
         version_line = self._get_version_match().group(0)
 
@@ -182,5 +201,7 @@ class VersionDetails:
             version_file = file.read()
 
         version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", version_file, re.M)
+
+        assert version_match is not None
 
         return version_match

@@ -26,7 +26,7 @@ class Router(BaseModule):
     )
 
     @property
-    def initial_state(self) -> typing.Dict[str, typing.Any]:
+    def initial_state(self) -> dict[str, typing.Any]:
         host_is_at_home = False
 
         try:

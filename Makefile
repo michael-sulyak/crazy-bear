@@ -14,6 +14,10 @@ run:
 	export PYTHONPATH="/usr/local/lib/python3.11/dist-packages:/usr/lib/python3/dist-packages:/usr/lib/python3.11/dist-packages:$PYTHONPATH" && \
 	poetry run python3 ./__main__.py
 
+mypy:
+	export PYTHONPATH="/usr/local/lib/python3.11/dist-packages:/usr/lib/python3/dist-packages:/usr/lib/python3.11/dist-packages:$PYTHONPATH" && \
+	poetry run mypy ./__main__.py --ignore-missing-imports
+
 ipython:
 	export PYTHONPATH="/usr/local/lib/python3.11/dist-packages:/usr/lib/python3/dist-packages:/usr/lib/python3.11/dist-packages:$PYTHONPATH" && \
 	poetry run python3
@@ -75,16 +79,16 @@ rewrite: CMD := "\
 "
 rewrite: _run_remote_cmd
 
-up: CMD = "cd crazy_bear && docker-compose -p crazy_bear -f docker-compose.prod.yml up -d"
+up: CMD = "cd crazy_bear && docker compose -p crazy_bear -f docker-compose.prod.yml up -d"
 up: _run_remote_cmd
 
-fast_stop: CMD = "cd crazy_bear && docker-compose -p crazy_bear -f docker-compose.prod.yml stop core"
+fast_stop: CMD = "cd crazy_bear && docker compose -p crazy_bear -f docker-compose.prod.yml stop core"
 fast_stop: _run_remote_cmd
 
-stop: CMD = "cd crazy_bear && docker-compose -p crazy_bear -f docker-compose.prod.yml stop"
+stop: CMD = "cd crazy_bear && docker compose -p crazy_bear -f docker-compose.prod.yml stop"
 stop: _run_remote_cmd
 
-build: CMD = "cd crazy_bear && docker-compose -p crazy_bear -f docker-compose.prod.yml build"
+build: CMD = "cd crazy_bear && docker compose -p crazy_bear -f docker-compose.prod.yml build"
 build: _run_remote_cmd
 
 scp:
@@ -130,7 +134,7 @@ arduino_monitor:
 bump_version:
 	python3 -c "from dotenv import load_dotenv; load_dotenv('envs/local.env'); \
                from project.config.utils import VersionDetails; \
-               version_details = VersionDetails(); version_details.patch += 1; \
+               version_details = VersionDetails(); version_details.increase(); \
                version_details.save()"
 
 freeze:

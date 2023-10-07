@@ -64,12 +64,12 @@ class LampControllerInBedroom(BaseModule):
         )
 
     @property
-    def initial_state(self) -> typing.Dict[str, typing.Any]:
+    def initial_state(self) -> dict[str, typing.Any]:
         return {
             constants.MAIN_LAMP_IS_ON: False,
         }
 
-    def init_repeatable_tasks(self) -> tuple:
+    def init_repeatable_tasks(self) -> tuple[ScheduledTask, ...]:
         repeatable_tasks = ()
 
         if config.ARTIFICIAL_SUNRISE_SCHEDULES:
@@ -85,7 +85,7 @@ class LampControllerInBedroom(BaseModule):
         return repeatable_tasks
 
     def process_command(self, command: Command) -> typing.Any:
-        handlers_map = {
+        handlers_map: dict[str, typing.Callable] = {
             ON: lambda: self._turn_on_lamp(brightness=command.second_arg and int(command.second_arg)),
             OFF: self._turn_off_lamp,
             'test': self._test_lamp,
@@ -158,6 +158,8 @@ class LampControllerInBedroom(BaseModule):
 
     @synchronized_method
     def _run_artificial_sunrise(self, *, step: int = 1) -> None:
+        assert self._last_artificial_sunrise_time is not None
+
         def _run_next_step(timedelta: datetime.timedelta) -> None:
             self.task_queue.put(
                 self._run_artificial_sunrise,
@@ -220,8 +222,8 @@ class LampControllerInBedroom(BaseModule):
         self.state[constants.MAIN_LAMP_IS_ON] = False
 
     @synchronized_method
-    def _can_continue_artificial_sunrise(self) -> None:
-        return self._last_artificial_sunrise_time and (
+    def _can_continue_artificial_sunrise(self) -> bool:
+        return self._last_artificial_sunrise_time is not None and (
             self._last_manual_action is None
             or self._last_manual_action < self._last_artificial_sunrise_time
         )

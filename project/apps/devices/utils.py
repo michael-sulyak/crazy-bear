@@ -10,7 +10,7 @@ from ..dynamic_config.utils import dynamic_config
 class DeviceManager:
     _lock: threading.RLock
     _devices: typing.Optional[tuple[Device, ...]] = None
-    _devices_map: typing.Optional[typing.Dict[str, Device]] = None
+    _devices_map: typing.Optional[dict[str, Device]] = None
 
     def __init__(self) -> None:
         self._lock = threading.RLock()
@@ -41,7 +41,7 @@ class DeviceManager:
             return self._devices
 
     @property
-    def devices_map(self) -> typing.Dict[str, Device]:
+    def devices_map(self) -> dict[str, Device]:
         with self._lock:
             if self._devices_map is None:
                 self._devices_map = {}

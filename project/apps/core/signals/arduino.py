@@ -19,7 +19,7 @@ from ...signals.models import Signal
 class ArduinoHandler(BaseSignalHandler):
     task_interval = datetime.timedelta(minutes=5)
     _lock: threading.RLock
-    _last_sent_at_map: typing.Dict[str, datetime.datetime]
+    _last_sent_at_map: dict[str, datetime.datetime]
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -148,7 +148,7 @@ class ArduinoHandler(BaseSignalHandler):
 
     @synchronized_method
     def _process_new_arduino_logs(self, signals: list[Signal]) -> None:
-        last_signal_data = {}
+        last_signal_data: dict[str, typing.Any] = {}
 
         for signal in reversed(signals):
             if signal.value is None:

@@ -22,4 +22,4 @@ RUN poetry config virtualenvs.in-project true && \
     poetry config virtualenvs.options.system-site-packages true
 COPY ./pyproject.toml /app
 COPY ./poetry.lock /app
-RUN poetry install
+RUN poetry install --without dev

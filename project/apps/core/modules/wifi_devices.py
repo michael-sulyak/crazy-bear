@@ -45,7 +45,7 @@ class WiFiDevices(BaseModule):
 
             for device in device_manager.devices:
                 text += (
-                    f'\n\n**Name:** `{escape_markdown(device.name)}`\n'
+                    f'\n\n**Name:** `{escape_markdown(device.name or "")}`\n'
                     f'**MAC:** `{escape_markdown(device.mac_address)}`\n'
                     f'**Is defining:** {device.is_defining}'
                 )

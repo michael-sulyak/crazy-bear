@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 from libs.messengers.base import BaseMessenger
 from libs.task_queue import BaseTaskQueue
-from libs.task_queue.dto import RepeatableTask
+from libs.task_queue.dto import RepeatableTask, ScheduledTask
 from libs.zigbee.base import ZigBee
 from . import events, constants
 from ..common import doc
@@ -25,7 +25,7 @@ class ModuleContext:
 
 class BaseModule(abc.ABC):
     doc: doc.Doc
-    initial_state = {}
+    initial_state: dict = {}
     context: ModuleContext
     messenger: BaseMessenger
     state: State
@@ -51,11 +51,11 @@ class BaseModule(abc.ABC):
         for repeatable_task in self._repeatable_tasks:
             self.task_queue.put_task(repeatable_task)
 
-    def init_repeatable_tasks(self) -> tuple:
+    def init_repeatable_tasks(self) -> tuple[ScheduledTask, ...]:
         return ()
 
     def subscribe_to_events(self) -> tuple[BaseReceiver, ...]:
-        subscribers = (
+        subscribers: tuple[BaseReceiver, ...] = (
             events.shutdown.connect(self.disable),
         )
 

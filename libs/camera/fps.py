@@ -4,12 +4,12 @@ import typing
 
 
 class FPSTracker:
-    _started_at: typing.Optional[datetime.datetime] = None
-    _finished_at: typing.Optional[datetime.datetime] = None
-    _last_updated_at: typing.Optional[datetime.datetime] = None
-    _num_frames: typing.Optional[int] = None
-    _new_started_at: typing.Optional[datetime.datetime] = None
-    _new_num_frames: typing.Optional[int] = None
+    _started_at: datetime.datetime | None = None
+    _finished_at: datetime.datetime | None = None
+    _last_updated_at: datetime.datetime | None = None
+    _num_frames: int | None = None
+    _new_started_at: datetime.datetime | None = None
+    _new_num_frames: int | None = None
     _timedelta_for_duplicate: datetime.timedelta = datetime.timedelta(seconds=5)
     _timedelta_for_reset: datetime.timedelta = datetime.timedelta(seconds=10)
 
@@ -26,11 +26,16 @@ class FPSTracker:
 
         self._finished_at = datetime.datetime.now()
 
-    def update(self, fps: typing.Optional[int] = None) -> None:
+    def update(self, fps: int | None = None) -> None:
         """
         Increment the total number of frames examined during the
         start and end intervals.
         """
+
+        assert self._started_at is not None
+        assert self._new_num_frames is not None
+        assert self._num_frames is not None
+        assert self._last_updated_at is not None
 
         now = datetime.datetime.now()
         diff = now - self._started_at
@@ -63,10 +68,15 @@ class FPSTracker:
         end interval.
         """
 
+        assert self._finished_at is not None
+        assert self._started_at is not None
+
         finished_at = self._finished_at or datetime.datetime.now()
         return (finished_at - self._started_at).total_seconds()
 
     def fps(self) -> float:
         """Compute the (approximate) frames per second."""
+
+        assert self._num_frames is not None
 
         return self._num_frames / self.elapsed()

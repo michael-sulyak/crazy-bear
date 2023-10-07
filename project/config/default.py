@@ -34,7 +34,7 @@ OPENWEATHERMAP_URL = env('OPENWEATHERMAP_URL')
 VIDEO_SRC = env.int('VIDEO_SRC')
 IMSHOW = env.bool('IMSHOW')
 IMAGE_RESOLUTION = env.tuple('IMAGE_RESOLUTION', value_type=int)
-FPS = env.int('FPS')
+FPS: int = env.int('FPS')  # type: ignore
 
 # Arduino
 ARDUINO_TTY = env('ARDUINO_TTY')
@@ -69,6 +69,6 @@ NORMAL_TEMPERATURE_RANGE = env.tuple('NORMAL_TEMPERATURE_RANGE', value_type=int)
 ARTIFICIAL_SUNRISE_SCHEDULES = env.tuple('ARTIFICIAL_SUNRISE_SCHEDULES', separator=';', value_type=CronTab)
 
 # Smart devices
-ZIGBEE_MQ_HOST = env('ZIGBEE_MQ_HOST')
-ZIGBEE_MQ_PORT = env.int('ZIGBEE_MQ_PORT')
-MAIN_SMART_LAMP = env('MAIN_SMART_LAMP')
+ZIGBEE_MQ_HOST: str = env('ZIGBEE_MQ_HOST')
+ZIGBEE_MQ_PORT: int = env.int('ZIGBEE_MQ_PORT')  # type: ignore
+MAIN_SMART_LAMP: str = env('MAIN_SMART_LAMP')

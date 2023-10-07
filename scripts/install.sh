@@ -5,6 +5,7 @@ sudo apt install -y \
     fail2ban \
     python3-pip \
     docker.io \
+    docker-compose-plugin \
     unzip \
     raspi-config \
     wiringpi \

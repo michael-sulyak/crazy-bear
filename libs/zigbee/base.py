@@ -32,6 +32,8 @@ class ZigBee:
         if self._mq is None:
             self.open()
 
+        assert self._mq is not None
+
         return self._mq
 
     @property
@@ -51,19 +53,27 @@ class ZigBee:
 
     def is_health(self) -> bool:
         name = 'health_check'
+
         response = self._request_data(
             topic_for_sending=f'zigbee2mqtt/bridge/request/{name}',
             topic_for_receiving=f'zigbee2mqtt/bridge/response/{name}',
         )
+
+        assert response is not None
+
         return response['status'] == 'ok' and response['data']['healthy']
 
     def rename_device(self, friendly_name_or_ieee_address: str, new_friendly_name: str) -> bool:
         name = 'device/rename'
+
         response = self._request_data(
             topic_for_sending=f'zigbee2mqtt/bridge/request/{name}',
             topic_for_receiving=f'zigbee2mqtt/bridge/response/{name}',
             payload={'from': friendly_name_or_ieee_address, 'to': new_friendly_name},
         )
+
+        assert response is not None
+
         return response['status'] == 'ok'
 
     @synchronized_method
@@ -71,7 +81,7 @@ class ZigBee:
                            topic: str,
                            func: typing.Callable) -> None:
         self._permanent_subscribers_map[topic].append(func)
-        self._mq.subscribe(topic)
+        self.mq.subscribe(topic)
 
     @synchronized_method
     def open(self) -> None:
@@ -154,7 +164,7 @@ class ZigBee:
                       topic_for_sending: str,
                       topic_for_receiving: str,
                       payload: typing.Any = None,
-                      timeout: int = 10) -> typing.Optional[dict]:
+                      timeout: int = 10) -> dict | None:
         event = threading.Event()
         result = None
 

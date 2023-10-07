@@ -3,6 +3,8 @@ from collections.abc import Mapping
 
 
 class FrozenDict(Mapping):
+    _hash: int | None
+
     def __init__(self, *args, **kwargs) -> None:
         self._d = dict(*args, **kwargs)
         self._hash = None

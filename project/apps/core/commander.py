@@ -71,7 +71,7 @@ class Commander:
             new_message.connect(lambda message: self.message_queue.put(message)),
         )
 
-    def run(self) -> typing.NoReturn:
+    def run(self) -> None:
         self.zig_bee.open()
         self.task_worker.run()
 

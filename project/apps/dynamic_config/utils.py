@@ -7,7 +7,7 @@ from .events import dynamic_config_is_updated
 from .models import DynamicConstant
 
 
-def get_config() -> typing.Dict[str, typing.Any]:
+def get_config() -> dict[str, typing.Any]:
     constants = models.DynamicConstant.all()
 
     return {

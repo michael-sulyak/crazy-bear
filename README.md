@@ -11,7 +11,7 @@ hope the code will be helpful to you.**
 
 ![Sketch](sketch.jpg)
 
-# TO DO (for version 1.0)
+# TO DO
 
 - [ ] Support `asyncio`.
 - [ ] Use `aiogram`.
@@ -21,6 +21,7 @@ hope the code will be helpful to you.**
 - [ ] Add more workers.
 - [ ] Rewrite the inteкface (нse mini apps from Telegram to improve the interface).
 - [ ] Use ZigBee devices instead of Arduino.
+- [ ] Use mypy.
 
 ## Used:
 

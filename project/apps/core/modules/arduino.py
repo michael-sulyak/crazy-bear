@@ -83,6 +83,8 @@ class Arduino(BaseModule):
         if not self.state[ARDUINO_IS_ENABLED]:
             return
 
+        assert self._arduino_connector is not None
+
         if not self._arduino_connector.is_active:
             self._disable_arduino()
             return
@@ -94,6 +96,8 @@ class Arduino(BaseModule):
 
     @synchronized_method
     def _enable_arduino(self) -> None:
+        assert self._arduino_connector is not None
+
         if self._arduino_connector.is_active:
             self.messenger.send_message('Arduino is already on')
             return
@@ -110,6 +114,8 @@ class Arduino(BaseModule):
     @synchronized_method
     def _disable_arduino(self) -> None:
         self.state[ARDUINO_IS_ENABLED] = False
+
+        assert self._arduino_connector is not None
 
         if self._arduino_connector.is_active:
             self._arduino_connector.close()

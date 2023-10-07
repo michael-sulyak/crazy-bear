@@ -250,7 +250,7 @@ def mock_var(module: object, attribute: str, new: typing.Any) -> typing.Generato
 
 def with_throttling(period: datetime.timedelta, *, count: int = 1) -> typing.Callable:
     def _decorator(func: typing.Callable) -> typing.Callable:
-        times_of_run = deque()
+        times_of_run: deque = deque()
 
         @functools.wraps(func)
         def _wrapper(*args, **kwargs) -> None:

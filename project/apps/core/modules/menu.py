@@ -169,10 +169,24 @@ class AllFuncsPage(BasePage):
 
         return [
             camera_line,
-            [f'{constants.BotCommands.ARDUINO} {OFF if self.state[constants.ARDUINO_IS_ENABLED] else ON}'],
-            [constants.BotCommands.STATS, constants.BotCommands.DB_STATS, constants.BotCommands.COMPRESS_DB],
-            [constants.BotCommands.RAW_WIFI_DEVICES, constants.BotCommands.WIFI_DEVICES],
-            [constants.BotCommands.HELP, constants.BotCommands.RETURN],
+            [
+                KeyboardButton(
+                    f'{constants.BotCommands.ARDUINO} {OFF if self.state[constants.ARDUINO_IS_ENABLED] else ON}',
+                ),
+            ],
+            [
+                KeyboardButton(constants.BotCommands.STATS),
+                KeyboardButton(constants.BotCommands.DB_STATS),
+                KeyboardButton(constants.BotCommands.COMPRESS_DB),
+            ],
+            [
+                KeyboardButton(constants.BotCommands.RAW_WIFI_DEVICES),
+                KeyboardButton(constants.BotCommands.WIFI_DEVICES)
+            ],
+            [
+                KeyboardButton(constants.BotCommands.HELP),
+                KeyboardButton(constants.BotCommands.RETURN)
+            ],
         ]
 
 

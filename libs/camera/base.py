@@ -11,7 +11,7 @@ class VideoCamera:
     _worker: typing.Optional[threading.Thread] = None
     _video_stream: VideoStream
     _callback: typing.Callable
-    _fps_tracker = FPSTracker
+    _fps_tracker: FPSTracker
 
     def __init__(self, *,
                  video_stream: VideoStream,
@@ -47,7 +47,7 @@ class VideoCamera:
         if self._worker is not None:
             self._worker.join()
 
-    def _process_stream(self) -> typing.NoReturn:
+    def _process_stream(self) -> None:
         self._fps_tracker.start()
 
         while self._is_run.is_set():

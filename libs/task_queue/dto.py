@@ -20,7 +20,7 @@ __all__ = (
 )
 
 
-@dataclass(eq=False)
+@dataclass(kw_only=True, eq=False)
 class Task:
     priority: int
     target: typing.Callable
@@ -116,11 +116,9 @@ class RepeatableTask(Task, abc.ABC):
     pass
 
 
-@dataclass(eq=False)
+@dataclass(kw_only=True, eq=False)
 class IntervalTask(RepeatableTask):
-    interval: datetime.timedelta = field(
-        default=None,
-    )
+    interval: datetime.timedelta
     run_immediately: bool = field(
         default=True,
     )
@@ -143,21 +141,17 @@ class IntervalTask(RepeatableTask):
                 raise exceptions.RepeatTask(delay=self.interval)
 
 
-@dataclass(eq=False)
+@dataclass(kw_only=True, eq=False)
 class DelayedTask(RepeatableTask):
-    delay: datetime.timedelta = field(
-        default=None,
-    )
+    delay: datetime.timedelta
 
     def __post_init__(self) -> None:
         self.run_after = self.run_after + self.delay
 
 
-@dataclass(eq=False)
+@dataclass(kw_only=True, eq=False)
 class ScheduledTask(RepeatableTask):
-    crontab: CronTab = field(
-        default=None,
-    )
+    crontab: CronTab
 
     def __post_init__(self) -> None:
         self.run_after = self.crontab.next(self.run_after, default_utc=False, return_datetime=True)

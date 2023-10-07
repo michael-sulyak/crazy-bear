@@ -286,7 +286,7 @@ class Signal(db.Base):
         )
 
     @classmethod
-    def get_table_stats(cls) -> typing.Dict[str, int]:
+    def get_table_stats(cls) -> dict[str, int]:
         session = db.get_db_session()
 
         all_types = (
@@ -303,7 +303,7 @@ class Signal(db.Base):
     def _get_query_data(cls,
                         signal_type: str, *,
                         datetime_range: tuple[datetime.datetime, datetime.datetime],
-                        ) -> typing.Optional[typing.Dict[str, typing.Any]]:
+                        ) -> typing.Optional[dict[str, typing.Any]]:
         time_filter = db.get_db_session().query(
             cls.received_at,
         ).filter(
