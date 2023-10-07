@@ -57,7 +57,7 @@ DROPBOX_TOKEN = env('DROPBOX_TOKEN')
 
 # Router
 ROUTER_TYPE = env('ROUTER_TYPE')
-assert ROUTER_TYPE in {'mi', 'tplink'}
+assert ROUTER_TYPE == 'mi'
 ROUTER_USERNAME = env('ROUTER_USERNAME', default=None)
 ROUTER_PASSWORD = env('ROUTER_PASSWORD')
 ROUTER_URL = env('ROUTER_URL')

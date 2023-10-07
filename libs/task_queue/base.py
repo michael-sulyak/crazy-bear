@@ -17,7 +17,7 @@ __all__ = (
 
 
 class TaskPriorityQueue(Queue):
-    queue_map: typing.Dict[int, typing.List[typing.Tuple[typing.Any, Task]]]
+    queue_map: typing.Dict[int, typing.List[tuple[typing.Any, Task]]]
     priorities: typing.List[int]
 
     def _init(self, maxsize) -> None:

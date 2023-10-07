@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import queue
 import threading
@@ -43,19 +44,19 @@ class ThreadWorker(BaseWorker):
     middlewares: typing.Tuple[BaseMiddleware, ...]
     _middleware_chain: typing.Callable
     _is_run: threading.Event
-    _thread: threading.Thread
+    _threads: tuple[threading.Thread, ...]
     _on_close: typing.Optional[typing.Callable]
     _getting_delay: float = 0.1
 
     def __init__(self, *,
                  task_queue: BaseTaskQueue,
                  on_close: typing.Optional[typing.Callable] = None,
-                 middlewares: typing.Tuple[BaseMiddleware, ...]) -> None:
+                 middlewares: typing.Tuple[BaseMiddleware, ...],
+                 count: int = 1) -> None:
         self.task_queue = task_queue
         self.middlewares = middlewares
         self._on_close = on_close
         self._is_run = threading.Event()
-        self._thread = threading.Thread(target=self._process_tasks)
 
         self._middleware_chain = self._run_task
 
@@ -66,6 +67,11 @@ class ThreadWorker(BaseWorker):
                 task_queue=self.task_queue,
             )
 
+        self._threads = tuple(
+            threading.Thread(target=self._process_tasks)
+            for _ in range(count)
+        )
+
     @property
     def is_run(self) -> bool:
         return self._is_run.is_set()
@@ -74,10 +80,13 @@ class ThreadWorker(BaseWorker):
         if self.is_run:
             return
 
-        logging.info(f'Run {self.__class__.__name__}...')
+        logging.debug(f'Run {self.__class__.__name__}...')
         self._is_run.set()
-        self._thread.start()
-        logging.info(f'{self.__class__.__name__} is ready.')
+
+        for thread in self._threads:
+            thread.start()
+
+        logging.debug(f'{self.__class__.__name__} is ready.')
 
     def stop(self) -> None:
         if not self.is_run:
@@ -88,9 +97,12 @@ class ThreadWorker(BaseWorker):
         if len(self.task_queue):
             logging.warning(f'TaskQueue is stopped, but there are {len(self.task_queue)} tasks in queue.')
 
-        self._thread.join()
+        for thread in self._threads:
+            thread.join()
 
     def _process_tasks(self) -> typing.NoReturn:
+        logging.debug('Running worker...')
+
         while self.is_run:
             task = self.task_queue.get()
 

@@ -5,10 +5,8 @@ from libs.messengers.utils import escape_markdown
 from ..base import BaseModule, Command
 from ...common import doc
 from ...common.routers.mi import mi_wifi
-from ...common.routers.tplink import TpLink
 from ...core import constants, events
 from ...devices.utils import check_if_host_is_at_home
-from .... import config
 
 
 __all__ = (
@@ -60,25 +58,10 @@ class Router(BaseModule):
     def _send_wifi_connected_devices(self) -> None:
         message = ''
 
-        if config.ROUTER_TYPE == 'tplink':
-            tplink_client = TpLink(
-                username=config.ROUTER_USERNAME,
-                password=config.ROUTER_PASSWORD,
-                url=config.ROUTER_URL,
-            )
+        for device in mi_wifi.device_list()['list']:
+            for key, value in device.items():
+                message += f'*{escape_markdown(str(key))}:* {escape_markdown(str(value))}\n'
 
-            connected_devices = tplink_client.get_connected_devices()
-
-            for connected_device in connected_devices:
-                for key, value in connected_device.items():
-                    message += f'*{escape_markdown(key)}:* {escape_markdown(value)}\n'
-
-                message += '\n'
-        elif config.ROUTER_TYPE == 'mi':
-            for device in mi_wifi.device_list()['list']:
-                for key, value in device.items():
-                    message += f'*{escape_markdown(str(key))}:* {escape_markdown(str(value))}\n'
-
-                message += '\n'
+            message += '\n'
 
         self.messenger.send_message(message, use_markdown=True)

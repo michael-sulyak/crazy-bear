@@ -1,6 +1,28 @@
 REMOTE_ARDUINO_PORT = /dev/ttyUSB0
 LOCAL_ARDUINO_PORT = /dev/ttyUSB0
 
+
+# Main commands
+
+bash:
+	docker compose run --rm core bash
+
+prod-bash:
+	docker compose -p crazy_bear -f docker-compose.prod.yml run --rm core bash
+
+run:
+	export PYTHONPATH="/usr/local/lib/python3.11/dist-packages:/usr/lib/python3/dist-packages:/usr/lib/python3.11/dist-packages:$PYTHONPATH" && \
+	poetry run python3 ./__main__.py
+
+ipython:
+	export PYTHONPATH="/usr/local/lib/python3.11/dist-packages:/usr/lib/python3/dist-packages:/usr/lib/python3.11/dist-packages:$PYTHONPATH" && \
+	poetry run python3
+
+test:
+	export PYTHONPATH=".:/usr/local/lib/python3.11/dist-packages:/usr/lib/python3/dist-packages:/usr/lib/python3.11/dist-packages:$PYTHONPATH" && \
+	poetry run pytest ./libs ./project
+
+
 # Commands for working with the server
 
 deploy:

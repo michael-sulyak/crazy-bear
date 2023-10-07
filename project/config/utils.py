@@ -156,7 +156,7 @@ class VersionDetails:
         return f'{self.major}.{self.minor}.{self.patch}'
 
     @property
-    def parsed_version(self) -> typing.Tuple[int, int, int]:
+    def parsed_version(self) -> tuple[int, int, int]:
         return self.major, self.minor, self.patch
 
     def save(self) -> None:

@@ -26,9 +26,7 @@ class DynamicConstant(db.Base):
 
     @classmethod
     def set(cls, name: str, value: typing.Any) -> None:
-        session = db.get_db_session()
-
-        with session.begin():
+        with db.session_transaction() as session:
             if session.query(cls).filter(cls.name == name).first() is None:
                 session.add(cls(name=name, value=value))
             else:
@@ -36,7 +34,5 @@ class DynamicConstant(db.Base):
 
     @classmethod
     def delete(cls, name: str) -> None:
-        session = db.get_db_session()
-
-        with session.begin():
+        with db.session_transaction() as session:
             session.query(cls).filter(cls.name == name).delete()

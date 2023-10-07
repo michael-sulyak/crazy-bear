@@ -1,6 +1,8 @@
+import contextlib
+import typing
+
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.orm import scoped_session, sessionmaker, declarative_base
 from sqlalchemy.orm.session import Session
 
 from ... import config
@@ -12,6 +14,7 @@ __all__ = (
     'get_db_session',
     'close_db_session',
     'vacuum',
+    'session_transaction',
 )
 
 Base = declarative_base()
@@ -21,12 +24,18 @@ db_engine = create_engine(
     echo=config.DATABASE_DEBUG,
 )
 
-session_factory = sessionmaker(bind=db_engine, autocommit=True, autoflush=True)
+session_factory = sessionmaker(bind=db_engine, autoflush=True, expire_on_commit=False)
 MySession = scoped_session(session_factory)
 
 
 def get_db_session() -> Session:
     return MySession()
+
+
+@contextlib.contextmanager
+def session_transaction() -> typing.Generator:
+    with get_db_session() as session, session.begin():
+        yield session
 
 
 close_db_session = MySession.remove

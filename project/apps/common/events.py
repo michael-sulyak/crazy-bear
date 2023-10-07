@@ -15,8 +15,9 @@ __all__ = (
 
 
 class Event:
-    receivers: typing.Tuple[typing.Callable, ...]
-    providing_kwargs: typing.Tuple[str]
+    # todo: add parallel processing
+    receivers: tuple[typing.Callable, ...]
+    providing_kwargs: tuple[str]
     _lock: threading.RLock
 
     def __init__(self, *, providing_kwargs: typing.Optional[typing.Iterable[str]] = ()) -> None:

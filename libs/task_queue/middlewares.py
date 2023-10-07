@@ -22,7 +22,7 @@ class SupportOfRetries(BaseMiddleware):
             return handler(task=task)
         except task_exceptions.RepeatTask as e:
             task.run_after = e.after
-            logging.info('Retrying %s', task)
+            logging.debug('Retrying %s', task)
             task_queue.put_task(task)
 
 
@@ -32,11 +32,11 @@ class ConcreteRetries(BaseMiddleware):
     """
 
     max_retries: float
-    exceptions: typing.Tuple[typing.Type[Exception], ...]
+    exceptions: tuple[typing.Type[Exception], ...]
 
     def __init__(self, *,
                  max_retries: float = 3,
-                 exceptions: typing.Tuple[typing.Type[Exception], ...] = (Exception,)) -> None:
+                 exceptions: tuple[typing.Type[Exception], ...] = (Exception,)) -> None:
         super().__init__()
 
         self.max_retries = max_retries
@@ -56,7 +56,7 @@ class ConcreteRetries(BaseMiddleware):
                 task.options['exception'] = e
 
                 if retries <= self.max_retries:
-                    logging.info('Retry policy for %s', task)
+                    logging.debug('Retry policy for %s', task)
                     raise task_exceptions.RepeatTask(delay=self._get_retry_delay(retries))
 
                 task.error = e.source

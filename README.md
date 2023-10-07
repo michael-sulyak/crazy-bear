@@ -5,11 +5,22 @@ hope the code will be helpful to you.**
 
 ## Preview
 
-![Sketch](preview.png)
+![Preview](preview.png)
 
 ## Scheme
 
 ![Sketch](sketch.jpg)
+
+# TO DO (for version 1.0)
+
+- [ ] Support `asyncio`.
+- [ ] Use `aiogram`.
+- [ ] Add asyncio queue.
+- [ ] Add multiprocessing queue.
+- [ ] Use multiprocessing for heavy operations.
+- [ ] Add more workers.
+- [ ] Rewrite the inteкface (нse mini apps from Telegram to improve the interface).
+- [ ] Use ZigBee devices instead of Arduino.
 
 ## Used:
 

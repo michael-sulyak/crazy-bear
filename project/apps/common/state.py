@@ -107,7 +107,7 @@ class State:
     def subscribe_toggle(
             self,
             name: str,
-            methods_map: typing.Dict[typing.Tuple[typing.Any, typing.Any], typing.Callable],
+            methods_map: typing.Dict[tuple[typing.Any, typing.Any], typing.Callable],
     ) -> 'Subscriber':
         def _subscriber(*, name: str, old_value: typing.Any, new_value: typing.Any):
             methods_map[(old_value, new_value,)](name=name)

@@ -9,7 +9,7 @@ from ..dynamic_config.utils import dynamic_config
 
 class DeviceManager:
     _lock: threading.RLock
-    _devices: typing.Optional[typing.Tuple[Device, ...]] = None
+    _devices: typing.Optional[tuple[Device, ...]] = None
     _devices_map: typing.Optional[typing.Dict[str, Device]] = None
 
     def __init__(self) -> None:
@@ -30,7 +30,7 @@ class DeviceManager:
             dynamic_config['devices'] = [device.to_dict() for device in devices]
 
     @property
-    def devices(self) -> typing.Tuple[Device, ...]:
+    def devices(self) -> tuple[Device, ...]:
         with self._lock:
             if self._devices is None:
                 self._devices = tuple(

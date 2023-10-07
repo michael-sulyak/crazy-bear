@@ -2,7 +2,7 @@ import abc
 import typing
 
 from emoji.core import emojize
-from telegram import ReplyKeyboardMarkup
+from telegram import ReplyKeyboardMarkup, KeyboardButton
 
 from .. import constants
 from ..base import BaseModule, Command
@@ -69,13 +69,13 @@ class BasePage(abc.ABC):
 
     def get(self) -> ReplyKeyboardMarkup:
         return ReplyKeyboardMarkup(
-            self._get_items(),
+            keyboard=self._get_items(),
             resize_keyboard=True,
             input_field_placeholder=f'{self.name}: Choose a command...',
         )
 
     @abc.abstractmethod
-    def _get_items(self) -> typing.Sequence:
+    def _get_items(self) -> list[list]:
         pass
 
 
@@ -83,95 +83,97 @@ class MainPage(BasePage):
     name = 'Main menu'
     code = 'main'
 
-    def _get_items(self) -> typing.Sequence:
-        return (
-            (
-                constants.PrettyBotCommands.SECURITY_OFF
+    def _get_items(self) -> list[list[KeyboardButton]]:
+        return [
+            [
+                KeyboardButton(text=constants.PrettyBotCommands.SECURITY_OFF)
                 if self.state[constants.SECURITY_IS_ENABLED] else
-                constants.PrettyBotCommands.SECURITY_ON,
+                KeyboardButton(text=constants.PrettyBotCommands.SECURITY_ON),
 
-                constants.PrettyBotCommands.SECURITY_AUTO_OFF
+                KeyboardButton(text=constants.PrettyBotCommands.SECURITY_AUTO_OFF)
                 if self.state[constants.AUTO_SECURITY_IS_ENABLED] else
-                constants.PrettyBotCommands.SECURITY_AUTO_ON,
-            ),
-            (
-                constants.PrettyBotCommands.ALL_FUNCS,
-                constants.PrettyBotCommands.LAMP,
-            ),
-            (
-                constants.PrettyBotCommands.STATUS,
-                constants.PrettyBotCommands.SHORT_STATS,
-            ),
-        )
+                KeyboardButton(text=constants.PrettyBotCommands.SECURITY_AUTO_ON),
+            ],
+            [
+                KeyboardButton(text=constants.PrettyBotCommands.ALL_FUNCS),
+                KeyboardButton(text=constants.PrettyBotCommands.LAMP),
+            ],
+            [
+                KeyboardButton(text=constants.PrettyBotCommands.STATUS),
+                KeyboardButton(text=constants.PrettyBotCommands.SHORT_STATS),
+            ],
+        ]
 
 
 class LampPage(BasePage):
     name = 'Lamp menu'
     code = 'lamp'
 
-    def _get_items(self) -> typing.Sequence:
+    def _get_items(self) -> list[list[KeyboardButton]]:
         main_lamp_is_on = self.state[constants.MAIN_LAMP_IS_ON]
 
-        first_row = (
-            f'{constants.BotCommands.LAMP} {OFF if main_lamp_is_on else ON}',
-        )
+        first_row = [
+            KeyboardButton(text=f'{constants.BotCommands.LAMP} {OFF if main_lamp_is_on else ON}')
+        ]
 
         if not main_lamp_is_on:
-            first_row += (
-                f'{constants.BotCommands.LAMP} {ON} 5',
+            first_row.append(
+                KeyboardButton(text=f'{constants.BotCommands.LAMP} {ON} 5'),
             )
 
-        return (
+        return [
             first_row,
-            (
-                f'{constants.BotCommands.LAMP} increase_brightness',
-                f'{constants.BotCommands.LAMP} decrease_brightness',
-            ),
-            (
-                f'{constants.BotCommands.LAMP} color_temp 150',
-                f'{constants.BotCommands.LAMP} color_temp 250',
-            ),
-            (
-                f'{constants.BotCommands.LAMP} color_temp 350',
-                f'{constants.BotCommands.LAMP} color_temp 500',
-            ),
-            (
-                f'{constants.BotCommands.LAMP} color white',
-                f'{constants.BotCommands.LAMP} color yellow',
-            ),
-            (
-                f'{constants.BotCommands.LAMP} color blue',
-                f'{constants.BotCommands.LAMP} color green',
-            ),
-            (
-                constants.BotCommands.RETURN,
-            ),
-        )
+            [
+                KeyboardButton(text=f'{constants.BotCommands.LAMP} increase_brightness'),
+                KeyboardButton(text=f'{constants.BotCommands.LAMP} decrease_brightness'),
+            ],
+            [
+                KeyboardButton(text=f'{constants.BotCommands.LAMP} color_temp 150'),
+                KeyboardButton(text=f'{constants.BotCommands.LAMP} color_temp 250'),
+            ],
+            [
+                KeyboardButton(text=f'{constants.BotCommands.LAMP} color_temp 350'),
+                KeyboardButton(text=f'{constants.BotCommands.LAMP} color_temp 500'),
+            ],
+            [
+                KeyboardButton(text=f'{constants.BotCommands.LAMP} color white'),
+                KeyboardButton(text=f'{constants.BotCommands.LAMP} color yellow'),
+            ],
+            [
+                KeyboardButton(text=f'{constants.BotCommands.LAMP} color blue'),
+                KeyboardButton(text=f'{constants.BotCommands.LAMP} color green'),
+            ],
+            [
+                KeyboardButton(text=constants.BotCommands.RETURN),
+            ],
+        ]
 
 
 class AllFuncsPage(BasePage):
     name = 'All functions'
     code = 'all_funcs'
 
-    def _get_items(self) -> typing.Sequence:
+    def _get_items(self) -> list[list[KeyboardButton]]:
         use_camera: bool = self.state[constants.USE_CAMERA]
 
         camera_line = [
-            f'{constants.BotCommands.CAMERA} {OFF if use_camera else ON}',
+            KeyboardButton(text=f'{constants.BotCommands.CAMERA} {OFF if use_camera else ON}'),
         ]
 
         if use_camera:
-            camera_line.append(f'{constants.BotCommands.CAMERA} photo')
+            camera_line.append(KeyboardButton(text=f'{constants.BotCommands.CAMERA} photo'))
             camera_line.append(
-                f'{constants.BotCommands.CAMERA} record {OFF if self.state[constants.VIDEO_RECORDING_IS_ENABLED] else ON}')
+                KeyboardButton(
+                    text=f'{constants.BotCommands.CAMERA} record {OFF if self.state[constants.VIDEO_RECORDING_IS_ENABLED] else ON}'),
+            )
 
-        return (
+        return [
             camera_line,
-            (f'{constants.BotCommands.ARDUINO} {OFF if self.state[constants.ARDUINO_IS_ENABLED] else ON}',),
-            (constants.BotCommands.STATS, constants.BotCommands.DB_STATS, constants.BotCommands.COMPRESS_DB,),
-            (constants.BotCommands.RAW_WIFI_DEVICES, constants.BotCommands.WIFI_DEVICES,),
-            (constants.BotCommands.HELP, constants.BotCommands.RETURN,),
-        )
+            [f'{constants.BotCommands.ARDUINO} {OFF if self.state[constants.ARDUINO_IS_ENABLED] else ON}'],
+            [constants.BotCommands.STATS, constants.BotCommands.DB_STATS, constants.BotCommands.COMPRESS_DB],
+            [constants.BotCommands.RAW_WIFI_DEVICES, constants.BotCommands.WIFI_DEVICES],
+            [constants.BotCommands.HELP, constants.BotCommands.RETURN],
+        ]
 
 
 class Menu(BaseModule):

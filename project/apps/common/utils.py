@@ -193,7 +193,7 @@ def is_sleep_hours(timestamp: typing.Optional[datetime.datetime] = None) -> bool
 
 
 def convert_params_to_date_range(delta_value: int = 24,
-                                 delta_type: str = 'hours') -> typing.Tuple[datetime.datetime, datetime.datetime]:
+                                 delta_type: str = 'hours') -> tuple[datetime.datetime, datetime.datetime]:
     now = get_current_time()
     return now - datetime.timedelta(**{delta_type: delta_value}), now
 

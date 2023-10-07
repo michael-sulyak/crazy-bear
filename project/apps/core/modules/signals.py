@@ -120,7 +120,7 @@ class Signals(BaseModule):
         )
 
     @staticmethod
-    def _create_task_queue_stats(date_range: typing.Tuple[datetime.datetime, datetime.datetime],
+    def _create_task_queue_stats(date_range: tuple[datetime.datetime, datetime.datetime],
                                  components: typing.Set[str]) -> typing.Optional[io.BytesIO]:
         if 'inner_stats' not in components:
             return None
@@ -148,8 +148,8 @@ class Signals(BaseModule):
 
         Signal.clear((constants.TASK_QUEUE_DELAY,))
 
-        with db.get_db_session().begin():
-            db.get_db_session().query(Signal).filter(
+        with db.session_transaction() as session:
+            session.query(Signal).filter(
                 Signal.type == constants.TASK_QUEUE_DELAY,
                 Signal.received_at <= now - datetime.timedelta(days=2),
             ).delete()

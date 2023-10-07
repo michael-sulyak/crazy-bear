@@ -1,11 +1,13 @@
 import hashlib
 import random
+import threading
 import time
 import typing
 import uuid
 
 import requests
 
+from libs.casual_utils.parallel_computing import synchronized_method
 from project import config
 
 
@@ -20,6 +22,8 @@ class MiWiFi:
     password: str
     token: typing.Optional[str] = None
     miwifi_type: int
+    _lock: threading.RLock
+    _timeout: int = 5
 
     def __init__(self, *, url: str, password: str, miwifi_type: int = 0) -> None:
         if url.endswith('/'):
@@ -28,7 +32,9 @@ class MiWiFi:
         self.url = url
         self.password = password
         self.miwifi_type = miwifi_type
+        self._lock = threading.RLock()
 
+    @synchronized_method
     def login(self) -> None:
         nonce = self._generate_nonce()
 
@@ -40,7 +46,7 @@ class MiWiFi:
                 'password': self._generate_password_hash(nonce),
                 'nonce': nonce,
             },
-            timeout=30,
+            timeout=self._timeout,
         )
 
         response.raise_for_status()
@@ -48,7 +54,7 @@ class MiWiFi:
         self.token = json_response['token']
 
     def logout(self) -> None:
-        response = requests.get(f'{self.url}/cgi-bin/luci/;stok={self.token}/web/logout')
+        response = requests.get(f'{self.url}/cgi-bin/luci/;stok={self.token}/web/logout', timeout=self._timeout)
         response.raise_for_status()
         self.token = None
 
@@ -77,7 +83,8 @@ class MiWiFi:
         return self._get_data('xqsystem/check_wan_type')
 
     def _get_data(self, endpoint: str, *, _update_token: bool = True) -> dict:
-        assert self.token is not None
+        if self.token is None:
+            mi_wifi.login()
 
         response = requests.get(
             f'{self.url}/cgi-bin/luci/;stok={self.token}/api/{endpoint}',
@@ -113,8 +120,4 @@ class MiWiFi:
         return ':'.join(as_hex[i: i + 2] for i in range(0, 12, 2))
 
 
-if config.ROUTER_TYPE == 'mi':
-    mi_wifi = MiWiFi(password=config.ROUTER_PASSWORD, url=config.ROUTER_URL)
-    mi_wifi.login()  # To reduce count of requests
-else:
-    mi_wifi = None
+mi_wifi = MiWiFi(password=config.ROUTER_PASSWORD, url=config.ROUTER_URL)

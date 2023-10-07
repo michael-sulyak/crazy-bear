@@ -30,8 +30,8 @@ class BaseModule(abc.ABC):
     messenger: BaseMessenger
     state: State
     task_queue: BaseTaskQueue
-    _subscribers_to_events: typing.Tuple[BaseReceiver, ...]
-    _repeatable_tasks: typing.Tuple[RepeatableTask, ...]
+    _subscribers_to_events: tuple[BaseReceiver, ...]
+    _repeatable_tasks: tuple[RepeatableTask, ...]
     _lock: threading.RLock
 
     def __init__(self, *, context: ModuleContext) -> None:
@@ -54,7 +54,7 @@ class BaseModule(abc.ABC):
     def init_repeatable_tasks(self) -> tuple:
         return ()
 
-    def subscribe_to_events(self) -> typing.Tuple[BaseReceiver, ...]:
+    def subscribe_to_events(self) -> tuple[BaseReceiver, ...]:
         subscribers = (
             events.shutdown.connect(self.disable),
         )

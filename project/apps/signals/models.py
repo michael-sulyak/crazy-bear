@@ -36,36 +36,32 @@ class Signal(db.Base):
 
     @classmethod
     def add(cls, signal_type: str, value: float, *, received_at: typing.Optional[datetime.datetime] = None) -> 'Signal':
-        session = db.get_db_session()
-
         if received_at is None:
             received_at = get_current_time()
 
         item = cls(type=signal_type, value=value, received_at=received_at)
 
-        with session.begin():
+        with db.session_transaction() as session:
             session.add(item)
 
         return item
 
     @classmethod
     def bulk_add(cls, signals: typing.Iterable['Signal']) -> None:
-        session = db.get_db_session()
-
-        with session.begin():
+        with db.session_transaction() as session:
             session.add_all(signals)
 
     @classmethod
     def clear(cls, signal_types: typing.Iterable[str]) -> None:
         timestamp = get_current_time() - config.STORAGE_TIME
 
-        with db.get_db_session().begin():
-            db.get_db_session().query(cls).filter(cls.type.in_(signal_types), cls.received_at <= timestamp).delete()
+        with db.session_transaction() as session:
+            session.query(cls).filter(cls.type.in_(signal_types), cls.received_at <= timestamp).delete()
 
     @classmethod
     def get(cls,
             signal_type: str, *,
-            datetime_range: typing.Tuple[datetime.datetime, datetime.datetime]) -> typing.List['Signal']:
+            datetime_range: tuple[datetime.datetime, datetime.datetime]) -> typing.List['Signal']:
         query_data = cls._get_query_data(
             signal_type=signal_type,
             datetime_range=datetime_range,
@@ -92,7 +88,7 @@ class Signal(db.Base):
     def get_aggregated(cls,
                        signal_type: str, *,
                        aggregate_function: typing.Callable = sa_func.avg,
-                       datetime_range: typing.Tuple[datetime.datetime, datetime.datetime]) -> typing.List['Signal']:
+                       datetime_range: tuple[datetime.datetime, datetime.datetime]) -> typing.List['Signal']:
         query_data = cls._get_query_data(
             signal_type=signal_type,
             datetime_range=datetime_range,
@@ -142,7 +138,7 @@ class Signal(db.Base):
     @classmethod
     def compress_by_time(cls,
                          signal_type: str, *,
-                         datetime_range: typing.Tuple[datetime.datetime, datetime.datetime],
+                         datetime_range: tuple[datetime.datetime, datetime.datetime],
                          aggregate_function: typing.Callable = sa_func.avg) -> None:
         session = db.get_db_session()
 
@@ -188,11 +184,9 @@ class Signal(db.Base):
     @classmethod
     def compress(cls,
                  signal_type: str, *,
-                 datetime_range: typing.Tuple[datetime.datetime, datetime.datetime],
+                 datetime_range: tuple[datetime.datetime, datetime.datetime],
                  approximation_value: float = 0,
                  approximation_time: datetime.timedelta = datetime.timedelta(hours=1)) -> None:
-        session = db.get_db_session()
-
         signals = cls.get(signal_type, datetime_range=datetime_range)
 
         if len(signals) < 2:
@@ -215,7 +209,7 @@ class Signal(db.Base):
                 last_saved_value = signals[i]
 
         if received_at_to_remove:
-            with session.begin():
+            with db.session_transaction() as session:
                 session.query(cls).filter(
                     cls.type == signal_type,
                     cls.received_at.in_(received_at_to_remove),
@@ -225,7 +219,7 @@ class Signal(db.Base):
     def aggregated_compress(cls,
                             signal_type: str, *,
                             aggregate_function: typing.Callable = sa_func.avg,
-                            datetime_range: typing.Tuple[datetime.datetime, datetime.datetime]) -> None:
+                            datetime_range: tuple[datetime.datetime, datetime.datetime]) -> None:
         session = db.get_db_session()
 
         aggregated_data = cls.get_aggregated(
@@ -236,7 +230,7 @@ class Signal(db.Base):
 
         start_time, end_time = datetime_range
 
-        query = db.get_db_session().query(cls).filter(
+        query = session.query(cls).filter(
             cls.received_at >= start_time,
             cls.received_at <= end_time,
             cls.type == signal_type,
@@ -261,7 +255,7 @@ class Signal(db.Base):
 
     @classmethod
     def backup(cls,
-               datetime_range: typing.Optional[typing.Tuple[datetime.datetime, datetime.datetime]] = None) -> None:
+               datetime_range: typing.Optional[tuple[datetime.datetime, datetime.datetime]] = None) -> None:
         if datetime_range is None:
             filters = ()
         else:
@@ -308,7 +302,7 @@ class Signal(db.Base):
     @classmethod
     def _get_query_data(cls,
                         signal_type: str, *,
-                        datetime_range: typing.Tuple[datetime.datetime, datetime.datetime],
+                        datetime_range: tuple[datetime.datetime, datetime.datetime],
                         ) -> typing.Optional[typing.Dict[str, typing.Any]]:
         time_filter = db.get_db_session().query(
             cls.received_at,

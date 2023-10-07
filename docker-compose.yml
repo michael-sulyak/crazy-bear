@@ -16,13 +16,24 @@ services:
     networks:
       - default
       - telehooks_mq
-    command: python3 __main__.py
+    command: make run
+
+#  home_assistant:
+#    restart: unless-stopped
+#    container_name: homeassistant
+#    image: homeassistant/home-assistant:2023.10
+#    volumes:
+#      - ./home_assistant_config:/config
+#      - /etc/localtime:/etc/localtime:ro
+#    privileged: true
+#    ports:
+#      - "8123:8123"
 
   postgres:
     restart: always
     image: postgres:14.1
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     env_file:
@@ -30,16 +41,13 @@ services:
 
   zigbee_mq:
     restart: always
-    image: eclipse-mosquitto:2.0.15
+    image: eclipse-mosquitto:2.0.18
     volumes:
       - "./mosquitto-data:/mosquitto"
     ports:
       - "1883:1883"
       - "9001:9001"
     command: "mosquitto -c /mosquitto-no-auth.conf"
-
-volumes:
-  postgres_data: { }
 
 networks:
   telehooks_mq:

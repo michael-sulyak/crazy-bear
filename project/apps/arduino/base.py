@@ -50,7 +50,7 @@ class ArduinoConnector:
 
         self.is_active = True
 
-    def process_updates(self) -> typing.List[Signal]:
+    def process_updates(self) -> list[Signal]:
         signals = []
 
         for response in self._read_serial():

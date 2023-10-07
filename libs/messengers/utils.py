@@ -1,6 +1,6 @@
 import typing
 
-from telegram.utils.helpers import escape_markdown as telegram_escape_markdown
+from telegram.helpers import escape_markdown as telegram_escape_markdown
 
 from .base import BaseMessenger
 

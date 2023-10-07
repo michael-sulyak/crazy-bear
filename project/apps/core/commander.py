@@ -22,16 +22,16 @@ from ... import config
 class Commander:
     messenger: BaseMessenger
     state: State
-    command_handlers: typing.Tuple[BaseModule, ...]
+    command_handlers: tuple[BaseModule, ...]
     message_queue: queue.Queue
     task_queue: BaseTaskQueue
     task_worker: BaseWorker
     zig_bee: ZigBee
-    _receivers: typing.Tuple[BaseReceiver, ...]
+    _receivers: tuple[BaseReceiver, ...]
 
     def __init__(self, *,
                  messenger: BaseMessenger,
-                 module_classes: typing.Iterable[typing.Type[BaseModule]],
+                 module_classes: tuple[typing.Type[BaseModule], ...],
                  state: State) -> None:
         self.message_queue = queue.Queue()
         self.task_queue = MemTaskQueue()
@@ -45,6 +45,7 @@ class Commander:
                 )),
                 SupportOfRetries(),
             ),
+            count=2,
             on_close=close_db_session,
         )
         self.messenger = messenger

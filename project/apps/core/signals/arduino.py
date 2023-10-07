@@ -81,7 +81,7 @@ class ArduinoHandler(BaseSignalHandler):
             )
 
     def generate_plots(self, *,
-                       date_range: typing.Tuple[datetime.datetime, datetime.datetime],
+                       date_range: tuple[datetime.datetime, datetime.datetime],
                        components: typing.Set[str]) -> typing.Optional[typing.Sequence[io.BytesIO]]:
         if 'arduino' not in components:
             return None
@@ -147,7 +147,7 @@ class ArduinoHandler(BaseSignalHandler):
         return plots
 
     @synchronized_method
-    def _process_new_arduino_logs(self, signals: typing.List[Signal]) -> None:
+    def _process_new_arduino_logs(self, signals: list[Signal]) -> None:
         last_signal_data = {}
 
         for signal in reversed(signals):

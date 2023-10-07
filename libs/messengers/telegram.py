@@ -14,16 +14,17 @@ import telegram
 import urllib3
 from emoji import emojize
 from pika.exceptions import AMQPConnectionError
-from telegram import ReplyMarkup, Update as TelegramUpdate
+from telegram import ReplyKeyboardMarkup, InputMediaPhoto, Update as TelegramUpdate
+from telegram.constants import ParseMode, ChatAction
 from telegram.error import (
     NetworkError as TelegramNetworkError,
 )
-from telegram.ext.utils.webhookhandler import WebhookServer
 
 from project import config
 from .base import BaseMessenger, MessageInfo, UserInfo, ChatInfo
 from .mixins import CVMixin
 from .utils import escape_markdown
+from ..casual_utils.aio import async_to_sync
 from ..casual_utils.parallel_computing import synchronized_method
 from ..casual_utils.time import get_current_time
 
@@ -52,12 +53,6 @@ def handel_telegram_exceptions(func: typing.Callable) -> typing.Callable:
                 return None
 
             raise
-        # except TimedOut as e:
-        #     if isinstance(e.__cause__, urllib3.exceptions.HTTPError):
-        #         logging.warning(e, exc_info=True)
-        #         return None
-        # 
-        #     raise
 
     return wrap_func
 
@@ -69,7 +64,6 @@ class TelegramMessenger(CVMixin, BaseMessenger):
     _updates_offset: typing.Optional[int] = None
     _lock: threading.RLock
     _update_queue: queue.Queue
-    _webhook_server: WebhookServer
     _worker: threading.Thread
     _last_message_id: typing.Any = None
     _last_sent_at: typing.Optional[datetime.datetime] = None
@@ -101,11 +95,12 @@ class TelegramMessenger(CVMixin, BaseMessenger):
 
     @synchronized_method
     @handel_telegram_exceptions
-    def send_message(self,
-                     text: str, *,
-                     use_markdown: bool = False,
-                     reply_markup: typing.Optional[ReplyMarkup] = DEFAULT,
-                     message_id: typing.Optional[int] = None) -> typing.Optional[int]:
+    @async_to_sync
+    async def send_message(self,
+                           text: str, *,
+                           use_markdown: bool = False,
+                           reply_markup: ReplyKeyboardMarkup | DEFAULT | None = DEFAULT,
+                           message_id: int | None = None) -> typing.Optional[int]:
         if reply_markup is DEFAULT:
             if callable(self.default_reply_markup):
                 reply_markup = self.default_reply_markup()
@@ -117,10 +112,10 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         else:
             func = self._bot.send_message
 
-        result = func(
+        result = await func(
             chat_id=self.chat_id,
             text=text,
-            parse_mode='MarkdownV2' if use_markdown else None,
+            parse_mode=ParseMode.MARKDOWN_V2 if use_markdown else None,
             reply_markup=reply_markup,
         )
 
@@ -131,8 +126,9 @@ class TelegramMessenger(CVMixin, BaseMessenger):
 
     @synchronized_method
     @handel_telegram_exceptions
-    def send_image(self, image: typing.Any, *, caption: typing.Optional[str] = None) -> None:
-        result = self._bot.send_photo(
+    @async_to_sync
+    async def send_image(self, image: typing.Any, *, caption: typing.Optional[str] = None) -> None:
+        result = await self._bot.send_photo(
             self.chat_id,
             photo=image,
             caption=caption,
@@ -142,13 +138,14 @@ class TelegramMessenger(CVMixin, BaseMessenger):
 
     @synchronized_method
     @handel_telegram_exceptions
-    def send_images(self, images: typing.Any) -> None:
+    @async_to_sync
+    async def send_images(self, images: typing.Any) -> None:
         if not images:
             return
 
-        results = self._bot.send_media_group(
+        results = await self._bot.send_media_group(
             self.chat_id,
-            media=list(telegram.InputMediaPhoto(image) for image in images),
+            media=list(InputMediaPhoto(media=image) for image in images),
         )
 
         self._last_message_id = results[-1].message_id
@@ -156,8 +153,9 @@ class TelegramMessenger(CVMixin, BaseMessenger):
 
     @synchronized_method
     @handel_telegram_exceptions
-    def send_file(self, file: typing.Any, *, caption: typing.Optional[str] = None) -> None:
-        result = self._bot.send_document(
+    @async_to_sync
+    async def send_file(self, file: typing.Any, *, caption: typing.Optional[str] = None) -> None:
+        result = await self._bot.send_document(
             self.chat_id,
             document=file,
             caption=caption,
@@ -165,25 +163,36 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         self._last_message_id = result.message_id
         self._last_sent_at = get_current_time()
 
-    def error(self, text: str, *, title: str = 'Error') -> None:
+    @synchronized_method
+    @handel_telegram_exceptions
+    @async_to_sync
+    async def error(self, text: str, *, title: str = 'Error') -> None:
         logging.warning(text)
-        self.send_message(
+        await self.send_message(
             f'{emojize(":pager:")} ️*{title}* ```\n{escape_markdown(text, entity_type="pre")}\n```',
             use_markdown=True,
         )
 
-    def exception(self, exp: Exception) -> None:
-        self.error(f'{repr(exp)}\n{"".join(traceback.format_tb(exp.__traceback__))}', title='Exception')
+    @synchronized_method
+    @handel_telegram_exceptions
+    @async_to_sync
+    async def exception(self, exp: Exception) -> None:
+        await self.error(
+            f'{repr(exp)}\n{"".join(traceback.format_tb(exp.__traceback__))}',
+            title='Exception',
+        )
 
     @synchronized_method
     @handel_telegram_exceptions
-    def start_typing(self) -> None:
-        self._bot.send_chat_action(chat_id=self.chat_id, action=telegram.ChatAction.TYPING)
+    @async_to_sync
+    async def start_typing(self) -> None:
+        await self._bot.send_chat_action(chat_id=self.chat_id, action=ChatAction.TYPING)
 
     @synchronized_method
     @handel_telegram_exceptions
-    def remove_message(self, message_id: int) -> None:
-        self._bot.delete_message(chat_id=self.chat_id, message_id=message_id)
+    @async_to_sync
+    async def remove_message(self, message_id: int) -> None:
+        await self._bot.delete_message(chat_id=self.chat_id, message_id=message_id)
 
         if self._last_message_id == message_id:
             self._last_message_id = None
@@ -197,7 +206,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
                         pika.ConnectionParameters(host=config.TELEHOOKS_HOST, heartbeat=600),
                     )
                 except AMQPConnectionError as e:
-                    logging.error(e)
+                    logging.warning(e)
                     logging.info('Waiting AMQP...')
                     sleep(1)
 

@@ -29,7 +29,7 @@ class FreeDiskSpaceHandler(BaseAdvancedSignalHandler):
         return utils.get_free_disk_space()
 
     def generate_plots(self, *,
-                       date_range: typing.Tuple[datetime.datetime, datetime.datetime],
+                       date_range: tuple[datetime.datetime, datetime.datetime],
                        components: typing.Set[str]) -> typing.Optional[typing.Sequence[io.BytesIO]]:
         if 'inner_stats' not in components:
             return None

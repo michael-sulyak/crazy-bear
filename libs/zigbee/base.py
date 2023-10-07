@@ -1,5 +1,6 @@
 import datetime
 import json
+import logging
 import threading
 import typing
 from collections import defaultdict
@@ -96,8 +97,9 @@ class ZigBee:
 
     @synchronized_method
     def close(self) -> None:
-        if self.mq is None:
-            raise exceptions.ZigBeeError('MQ wasn\'t created.')
+        if self._mq is None:
+            logging.warning('MQ wasn\'t created.')
+            return
 
         self.mq.loop_stop()
 

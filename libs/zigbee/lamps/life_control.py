@@ -93,7 +93,7 @@ class LCSmartLamp:
 
     @synchronized_method
     @method_with_transition
-    def set_color(self, rgb: typing.Tuple[int, int, int], *, transition: int = 0) -> None:
+    def set_color(self, rgb: tuple[int, int, int], *, transition: int = 0) -> None:
         self.zig_bee.set(self.friendly_name, {
             'color': {'rgb': ','.join(map(str, rgb))},
             'transition': transition,
