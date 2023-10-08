@@ -100,8 +100,8 @@ class ThreadWorker(BaseWorker):
         for thread in self._threads:
             thread.join()
 
-    def _process_tasks(self) -> typing.NoReturn:
-        logging.debug('Running worker...')
+    def _process_tasks(self) -> None:
+        logging.debug('Running worker #%s...', threading.get_native_id())
 
         while self.is_run:
             task = self.task_queue.get()

@@ -11,6 +11,7 @@ from libs.casual_utils.parallel_computing import synchronized_method
 from .base import BaseAdvancedSignalHandler
 from .. import constants, events
 from ...common.events import Receiver
+from ...common.exceptions import Shutdown
 from ...common.utils import is_sleep_hours, create_plot
 from ...devices.utils import check_if_host_is_at_home
 from ...signals.models import Signal
@@ -53,6 +54,8 @@ class RouterHandler(BaseAdvancedSignalHandler):
 
         try:
             is_connected = check_if_host_is_at_home()
+        except Shutdown:
+            raise
         except (ConnectionError, ReadTimeout,) as e:
             logging.warning(e)
             is_connected = False

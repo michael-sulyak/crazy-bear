@@ -13,6 +13,7 @@ from ..base import BaseModule, Command
 from ..utils.reports import ShortTextReport
 from ... import db
 from ...common import doc
+from ...common.exceptions import Shutdown
 from ...common.utils import (
     convert_params_to_date_range, get_weather, is_sleep_hours,
 )
@@ -157,6 +158,8 @@ class Report(BaseModule):
             for i in range(count):
                 try:
                     result = yield
+                except Shutdown:
+                    raise
                 except Exception as e:
                     exceptions.append(e)
                     continue

@@ -833,7 +833,7 @@ files = [
 name = "numpy-stubs"
 version = "0.0.1"
 description = ""
-category = "main"
+category = "dev"
 optional = false
 python-versions = "*"
 files = []
@@ -1222,25 +1222,6 @@ tomli = {version = ">=1.0.0", markers = "python_version < \"3.11\""}
 testing = ["argcomplete", "attrs (>=19.2.0)", "hypothesis (>=3.56)", "mock", "nose", "pygments (>=2.7.2)", "requests", "setuptools", "xmlschema"]
 
 [[package]]
-name = "python-crontab"
-version = "3.0.0"
-description = "Python Crontab API"
-category = "dev"
-optional = false
-python-versions = "*"
-files = [
-    {file = "python-crontab-3.0.0.tar.gz", hash = "sha256:79fb7465039ddfd4fb93d072d6ee0d45c1ac8bf1597f0686ea14fd4361dba379"},
-    {file = "python_crontab-3.0.0-py3-none-any.whl", hash = "sha256:6d5ba3c190ec76e4d252989a1644fcb233dbf53fbc8fceeb9febe1657b9fb1d4"},
-]
-
-[package.dependencies]
-python-dateutil = "*"
-
-[package.extras]
-cron-description = ["cron-descriptor"]
-cron-schedule = ["croniter"]
-
-[[package]]
 name = "python-dateutil"
 version = "2.8.2"
 description = "Extensions to the standard Python datetime module"
@@ -1519,22 +1500,6 @@ pymysql = ["pymysql"]
 sqlcipher = ["sqlcipher3-binary"]
 
 [[package]]
-name = "sqlalchemy-stubs"
-version = "0.4"
-description = "SQLAlchemy stubs and mypy plugin"
-category = "dev"
-optional = false
-python-versions = "*"
-files = [
-    {file = "sqlalchemy-stubs-0.4.tar.gz", hash = "sha256:c665d6dd4482ef642f01027fa06c3d5e91befabb219dc71fc2a09e7d7695f7ae"},
-    {file = "sqlalchemy_stubs-0.4-py3-none-any.whl", hash = "sha256:5eec7aa110adf9b957b631799a72fef396b23ff99fe296df726645d01e312aa5"},
-]
-
-[package.dependencies]
-mypy = ">=0.790"
-typing-extensions = ">=3.7.4"
-
-[[package]]
 name = "stone"
 version = "3.3.1"
 description = "Stone is an interface description language (IDL) for APIs."
@@ -1665,4 +1630,4 @@ heavy = ["matplotlib", "numpy", "pandas", "psycopg2-binary", "scipy"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.12"
-content-hash = "6baf13743a499614e242539a95596078cd400577b8a1fe9d5531474818ee29d6"
+content-hash = "b6325ce73eeac7217c32a4d423c1aaeba8060caedb4dbcd6279c374d8d36dec0"

@@ -18,9 +18,10 @@ __all__ = (
 
 Base = declarative_base()
 db_engine = create_engine(
-    config.DATABASE_URL,
+    url=config.DATABASE_URL,
     isolation_level='READ COMMITTED',
     echo=config.DATABASE_DEBUG,
+    connect_args={'connect_timeout': 60},
 )
 
 session_factory = sessionmaker(bind=db_engine, autoflush=True, expire_on_commit=False)

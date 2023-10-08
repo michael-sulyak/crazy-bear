@@ -15,6 +15,7 @@ from ..base import BaseModule, Command
 from ..constants import BotCommands, MotionTypeSources
 from ...common import doc
 from ...common.constants import OFF, ON
+from ...common.exceptions import Shutdown
 from ...common.storage import file_storage
 from ...common.utils import (
     camera_is_available, with_throttling,
@@ -332,6 +333,8 @@ class Camera(BaseModule):
         if video_guard:
             try:
                 video_guard.process_frame.send((frame, fps,))
+            except Shutdown:
+                raise
             except Exception as e:
                 logging.exception(e)
                 self.messenger.send_message('Can\'t process the frame')

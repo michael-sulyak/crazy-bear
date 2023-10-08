@@ -4,6 +4,7 @@ import typing
 from libs.messengers.utils import escape_markdown
 from ..base import BaseModule, Command
 from ...common import doc
+from ...common.exceptions import Shutdown
 from ...common.routers.mi import mi_wifi
 from ...core import constants, events
 from ...devices.utils import check_if_host_is_at_home
@@ -31,6 +32,8 @@ class Router(BaseModule):
 
         try:
             host_is_at_home = check_if_host_is_at_home()
+        except Shutdown:
+            raise
         except Exception as e:
             logging.exception(e)
 

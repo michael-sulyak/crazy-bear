@@ -59,7 +59,7 @@ def handel_telegram_exceptions(func: typing.Callable) -> typing.Callable:
 
 class TelegramMessenger(CVMixin, BaseMessenger):
     chat_id: int = config.TELEGRAM_CHAT_ID
-    default_reply_markup: ReplyKeyboardMarkup | None
+    default_reply_markup: typing.Callable | None
     _bot: telegram.Bot
     _updates_offset: typing.Optional[int] = None
     _lock: threading.RLock
@@ -71,7 +71,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
 
     def __init__(self, *,
                  message_handler: typing.Callable,
-                 default_reply_markup: ReplyKeyboardMarkup | None = None) -> None:
+                 default_reply_markup: typing.Callable | None = None) -> None:
         self.default_reply_markup = default_reply_markup
         self._bot = telegram.Bot(token=config.TELEGRAM_TOKEN)
         self._lock = threading.RLock()

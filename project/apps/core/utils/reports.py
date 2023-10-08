@@ -13,6 +13,7 @@ from ..constants import (
 )
 from ...arduino.constants import ArduinoSensorTypes
 from ...common.constants import INITED_AT
+from ...common.exceptions import Shutdown
 from ...common.state import State
 from ...common.utils import get_ram_usage, get_cpu_temp, get_free_disk_space, get_effective_temperature
 from ...devices.utils import get_connected_devices_to_router
@@ -176,6 +177,8 @@ class ShortTextReport:
 
         try:
             connected_devices = tuple(get_connected_devices_to_router())
+        except Shutdown:
+            raise
         except Exception as e:
             logging.exception(e)
 

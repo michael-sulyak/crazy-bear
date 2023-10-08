@@ -1,4 +1,3 @@
-#!/app/.venv/bin/python3
 import datetime
 import logging
 import signal
@@ -54,61 +53,15 @@ def get_traces_sampler(sampling_context: dict) -> float:
     return 0.25
 
 
-def handle_sigterm(*args) -> None:
-    raise Shutdown
-
-
-for signal_name in ('SIGINT', 'SIGTERM',):
-    signal.signal(getattr(signal, signal_name), handle_sigterm)
-
-
-# commander: Commander | None = None
-# main_loop = None
-
-
-# async def shutdown() -> None:
-#     logging.info('Shutdown initialized...')
-#
-#     if commander:
-#         try:
-#             await commander.close()
-#         except Exception as e:
-#             logging.error(e)
-#
-#     current_task = asyncio.current_task()
-#
-#     def _get_active_tasks() -> typing.Generator:
-#         for task in asyncio.all_tasks():
-#             if task is not current_task:
-#                 yield task
-#
-#     for _ in range(60):
-#         if not tuple(_get_active_tasks()):
-#             break
-#
-#         logging.info('Waiting...')
-#         await asyncio.sleep(1)
-#
-#     tasks = tuple(_get_active_tasks())
-#
-#     for task in tasks:
-#         task.cancel('Shutdown')
-#
-#     await asyncio.gather(*tasks, return_exceptions=True)
-#
-#     logging.info('Shutdown completed.')
-
-
-# def handle_sigterm(*args) -> None:
-#     raise Shutdown
-#
-#
-# signal.signal(signal.SIGINT, handle_sigterm)
-# signal.signal(signal.SIGTERM, handle_sigterm)
-
-
 def main() -> None:
     logging.info('Starting app...')
+
+    def shutdown(*args) -> None:
+        logging.info('Got signal to shutdown.')
+        raise Shutdown
+
+    for signal_name in ('SIGINT', 'SIGTERM',):
+        signal.signal(getattr(signal, signal_name), shutdown)
 
     sentry_sdk.init(
         dsn=config.SENTRY_DSN,
@@ -187,6 +140,7 @@ def main() -> None:
         commander.message_queue.put(Message(command=command))
 
     try:
+        logging.info('Running commander...')
         commander.run()
     finally:
         db.close_db_session()

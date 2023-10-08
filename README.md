@@ -7,10 +7,6 @@ hope the code will be helpful to you.**
 
 ![Preview](preview.png)
 
-## Scheme
-
-![Sketch](sketch.jpg)
-
 # TO DO
 
 - [ ] Support `asyncio`.

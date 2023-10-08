@@ -11,19 +11,15 @@ prod-bash:
 	docker compose -p crazy_bear -f docker-compose.prod.yml run --rm core bash
 
 run:
-	export PYTHONPATH="/usr/local/lib/python3.11/dist-packages:/usr/lib/python3/dist-packages:/usr/lib/python3.11/dist-packages:$PYTHONPATH" && \
 	poetry run python3 ./__main__.py
 
 mypy:
-	export PYTHONPATH="/usr/local/lib/python3.11/dist-packages:/usr/lib/python3/dist-packages:/usr/lib/python3.11/dist-packages:$PYTHONPATH" && \
 	poetry run mypy ./__main__.py --ignore-missing-imports
 
 ipython:
-	export PYTHONPATH="/usr/local/lib/python3.11/dist-packages:/usr/lib/python3/dist-packages:/usr/lib/python3.11/dist-packages:$PYTHONPATH" && \
 	poetry run python3
 
 test:
-	export PYTHONPATH=".:/usr/local/lib/python3.11/dist-packages:/usr/lib/python3/dist-packages:/usr/lib/python3.11/dist-packages:$PYTHONPATH" && \
 	poetry run pytest ./libs ./project
 
 
@@ -132,10 +128,10 @@ arduino_monitor:
 # Other
 
 bump_version:
-	python3 -c "from dotenv import load_dotenv; load_dotenv('envs/local.env'); \
-               from project.config.utils import VersionDetails; \
-               version_details = VersionDetails(); version_details.increase(); \
-               version_details.save()"
+	poetry run python3 -c "from dotenv import load_dotenv; load_dotenv('envs/local.env'); \
+                           from project.config.utils import VersionDetails; \
+                           version_details = VersionDetails(); version_details.increase(); \
+                           version_details.save()"
 
 freeze:
 	poetry export -f requirements.txt --output requirements.txt --without-hashes

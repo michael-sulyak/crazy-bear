@@ -172,9 +172,11 @@ class VersionDetails:
         """
 
         now = datetime.datetime.now(datetime.timezone.utc)
+        year = now.year % 1_000
+        month = now.month
 
-        if self.major != now.year or self.minor != now.month:
-            self.major, self.minor, self.patch = now.year, now.month, 1
+        if self.major != year or self.minor != month:
+            self.major, self.minor, self.patch = year, month, 1
         else:
             self.patch += 1
 

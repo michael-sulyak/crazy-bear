@@ -16,6 +16,10 @@ services:
     networks:
       - default
       - telehooks_mq
+    logging:
+      options:
+        max-size: "1mb"
+        max-file: "3"
     command: make run
 
 #  home_assistant:

@@ -43,3 +43,5 @@ docker-compose -p crazy_bear -f docker-compose.prod.yml build
 echo "Starting app..."
 docker-compose -p crazy_bear -f docker-compose.prod.yml up -d
 
+echo "0 */6	* * *	root	sudo sync && echo 1 > /proc/sys/vm/drop_caches" >> /etc/crontab
+echo "0 0	* * *	root	source /home/michael/crazy_bear/scripts/docker-cleanup.sh" >> /etc/crontab
