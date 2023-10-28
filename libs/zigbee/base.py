@@ -114,7 +114,7 @@ class ZigBee:
         self.mq.loop_stop()
 
     @synchronized_method
-    def _on_disconnect(self, client: Client, userdata: typing.Any, rc) -> None:
+    def _on_disconnect(self, *args, **kwargs) -> None:
         self._mq = None
 
     @synchronized_method

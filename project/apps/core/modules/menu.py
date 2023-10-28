@@ -190,18 +190,17 @@ class AllFuncsPage(BasePage):
         ]
 
 
+@doc.doc(
+    title='Menu',
+    description=(
+        'The module provides the menu.'
+    ),
+    commands=(
+        doc.Command(constants.BotCommands.RETURN),
+        doc.Command(constants.BotCommands.TO, doc.Value('name')),
+    ),
+)
 class Menu(BaseModule):
-    doc = doc.Doc(
-        title='Menu',
-        description=(
-            'The module provides the menu.'
-        ),
-        commands=(
-            doc.Command(constants.BotCommands.RETURN),
-            doc.Command(constants.BotCommands.TO, doc.Value('name')),
-        ),
-    )
-
     NEXT = emojize(':right_arrow:')
     PREV = emojize(':BACK_arrow:')
 

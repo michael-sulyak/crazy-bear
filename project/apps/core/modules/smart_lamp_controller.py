@@ -22,28 +22,27 @@ __all__ = (
 )
 
 
+@doc.doc(
+    title='LampControllerInBedroom',
+    description=(
+        'The module provides an interface for working with the smart lamp. '
+        'Also, it\'s a part of the smart home.'
+    ),
+    commands=(
+        doc.Command(constants.BotCommands.LAMP, doc.Choices(ON, OFF)),
+        doc.Command(constants.BotCommands.LAMP, 'test'),
+        doc.Command(constants.BotCommands.LAMP, 'color', doc.Choices(*LCSmartLamp.colors_map.keys())),
+        doc.Command(constants.BotCommands.LAMP, 'brightness', doc.Value('brightness', type='int')),
+        doc.Command(constants.BotCommands.LAMP, 'color_temp', doc.Value('color_temp', type='int')),
+        doc.Command(constants.BotCommands.LAMP, 'color_temp', doc.Choices(*LCSmartLamp.color_temps)),
+        doc.Command(constants.BotCommands.LAMP, 'increase_brightness'),
+        doc.Command(constants.BotCommands.LAMP, 'decrease_brightness'),
+        doc.Command(constants.BotCommands.LAMP, 'increase_color_temp'),
+        doc.Command(constants.BotCommands.LAMP, 'decrease_color_temp'),
+        doc.Command(constants.BotCommands.LAMP, 'sunrise'),
+    ),
+)
 class LampControllerInBedroom(BaseModule):
-    doc = doc.Doc(
-        title='LampControllerInBedroom',
-        description=(
-            'The module provides an interface for working with the smart lamp. '
-            'Also, it\'s a part of the smart home.'
-        ),
-        commands=(
-            doc.Command(constants.BotCommands.LAMP, doc.Choices(ON, OFF)),
-            doc.Command(constants.BotCommands.LAMP, 'test'),
-            doc.Command(constants.BotCommands.LAMP, 'color', doc.Choices(*LCSmartLamp.colors_map.keys())),
-            doc.Command(constants.BotCommands.LAMP, 'brightness', doc.Value('brightness', type='int')),
-            doc.Command(constants.BotCommands.LAMP, 'color_temp', doc.Value('color_temp', type='int')),
-            doc.Command(constants.BotCommands.LAMP, 'color_temp', doc.Choices(*LCSmartLamp.color_temps)),
-            doc.Command(constants.BotCommands.LAMP, 'increase_brightness'),
-            doc.Command(constants.BotCommands.LAMP, 'decrease_brightness'),
-            doc.Command(constants.BotCommands.LAMP, 'increase_color_temp'),
-            doc.Command(constants.BotCommands.LAMP, 'decrease_color_temp'),
-            doc.Command(constants.BotCommands.LAMP, 'sunrise'),
-        ),
-    )
-
     smart_lamp: LCSmartLamp
     _sunrise_time: datetime.timedelta = datetime.timedelta(hours=2)
     _lock: threading.RLock
@@ -106,7 +105,7 @@ class LampControllerInBedroom(BaseModule):
             with self._lock:
                 try:
                     handler = handlers_map.get(command.first_arg)
-                    
+
                     if handler:
                         handler()
                         self._last_manual_action = get_current_time()

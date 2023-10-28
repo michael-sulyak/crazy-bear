@@ -5,6 +5,24 @@ import typing
 from libs.messengers.utils import escape_markdown
 
 
+def doc(
+    *,
+    title: str,
+    description: typing.Optional[str] = None,
+    commands: tuple['Command', ...] = (),
+) -> typing.Callable:
+    def wrapper(klass: typing.Type) -> typing.Type:
+        klass.doc = Doc(
+            title=title,
+            description=description,
+            commands=commands,
+        )
+
+        return klass
+
+    return wrapper
+
+
 @dataclasses.dataclass
 class Doc:
     title: str

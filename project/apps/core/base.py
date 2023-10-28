@@ -35,9 +35,6 @@ class BaseModule(abc.ABC):
     _lock: threading.RLock
 
     def __init__(self, *, context: ModuleContext) -> None:
-        if not hasattr(self, 'doc'):
-            self.doc = doc.Doc(title=self.__class__.__name__)
-
         self._lock = threading.RLock()
         self.context = context
         self.messenger = self.context.messenger

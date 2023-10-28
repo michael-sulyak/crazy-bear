@@ -15,17 +15,16 @@ __all__ = (
 )
 
 
+@doc.doc(
+    title='Router',
+    description=(
+        'The module provides an integration with a router.'
+    ),
+    commands=(
+        doc.Command(constants.BotCommands.RAW_WIFI_DEVICES),
+    ),
+)
 class Router(BaseModule):
-    doc = doc.Doc(
-        title='Router',
-        description=(
-            'The module provides an integration with a router.'
-        ),
-        commands=(
-            doc.Command(constants.BotCommands.RAW_WIFI_DEVICES),
-        ),
-    )
-
     @property
     def initial_state(self) -> dict[str, typing.Any]:
         host_is_at_home = False

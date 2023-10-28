@@ -21,16 +21,16 @@ __all__ = (
 )
 
 
+@doc.doc(
+    title='Signals',
+    description=(
+        'The module processes input signals.'
+    ),
+    commands=(
+        doc.Command(constants.BotCommands.COMPRESS_DB),
+    ),
+)
 class Signals(BaseModule):
-    doc = doc.Doc(
-        title='Signals',
-        description=(
-            'The module processes input signals.'
-        ),
-        commands=(
-            doc.Command(constants.BotCommands.COMPRESS_DB),
-        ),
-    )
     _timedelta_for_ping: datetime.timedelta = datetime.timedelta(seconds=30)
     _supreme_signal_handler: SupremeSignalHandler
 

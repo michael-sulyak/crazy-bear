@@ -172,7 +172,7 @@ class Signal(db.Base):
             for signal in signals
         )
 
-        with session.begin():
+        with db.transaction(session):
             session.query(cls).filter(
                 cls.received_at >= query_data['start_time'],
                 cls.received_at <= query_data['end_time'],
@@ -241,7 +241,7 @@ class Signal(db.Base):
         if not count or len(aggregated_data) / count > 0.9:
             return
 
-        with session.begin():
+        with db.transaction(session):
             query.delete()
 
             session.add_all(

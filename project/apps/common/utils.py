@@ -28,7 +28,7 @@ def timer(func: typing.Callable) -> typing.Callable:
         started_at = datetime.datetime.now()
         result = func(*args, **kwargs)
         finished_at = datetime.datetime.now()
-        logging.info(
+        logging.debug(
             'Function %s.%s executed in %s.',
             func.__module__,
             func.__qualname__,

@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import logging
 import signal
@@ -58,6 +59,7 @@ def main() -> None:
 
     def shutdown(*args) -> None:
         logging.info('Got signal to shutdown.')
+        # commander.close()
         raise Shutdown
 
     for signal_name in ('SIGINT', 'SIGTERM',):

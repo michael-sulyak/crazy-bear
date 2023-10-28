@@ -23,17 +23,16 @@ __all__ = (
 )
 
 
+@doc.doc(
+    title='Arduino',
+    description=(
+        'The module processes data from Arduino. Also it contains logic for the security mode.'
+    ),
+    commands=(
+        doc.Command(BotCommands.ARDUINO, doc.Choices(ON, OFF)),
+    ),
+)
 class Arduino(BaseModule):
-    doc = doc.Doc(
-        title='Arduino',
-        description=(
-            'The module processes data from Arduino. Also it contains logic for the security mode.'
-        ),
-        commands=(
-            doc.Command(BotCommands.ARDUINO, doc.Choices(ON, OFF)),
-        ),
-    )
-
     initial_state = {
         ARDUINO_IS_ENABLED: False,
     }

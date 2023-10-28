@@ -15,27 +15,26 @@ __all__ = (
 )
 
 
+@doc.doc(
+    title='WiFiDevices',
+    description=(
+        'The module manages connected devices to WiFi.'
+    ),
+    commands=(
+        doc.Command(BotCommands.WIFI_DEVICES),
+        doc.Command(
+            BotCommands.WIFI_DEVICES,
+            doc.Value('mac_address'),
+        ),
+        doc.Command(
+            BotCommands.WIFI_DEVICES,
+            doc.Value('mac_address'),
+            doc.Value('name'),
+            doc.Choices('true', 'false'),
+        ),
+    ),
+)
 class WiFiDevices(BaseModule):
-    doc = doc.Doc(
-        title='WiFiDevices',
-        description=(
-            'The module manages connected devices to WiFi.'
-        ),
-        commands=(
-            doc.Command(BotCommands.WIFI_DEVICES),
-            doc.Command(
-                BotCommands.WIFI_DEVICES,
-                doc.Value('mac_address'),
-            ),
-            doc.Command(
-                BotCommands.WIFI_DEVICES,
-                doc.Value('mac_address'),
-                doc.Value('name'),
-                doc.Choices('true', 'false'),
-            ),
-        ),
-    )
-
     def process_command(self, command: Command) -> typing.Any:
         if command.name != BotCommands.WIFI_DEVICES:
             return False

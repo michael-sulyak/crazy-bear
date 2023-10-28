@@ -18,17 +18,16 @@ __all__ = (
 )
 
 
+@doc.doc(
+    title='AutoSecurity',
+    description=(
+        'The module turns on the security mode and the camera after the owner leaves the house.'
+    ),
+    commands=(
+        doc.Command(BotCommands.SECURITY, AUTO, doc.Choices(ON, OFF)),
+    ),
+)
 class AutoSecurity(BaseModule):
-    doc = doc.Doc(
-        title='AutoSecurity',
-        description=(
-            'The module turns on the security mode and the camera after the owner leaves the house.'
-        ),
-        commands=(
-            doc.Command(BotCommands.SECURITY, AUTO, doc.Choices(ON, OFF)),
-        ),
-    )
-
     initial_state = {
         AUTO_SECURITY_IS_ENABLED: False,
         SECURITY_IS_ENABLED: False,
@@ -119,9 +118,9 @@ class AutoSecurity(BaseModule):
         self._last_movement_at = datetime.datetime.now()
 
         if (
-                not self.state[USER_IS_CONNECTED_TO_ROUTER]
-                and not self.state[USE_CAMERA]
-                and self.state[CAMERA_IS_AVAILABLE]
+            not self.state[USER_IS_CONNECTED_TO_ROUTER]
+            and not self.state[USE_CAMERA]
+            and self.state[CAMERA_IS_AVAILABLE]
         ):
             self._camera_was_not_used = True
             self._run_command(BotCommands.CAMERA, ON)

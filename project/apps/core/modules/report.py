@@ -21,32 +21,31 @@ from ...core import constants
 from ...signals.models import Signal
 
 
-class Report(BaseModule):
-    doc = doc.Doc(
-        title='Report',
-        description=(
-            'The module provides a short report with needed data.'
-        ),
-        commands=(
-            doc.Command(constants.BotCommands.STATUS),
-            doc.Command(constants.BotCommands.REPORT),
-            doc.Command(constants.BotCommands.HELP),
-            doc.Command(constants.BotCommands.DB_STATS),
-            doc.Command(
-                constants.BotCommands.STATS,
-                doc.Value('number', type='int'),
-                doc.Choices('days', 'hours', 'minutes', 'seconds'),
-                flags=(
-                    doc.Flag('f'),
-                    doc.Flag('s'),
-                    doc.Flag('e'),
-                    doc.Flag('a'),
-                    doc.Flag('r'),
-                ),
+@doc.doc(
+    title='Report',
+    description=(
+        'The module provides a short report with needed data.'
+    ),
+    commands=(
+        doc.Command(constants.BotCommands.STATUS),
+        doc.Command(constants.BotCommands.REPORT),
+        doc.Command(constants.BotCommands.HELP),
+        doc.Command(constants.BotCommands.DB_STATS),
+        doc.Command(
+            constants.BotCommands.STATS,
+            doc.Value('number', type='int'),
+            doc.Choices('days', 'hours', 'minutes', 'seconds'),
+            flags=(
+                doc.Flag('f'),
+                doc.Flag('s'),
+                doc.Flag('e'),
+                doc.Flag('a'),
+                doc.Flag('r'),
             ),
         ),
-    )
-
+    ),
+)
+class Report(BaseModule):
     _stats_flags_map = {
         'a': 'arduino',
         'e': 'extra_data',
@@ -136,9 +135,9 @@ class Report(BaseModule):
 
             if not self._message_id_for_status:
                 if (
-                        self.messenger.last_sent_at
-                        and get_current_time() - self.messenger.last_sent_at > datetime.timedelta(minutes=5)
-                        and not is_sleep_hours()
+                    self.messenger.last_sent_at
+                    and get_current_time() - self.messenger.last_sent_at > datetime.timedelta(minutes=5)
+                    and not is_sleep_hours()
 
                 ):
                     logging.info('Send status after 5 min.')

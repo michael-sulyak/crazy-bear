@@ -15,23 +15,22 @@ __all__ = (
 )
 
 
+@doc.doc(
+    title='Utils',
+    description=(
+        'The module provides additional utils.'
+    ),
+    commands=(
+        doc.Command(
+            BotCommands.TIMER,
+            doc.Value('number', type='int'),
+            doc.Value('time_type'),
+            '|',
+            doc.Value('command'),
+        ),
+    ),
+)
 class Utils(BaseModule):
-    doc = doc.Doc(
-        title='Utils',
-        description=(
-            'The module provides additional utils.'
-        ),
-        commands=(
-            doc.Command(
-                BotCommands.TIMER,
-                doc.Value('number', type='int'),
-                doc.Value('time_type'),
-                '|',
-                doc.Value('command'),
-            ),
-        ),
-    )
-
     def process_command(self, command: Command) -> typing.Any:
         if command.name == BotCommands.TIMER:
             number = int(command.first_arg)

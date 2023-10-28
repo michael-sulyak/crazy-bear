@@ -34,19 +34,18 @@ __all__ = (
 )
 
 
+@doc.doc(
+    title='Camera',
+    description=(
+        'The module provides integration with a camera.'
+    ),
+    commands=(
+        doc.Command(BotCommands.CAMERA, doc.Choices(ON, OFF)),
+        doc.Command(BotCommands.CAMERA, 'photo'),
+        doc.Command(BotCommands.CAMERA, 'record', doc.Choices(ON, OFF)),
+    ),
+)
 class Camera(BaseModule):
-    doc = doc.Doc(
-        title='Camera',
-        description=(
-            'The module provides integration with a camera.'
-        ),
-        commands=(
-            doc.Command(BotCommands.CAMERA, doc.Choices(ON, OFF)),
-            doc.Command(BotCommands.CAMERA, 'photo'),
-            doc.Command(BotCommands.CAMERA, 'record', doc.Choices(ON, OFF)),
-        ),
-    )
-
     initial_state = {
         VIDEO_SECURITY_IS_ENABLED: None,
         USE_CAMERA: False,
