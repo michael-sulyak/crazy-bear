@@ -33,7 +33,6 @@ class FPSTracker:
         """
 
         assert self._started_at is not None
-        assert self._new_num_frames is not None
         assert self._num_frames is not None
         assert self._last_updated_at is not None
 
@@ -50,6 +49,7 @@ class FPSTracker:
                 self._new_started_at = None
                 self._new_num_frames = None
             else:
+                assert self._new_num_frames is not None
                 self._new_num_frames += 1
 
         self._num_frames += 1

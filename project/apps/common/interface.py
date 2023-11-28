@@ -1,30 +1,13 @@
 import abc
 import dataclasses
+import inspect
 import typing
 
 from libs.messengers.utils import escape_markdown
 
 
-def doc(
-    *,
-    title: str,
-    description: typing.Optional[str] = None,
-    commands: tuple['Command', ...] = (),
-) -> typing.Callable:
-    def wrapper(klass: typing.Type) -> typing.Type:
-        klass.doc = Doc(
-            title=title,
-            description=description,
-            commands=commands,
-        )
-
-        return klass
-
-    return wrapper
-
-
 @dataclasses.dataclass
-class Doc:
+class Module:
     title: str
     description: typing.Optional[str] = None
     commands: tuple['Command', ...] = ()
@@ -104,3 +87,45 @@ class Flag:
 
     def to_str(self) -> str:
         return f'-{self.name}'
+
+
+def module(
+    *,
+    title: str,
+    description: typing.Optional[str] = None,
+    commands: tuple['Command', ...] = (),
+) -> typing.Callable:
+    def wrapper(klass: typing.Type) -> typing.Type:
+        klass.interface = Module(
+            title=title,
+            description=description,
+            commands=(
+                *commands,
+                *(
+                    method._command
+                    for method in inspect.getmembers(klass, predicate=inspect.isfunction)
+                    if hasattr(method, '_command')
+                ),
+            ),
+        )
+
+        return klass
+
+    return wrapper
+
+
+def command(
+    name: str,
+    *params: tuple,
+    flags: tuple[Flag, ...] = (),
+) -> typing.Callable:
+    def wrapper(func: typing.Callable) -> typing.Callable:
+        func._command = Command(
+            name,
+            *params,
+            flags=flags,
+        )
+
+        return func
+
+    return wrapper

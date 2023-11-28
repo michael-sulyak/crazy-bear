@@ -6,5 +6,10 @@ docker rmi $(docker images -q)
 # Clean up unused docker volumes
 docker volume rm $(docker volume ls -qf dangling=true)
 
-# Clear logs
+# Clear docker logs
 truncate -s 0 /var/lib/docker/containers/**/*-json.log
+
+sudo apt --purge autoremove -y
+
+# Clear the journal log
+sudo journalctl --vacuum-time=7days

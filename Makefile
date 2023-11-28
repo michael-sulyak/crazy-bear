@@ -32,6 +32,14 @@ deploy:
 	@$(MAKE) --no-print-directory rewrite
 	@$(MAKE) --no-print-directory up
 
+redeploy:
+	@$(MAKE) --no-print-directory bump_version
+	@$(MAKE) --no-print-directory scp
+	@$(MAKE) --no-print-directory stop
+	@$(MAKE) --no-print-directory rewrite
+	@$(MAKE) --no-print-directory build
+	@$(MAKE) --no-print-directory up
+
 
 push:
 	@$(MAKE) --no-print-directory scp

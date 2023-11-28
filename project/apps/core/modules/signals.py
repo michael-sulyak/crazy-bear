@@ -11,7 +11,7 @@ from .. import constants, events
 from ..base import BaseModule, Command
 from ..signals.supreme_handler import SupremeSignalHandler
 from ... import db
-from ...common import doc
+from ...common import interface
 from ...common.utils import create_plot
 from ...signals.models import Signal
 
@@ -21,13 +21,13 @@ __all__ = (
 )
 
 
-@doc.doc(
+@interface.module(
     title='Signals',
     description=(
         'The module processes input signals.'
     ),
     commands=(
-        doc.Command(constants.BotCommands.COMPRESS_DB),
+        interface.Command(constants.BotCommands.COMPRESS_DB),
     ),
 )
 class Signals(BaseModule):

@@ -135,7 +135,7 @@ class LCSmartLamp:
 
     @synchronized_method
     def get_state(self) -> dict:
-        return self.zig_bee.get(self.friendly_name)
+        return self.zig_bee.get_state(self.friendly_name)
 
     @synchronized_method
     def is_on(self) -> bool:

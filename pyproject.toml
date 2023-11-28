@@ -29,6 +29,7 @@ paho-mqtt = "^1.6.1"
 mplcyberpunk = "^0.7.0"
 python-telegram-bot = "^20.6"
 pika = "^1.3.2"
+environs = "^9.5.0"
 
 [tool.poetry.extras]
 heavy = ["numpy", "matplotlib", "pandas", "scipy", "psycopg2-binary"]

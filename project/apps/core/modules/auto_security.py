@@ -9,7 +9,7 @@ from ..constants import (
     AUTO_SECURITY_IS_ENABLED, BotCommands, CAMERA_IS_AVAILABLE, SECURITY_IS_ENABLED, USER_IS_CONNECTED_TO_ROUTER,
     USE_CAMERA,
 )
-from ...common import doc
+from ...common import interface
 from ...common.constants import AUTO, OFF, ON
 
 
@@ -18,13 +18,10 @@ __all__ = (
 )
 
 
-@doc.doc(
+@interface.module(
     title='AutoSecurity',
     description=(
         'The module turns on the security mode and the camera after the owner leaves the house.'
-    ),
-    commands=(
-        doc.Command(BotCommands.SECURITY, AUTO, doc.Choices(ON, OFF)),
     ),
 )
 class AutoSecurity(BaseModule):
@@ -85,8 +82,13 @@ class AutoSecurity(BaseModule):
         if self.state[AUTO_SECURITY_IS_ENABLED]:
             self._disable_auto_security()
 
+    @interface.command(BotCommands.SECURITY, AUTO, ON)
     @synchronized_method
     def _enable_auto_security(self) -> None:
+        if self.state[AUTO_SECURITY_IS_ENABLED]:
+            self.messenger.send_message('Auto security is already enabled')
+            return
+
         self.state[AUTO_SECURITY_IS_ENABLED] = True
 
         events.user_is_connected_to_router.connect(self._process_user_is_connected_to_router)
@@ -97,13 +99,16 @@ class AutoSecurity(BaseModule):
         if not self.state[USER_IS_CONNECTED_TO_ROUTER]:
             self._process_user_is_disconnected_to_router()
 
+    @interface.command(BotCommands.SECURITY, AUTO, OFF)
     @synchronized_method
     def _disable_auto_security(self) -> None:
-        use_camera: bool = self.state[USE_CAMERA]
+        if not self.state[AUTO_SECURITY_IS_ENABLED]:
+            self.messenger.send_message('Auto security is already disabled')
+            return
 
         self.state[AUTO_SECURITY_IS_ENABLED] = False
 
-        if self._camera_was_not_used and use_camera:
+        if self._camera_was_not_used and self.state[USE_CAMERA]:
             self._run_command(BotCommands.CAMERA, OFF)
 
         self._camera_was_not_used = False

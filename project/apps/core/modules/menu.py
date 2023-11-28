@@ -6,7 +6,7 @@ from telegram import ReplyKeyboardMarkup, KeyboardButton
 
 from .. import constants
 from ..base import BaseModule, Command
-from ...common import doc
+from ...common import interface
 from ...common.constants import OFF, ON
 from ...common.state import State
 
@@ -190,14 +190,10 @@ class AllFuncsPage(BasePage):
         ]
 
 
-@doc.doc(
+@interface.module(
     title='Menu',
     description=(
         'The module provides the menu.'
-    ),
-    commands=(
-        doc.Command(constants.BotCommands.RETURN),
-        doc.Command(constants.BotCommands.TO, doc.Value('name')),
     ),
 )
 class Menu(BaseModule):
@@ -206,23 +202,29 @@ class Menu(BaseModule):
 
     def process_command(self, command: Command) -> typing.Any:
         if command.name == constants.BotCommands.RETURN:
-            menu = self.state[TelegramMenu.menu_state_name]
-
-            if len(menu) > 1:
-                self.state[TelegramMenu.menu_state_name] = menu[:-1]
-                state_name = self.state[TelegramMenu.menu_state_name][-1]
-                self.messenger.send_message(f'{self.PREV} {state_name.replace("_", " ").capitalize()}')
-            else:
-                self.messenger.send_message(emojize(':thinking_face:'))
-
+            self._return()
             return True
 
         if command.name == constants.BotCommands.TO:
-            with self.state.lock(TelegramMenu.menu_state_name):
-                self.state[TelegramMenu.menu_state_name].append(command.first_arg)
-
-            self.messenger.send_message(f'{self.NEXT} {command.first_arg.replace("_", " ").capitalize()}')
-
+            self._to(command.first_arg)
             return True
 
         return False
+
+    @interface.command(constants.BotCommands.RETURN)
+    def _return(self) -> None:
+        menu = self.state[TelegramMenu.menu_state_name]
+
+        if len(menu) > 1:
+            self.state[TelegramMenu.menu_state_name] = menu[:-1]
+            state_name = self.state[TelegramMenu.menu_state_name][-1]
+            self.messenger.send_message(f'{self.PREV} {state_name.replace("_", " ").capitalize()}')
+        else:
+            self.messenger.send_message(emojize(':thinking_face:'))
+
+    @interface.command(constants.BotCommands.TO, interface.Value('name'))
+    def _to(self, name: str) -> None:
+        with self.state.lock(TelegramMenu.menu_state_name):
+            self.state[TelegramMenu.menu_state_name].append(name)
+
+        self.messenger.send_message(f'{self.NEXT} {name.replace("_", " ").capitalize()}')

@@ -7,7 +7,7 @@ from ..base import BaseModule, Command
 from ..constants import (
     BotCommands,
 )
-from ...common import doc
+from ...common import interface
 
 
 __all__ = (
@@ -15,18 +15,18 @@ __all__ = (
 )
 
 
-@doc.doc(
+@interface.module(
     title='Utils',
     description=(
         'The module provides additional utils.'
     ),
     commands=(
-        doc.Command(
+        interface.Command(
             BotCommands.TIMER,
-            doc.Value('number', type='int'),
-            doc.Value('time_type'),
+            interface.Value('number', type='int'),
+            interface.Value('time_type'),
             '|',
-            doc.Value('command'),
+            interface.Value('command'),
         ),
     ),
 )

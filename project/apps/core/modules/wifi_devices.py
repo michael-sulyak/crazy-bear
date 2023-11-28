@@ -5,7 +5,7 @@ from ..base import BaseModule, Command
 from ..constants import (
     BotCommands,
 )
-from ...common import doc
+from ...common import interface
 from ...devices.dto import Device
 from ...devices.utils import device_manager
 
@@ -15,22 +15,22 @@ __all__ = (
 )
 
 
-@doc.doc(
+@interface.module(
     title='WiFiDevices',
     description=(
         'The module manages connected devices to WiFi.'
     ),
     commands=(
-        doc.Command(BotCommands.WIFI_DEVICES),
-        doc.Command(
+        interface.Command(BotCommands.WIFI_DEVICES),
+        interface.Command(
             BotCommands.WIFI_DEVICES,
-            doc.Value('mac_address'),
+            interface.Value('mac_address'),
         ),
-        doc.Command(
+        interface.Command(
             BotCommands.WIFI_DEVICES,
-            doc.Value('mac_address'),
-            doc.Value('name'),
-            doc.Choices('true', 'false'),
+            interface.Value('mac_address'),
+            interface.Value('name'),
+            interface.Choices('true', 'false'),
         ),
     ),
 )

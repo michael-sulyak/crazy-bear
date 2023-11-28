@@ -13,7 +13,7 @@ from libs.image_processing.utils import add_timestamp_in_frame
 from libs.task_queue import IntervalTask
 from ..base import BaseModule, Command
 from ..constants import BotCommands, MotionTypeSources
-from ...common import doc
+from ...common import interface
 from ...common.constants import OFF, ON
 from ...common.exceptions import Shutdown
 from ...common.storage import file_storage
@@ -34,15 +34,10 @@ __all__ = (
 )
 
 
-@doc.doc(
+@interface.module(
     title='Camera',
     description=(
         'The module provides integration with a camera.'
-    ),
-    commands=(
-        doc.Command(BotCommands.CAMERA, doc.Choices(ON, OFF)),
-        doc.Command(BotCommands.CAMERA, 'photo'),
-        doc.Command(BotCommands.CAMERA, 'record', doc.Choices(ON, OFF)),
     ),
 )
 class Camera(BaseModule):
@@ -159,8 +154,13 @@ class Camera(BaseModule):
         if self.state[USE_CAMERA]:
             self._disable_camera()
 
+    @interface.command(BotCommands.CAMERA, ON)
     @synchronized_method
     def _enable_camera(self) -> None:
+        if self.state[USE_CAMERA]:
+            self.messenger.send_message('Camera is already on')
+            return
+
         self._update_camera_status()
 
         if not self.state[CAMERA_IS_AVAILABLE]:
@@ -179,13 +179,18 @@ class Camera(BaseModule):
             )
             self._video_camera.start()
 
-        self.messenger.send_message('The camera is on')
+        self.messenger.send_message('Camera is on')
 
         if self.state[VIDEO_SECURITY_IS_ENABLED]:
             self._enable_security()
 
+    @interface.command(BotCommands.CAMERA, OFF)
     @synchronized_method
     def _disable_camera(self) -> None:
+        if not self.state[USE_CAMERA]:
+            self.messenger.send_message('Camera is already off')
+            return
+
         self.state[USE_CAMERA] = False
 
         if self.state[SECURITY_IS_ENABLED]:
@@ -198,7 +203,7 @@ class Camera(BaseModule):
             self._video_stream.stream.stream.release()
             self._video_stream = None
 
-        self.messenger.send_message('The camera is off')
+        self.messenger.send_message('Camera is off')
 
     @synchronized_method
     def _enable_security(self) -> None:
@@ -233,6 +238,7 @@ class Camera(BaseModule):
         elif self.state[USE_CAMERA]:
             self.messenger.send_message('Video security is already disabled')
 
+    @interface.command(BotCommands.CAMERA, 'photo')
     @synchronized_method
     def _take_photo(self) -> None:
         if not self._can_use_camera():
@@ -258,16 +264,26 @@ class Camera(BaseModule):
             priority=task_queue.TaskPriorities.MEDIUM,
         )
 
+    @interface.command(BotCommands.CAMERA, 'record', ON)
     @synchronized_method
     def _start_video_recording(self) -> None:
+        if self.state[VIDEO_RECORDING_IS_ENABLED]:
+            self.messenger.send_message('It is already started')
+            return
+
         if not self._can_use_camera():
             return
 
         self.state[VIDEO_RECORDING_IS_ENABLED] = True
         self.messenger.send_message('Start recording...')
 
+    @interface.command(BotCommands.CAMERA, 'record', OFF)
     @synchronized_method
     def _stop_video_recording(self) -> None:
+        if not self.state[VIDEO_RECORDING_IS_ENABLED]:
+            self.messenger.send_message('You need to start recording')
+            return
+
         if not self._can_use_camera():
             return
 

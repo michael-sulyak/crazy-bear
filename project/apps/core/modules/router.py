@@ -3,7 +3,7 @@ import typing
 
 from libs.messengers.utils import escape_markdown
 from ..base import BaseModule, Command
-from ...common import doc
+from ...common import interface
 from ...common.exceptions import Shutdown
 from ...common.routers.mi import mi_wifi
 from ...core import constants, events
@@ -15,13 +15,13 @@ __all__ = (
 )
 
 
-@doc.doc(
+@interface.module(
     title='Router',
     description=(
         'The module provides an integration with a router.'
     ),
     commands=(
-        doc.Command(constants.BotCommands.RAW_WIFI_DEVICES),
+        interface.Command(constants.BotCommands.RAW_WIFI_DEVICES),
     ),
 )
 class Router(BaseModule):

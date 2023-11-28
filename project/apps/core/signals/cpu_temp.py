@@ -6,7 +6,7 @@ from .base import BaseAdvancedSignalHandler, NotificationParams
 from .. import constants
 from ...common import utils
 from ...signals.models import Signal
-from ....config.utils import NOTHING
+from ...common.constants import NOTHING
 
 
 class CpuTempHandler(BaseAdvancedSignalHandler):

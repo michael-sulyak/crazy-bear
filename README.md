@@ -1,7 +1,7 @@
-# CrazyBear - Home Assistant in Telegram
+# CrazyBear — Home Automation in Telegram
 
-**NOTE: This project is not a general solution. This is just an implementation for specific purposes (my purposes 🙂). I
-hope the code will be helpful to you.**
+**Note:** This project is not a general solution. This is just an implementation for specific purposes (my purposes 🙂). I
+hope the code will be helpful to you.
 
 ## Preview
 
@@ -10,12 +10,11 @@ hope the code will be helpful to you.**
 # TO DO
 
 - [ ] Support `asyncio`.
-- [ ] Use `aiogram`.
 - [ ] Add asyncio queue.
 - [ ] Add multiprocessing queue.
 - [ ] Use multiprocessing for heavy operations.
-- [ ] Add more workers.
-- [ ] Rewrite the inteкface (нse mini apps from Telegram to improve the interface).
+- [x] Add more workers.
+- [ ] Rewrite the interface (use mini apps from Telegram to improve the interface).
 - [ ] Use ZigBee devices instead of Arduino.
 - [ ] Use mypy.
 
@@ -35,7 +34,6 @@ hope the code will be helpful to you.**
 2. Copy the code to a **Raspberry Pi** (or somewhere else).
 
 3. Build and run:
-
 ```bash
 docker-compose build
 docker-compose up -d
@@ -52,11 +50,11 @@ https://github.com/jmichault/flash_cc2531/issues/18
 5. Set **ZigBee**
     1. Connect **CC2531**
         1. Install **WiringPi**
-       ```bash
-       git clone https://github.com/WiringPi/WiringPi.git
-       git checkout 5de0d8f5739ccc00ab761639a7e8d3d1696a480a
-       cd WiringPi
-       ./build
-       ```
+        ```bash
+        git clone https://github.com/WiringPi/WiringPi.git
+        git checkout 5de0d8f5739ccc00ab761639a7e8d3d1696a480a
+        cd WiringPi
+        ./build
+        ```
         2. [https://kvvhost.ru/2019/05/29/zigbee2mqtt-cc2531-raspberry-pi/](https://kvvhost.ru/2019/05/29/zigbee2mqtt-cc2531-raspberry-pi/)
-    2. Add devices
+    2. Add devices.

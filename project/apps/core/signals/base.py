@@ -11,7 +11,7 @@ from .. import events
 from ...common.events import Receiver
 from ...common.state import State
 from ...signals.models import Signal
-from ....config.utils import NOTHING
+from ...common.constants import NOTHING
 
 
 @dataclasses.dataclass

@@ -12,7 +12,7 @@ from project import config
 from . import constants
 from ..base import BaseModule, Command
 from ..constants import BotCommands
-from ...common import doc
+from ...common import interface
 from ...common.constants import OFF, ON
 from ...common.utils import get_sunrise_time
 
@@ -22,24 +22,24 @@ __all__ = (
 )
 
 
-@doc.doc(
+@interface.module(
     title='LampControllerInBedroom',
     description=(
         'The module provides an interface for working with the smart lamp. '
         'Also, it\'s a part of the smart home.'
     ),
     commands=(
-        doc.Command(constants.BotCommands.LAMP, doc.Choices(ON, OFF)),
-        doc.Command(constants.BotCommands.LAMP, 'test'),
-        doc.Command(constants.BotCommands.LAMP, 'color', doc.Choices(*LCSmartLamp.colors_map.keys())),
-        doc.Command(constants.BotCommands.LAMP, 'brightness', doc.Value('brightness', type='int')),
-        doc.Command(constants.BotCommands.LAMP, 'color_temp', doc.Value('color_temp', type='int')),
-        doc.Command(constants.BotCommands.LAMP, 'color_temp', doc.Choices(*LCSmartLamp.color_temps)),
-        doc.Command(constants.BotCommands.LAMP, 'increase_brightness'),
-        doc.Command(constants.BotCommands.LAMP, 'decrease_brightness'),
-        doc.Command(constants.BotCommands.LAMP, 'increase_color_temp'),
-        doc.Command(constants.BotCommands.LAMP, 'decrease_color_temp'),
-        doc.Command(constants.BotCommands.LAMP, 'sunrise'),
+        interface.Command(constants.BotCommands.LAMP, interface.Choices(ON, OFF)),
+        interface.Command(constants.BotCommands.LAMP, 'test'),
+        interface.Command(constants.BotCommands.LAMP, 'color', interface.Choices(*LCSmartLamp.colors_map.keys())),
+        interface.Command(constants.BotCommands.LAMP, 'brightness', interface.Value('brightness', type='int')),
+        interface.Command(constants.BotCommands.LAMP, 'color_temp', interface.Value('color_temp', type='int')),
+        interface.Command(constants.BotCommands.LAMP, 'color_temp', interface.Choices(*LCSmartLamp.color_temps)),
+        interface.Command(constants.BotCommands.LAMP, 'increase_brightness'),
+        interface.Command(constants.BotCommands.LAMP, 'decrease_brightness'),
+        interface.Command(constants.BotCommands.LAMP, 'increase_color_temp'),
+        interface.Command(constants.BotCommands.LAMP, 'decrease_color_temp'),
+        interface.Command(constants.BotCommands.LAMP, 'sunrise'),
     ),
 )
 class LampControllerInBedroom(BaseModule):
@@ -157,8 +157,6 @@ class LampControllerInBedroom(BaseModule):
 
     @synchronized_method
     def _run_artificial_sunrise(self, *, step: int = 1) -> None:
-        assert self._last_artificial_sunrise_time is not None
-
         def _run_next_step(timedelta: datetime.timedelta) -> None:
             self.task_queue.put(
                 self._run_artificial_sunrise,
@@ -197,6 +195,8 @@ class LampControllerInBedroom(BaseModule):
         self.smart_lamp.set_brightness(brightness, transition=1)
 
         if brightness == self.smart_lamp.MAX_BRIGHTNESS:
+            assert self._last_artificial_sunrise_time is not None
+
             diff_1 = get_sunrise_time() - get_current_time()
             diff_2 = self._last_artificial_sunrise_time + self._sunrise_time - get_current_time()
             diff = max(diff_1, diff_2)

@@ -9,7 +9,7 @@ from libs.task_queue import BaseTaskQueue
 from libs.task_queue.dto import RepeatableTask, ScheduledTask
 from libs.zigbee.base import ZigBee
 from . import events, constants
-from ..common import doc
+from ..common import interface
 from ..common.base import BaseReceiver
 from ..common.state import State
 from ..common.types import FrozenDict
@@ -24,7 +24,7 @@ class ModuleContext:
 
 
 class BaseModule(abc.ABC):
-    doc: doc.Doc
+    interface: interface.Module
     initial_state: dict = {}
     context: ModuleContext
     messenger: BaseMessenger
@@ -60,8 +60,7 @@ class BaseModule(abc.ABC):
             # Process input commands if it's overwritten.
             subscribers += (events.input_command.connect(self.process_command),)
 
-        if hasattr(self, 'doc'):
-            subscribers += (events.getting_doc.connect(lambda: self.doc),)
+        subscribers += (events.getting_doc.connect(lambda: self.interface),)
 
         return subscribers
 

@@ -10,7 +10,7 @@ from ..base import BaseModule, Command
 from ..constants import ARDUINO_IS_ENABLED, BotCommands, MotionTypeSources
 from ...arduino.base import ArduinoConnector
 from ...arduino.constants import ArduinoSensorTypes
-from ...common import doc
+from ...common import interface
 from ...common.constants import OFF, ON
 from ...common.utils import with_throttling
 from ...core import events
@@ -23,13 +23,10 @@ __all__ = (
 )
 
 
-@doc.doc(
+@interface.module(
     title='Arduino',
     description=(
         'The module processes data from Arduino. Also it contains logic for the security mode.'
-    ),
-    commands=(
-        doc.Command(BotCommands.ARDUINO, doc.Choices(ON, OFF)),
     ),
 )
 class Arduino(BaseModule):
@@ -93,6 +90,7 @@ class Arduino(BaseModule):
         if signals:
             events.new_arduino_data.send(signals=signals)
 
+    @interface.command(BotCommands.ARDUINO, ON)
     @synchronized_method
     def _enable_arduino(self) -> None:
         assert self._arduino_connector is not None
@@ -110,6 +108,7 @@ class Arduino(BaseModule):
             self.state[ARDUINO_IS_ENABLED] = True
             self.messenger.send_message('Arduino is on')
 
+    @interface.command(BotCommands.ARDUINO, OFF)
     @synchronized_method
     def _disable_arduino(self) -> None:
         self.state[ARDUINO_IS_ENABLED] = False

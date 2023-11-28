@@ -12,7 +12,7 @@ from .. import events
 from ..base import BaseModule, Command
 from ..utils.reports import ShortTextReport
 from ... import db
-from ...common import doc
+from ...common import interface
 from ...common.exceptions import Shutdown
 from ...common.utils import (
     convert_params_to_date_range, get_weather, is_sleep_hours,
@@ -21,26 +21,26 @@ from ...core import constants
 from ...signals.models import Signal
 
 
-@doc.doc(
+@interface.module(
     title='Report',
     description=(
         'The module provides a short report with needed data.'
     ),
     commands=(
-        doc.Command(constants.BotCommands.STATUS),
-        doc.Command(constants.BotCommands.REPORT),
-        doc.Command(constants.BotCommands.HELP),
-        doc.Command(constants.BotCommands.DB_STATS),
-        doc.Command(
+        interface.Command(constants.BotCommands.STATUS),
+        interface.Command(constants.BotCommands.REPORT),
+        interface.Command(constants.BotCommands.HELP),
+        interface.Command(constants.BotCommands.DB_STATS),
+        interface.Command(
             constants.BotCommands.STATS,
-            doc.Value('number', type='int'),
-            doc.Choices('days', 'hours', 'minutes', 'seconds'),
+            interface.Value('number', type='int'),
+            interface.Choices('days', 'hours', 'minutes', 'seconds'),
             flags=(
-                doc.Flag('f'),
-                doc.Flag('s'),
-                doc.Flag('e'),
-                doc.Flag('a'),
-                doc.Flag('r'),
+                interface.Flag('f'),
+                interface.Flag('s'),
+                interface.Flag('e'),
+                interface.Flag('a'),
+                interface.Flag('r'),
             ),
         ),
     ),

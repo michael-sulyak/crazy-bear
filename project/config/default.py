@@ -1,15 +1,20 @@
+import datetime
 import time
 from os.path import dirname
 from pathlib import Path
 
 import pytz
 from crontab import CronTab
+from environs import Env
 
-from .utils import VersionDetails, env
+from .utils import VersionDetails
 
 
-BASE_DIR = Path(dirname(__file__)) / '..' / '..'
-PROJECT_DIR = BASE_DIR / 'project'
+env = Env()
+env.read_env()
+
+ROOT_DIR = Path(dirname(__file__)) / '..' / '..'
+PROJECT_DIR = ROOT_DIR / 'project'
 APPS_DIR = PROJECT_DIR / 'apps'
 
 # Version
@@ -33,8 +38,8 @@ OPENWEATHERMAP_URL = env('OPENWEATHERMAP_URL')
 # CV
 VIDEO_SRC = env.int('VIDEO_SRC')
 IMSHOW = env.bool('IMSHOW')
-IMAGE_RESOLUTION = env.tuple('IMAGE_RESOLUTION', value_type=int)
-FPS: int = env.int('FPS')  # type: ignore
+IMAGE_RESOLUTION = tuple(env.list('IMAGE_RESOLUTION', subcast=int))
+FPS = env.int('FPS')  # type: ignore
 
 # Arduino
 ARDUINO_TTY = env('ARDUINO_TTY')
@@ -42,7 +47,8 @@ ARDUINO_TTY = env('ARDUINO_TTY')
 # Databases
 DATABASE_URL = env('DATABASE_URL')
 DATABASE_DEBUG = DEBUG
-STORAGE_TIME = env.time_delta('STORAGE_TIME')
+_row_storage_time = env.list('STORAGE_TIME', delimiter=' ')
+STORAGE_TIME = datetime.timedelta(**{_row_storage_time[1]: int(_row_storage_time[0])})
 
 # Time
 TZ = env('TZ')
@@ -56,19 +62,18 @@ SENTRY_DSN = env('SENTRY_DSN')
 DROPBOX_TOKEN = env('DROPBOX_TOKEN')
 
 # Router
-ROUTER_TYPE = env('ROUTER_TYPE')
-assert ROUTER_TYPE == 'mi'
+ROUTER_TYPE = env('ROUTER_TYPE', validate=lambda x: x == 'mi')
 ROUTER_USERNAME = env('ROUTER_USERNAME', default=None)
 ROUTER_PASSWORD = env('ROUTER_PASSWORD')
 ROUTER_URL = env('ROUTER_URL')
 
 # Other
-SLEEPING_TIME = env.time_range('SLEEPING_TIME')
-NORMAL_HUMIDITY_RANGE = env.tuple('NORMAL_HUMIDITY_RANGE', value_type=int)
-NORMAL_TEMPERATURE_RANGE = env.tuple('NORMAL_TEMPERATURE_RANGE', value_type=int)
-ARTIFICIAL_SUNRISE_SCHEDULES = env.tuple('ARTIFICIAL_SUNRISE_SCHEDULES', separator=';', value_type=CronTab)
+SLEEPING_TIME = tuple(env.list('SLEEPING_TIME', subcast=datetime.time.fromisoformat))
+NORMAL_HUMIDITY_RANGE = env.list('NORMAL_HUMIDITY_RANGE', subcast=int)
+NORMAL_TEMPERATURE_RANGE = tuple(env.list('NORMAL_TEMPERATURE_RANGE', subcast=int))
+ARTIFICIAL_SUNRISE_SCHEDULES = tuple(env.list('ARTIFICIAL_SUNRISE_SCHEDULES', delimiter=';', subcast=CronTab))
 
 # Smart devices
-ZIGBEE_MQ_HOST: str = env('ZIGBEE_MQ_HOST')
-ZIGBEE_MQ_PORT: int = env.int('ZIGBEE_MQ_PORT')  # type: ignore
-MAIN_SMART_LAMP: str = env('MAIN_SMART_LAMP')
+ZIGBEE_MQ_HOST = env('ZIGBEE_MQ_HOST')
+ZIGBEE_MQ_PORT = env.int('ZIGBEE_MQ_PORT')  # type: ignore
+MAIN_SMART_LAMP = env('MAIN_SMART_LAMP')
