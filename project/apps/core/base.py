@@ -59,7 +59,7 @@ class BaseModule(abc.ABC):
 
         if (
             self.__class__.process_command is not BaseModule.process_command
-            or self.interface.use_auto_mapping_for_commands
+            or self.interface.use_auto_mapping
         ):
             # Process input commands if it's overwritten.
             subscribers += (events.input_command.connect(self.process_command),)
@@ -69,13 +69,19 @@ class BaseModule(abc.ABC):
         return subscribers
 
     def process_command(self, command: 'Command') -> typing.Any:
-        if self.interface.use_auto_mapping_for_commands:
+        if self.interface.use_auto_mapping:
             for module_command in self.interface.commands_map[command.name]:
-                if module_command.can_handle(command):
-                    getattr(self, module_command.method_name)(command)
+                if module_command.method_name and module_command.can_handle(command):
+                    if module_command.need_to_pass_command:
+                        getattr(self, module_command.method_name)(command)
+                    else:
+                        getattr(self, module_command.method_name)()
+
                     return True
 
-        return False
+            return False
+
+        return None
 
     def disable(self) -> None:
         logging.info('[shutdown] Disable module "%s"...', self.__class__.__name__)
@@ -88,7 +94,12 @@ class BaseModule(abc.ABC):
 
     @staticmethod
     def _run_command(name: str, *args, **kwargs) -> None:
-        events.input_command.send(command=Command(name=name, args=args, kwargs=kwargs))
+        command = Command(name=name, args=args, kwargs=kwargs)
+        results, exceptions = events.input_command.process(command=command)
+        is_processed = exceptions or any(map(lambda x: x is True, results))
+
+        if not is_processed:
+            logging.error('Command was not processed', extra={'command': str(command)})
 
 
 @dataclass

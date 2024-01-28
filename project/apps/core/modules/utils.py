@@ -19,7 +19,6 @@ __all__ = (
     description=(
         'The module provides additional utils.'
     ),
-    use_auto_mapping_for_commands=True,
 )
 class Utils(BaseModule):
     @interface.command(

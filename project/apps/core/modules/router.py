@@ -20,7 +20,6 @@ __all__ = (
     description=(
         'The module provides an integration with a router.'
     ),
-    use_auto_mapping_for_commands=True,
 )
 class Router(BaseModule):
     @property
@@ -49,7 +48,7 @@ class Router(BaseModule):
         )
 
     @interface.command(constants.BotCommands.RAW_WIFI_DEVICES)
-    def _show_wifi_connected_devices(self, command: Command) -> None:
+    def _show_wifi_connected_devices(self) -> None:
         message = ''
 
         for device in mi_wifi.device_list()['list']:

@@ -11,7 +11,7 @@ from libs.camera.base import VideoCamera
 from libs.casual_utils.parallel_computing import synchronized_method
 from libs.image_processing.utils import add_timestamp_in_frame
 from libs.task_queue import IntervalTask
-from ..base import BaseModule, Command
+from ..base import BaseModule
 from ..constants import BotCommands, MotionTypeSources
 from ...common import interface
 from ...common.constants import OFF, ON
@@ -89,39 +89,9 @@ class Camera(BaseModule):
             *super().subscribe_to_events(),
             events.frame_from_video_camera.connect(self._process_frame),
             events.motion_detected.connect(self._process_motion_detection),
+            events.security_is_enabled.connect(self._enable_security),
+            events.security_is_disabled.connect(self._disable_security),
         )
-
-    def process_command(self, command: Command) -> typing.Any:
-        if command.name == BotCommands.CAMERA:
-            if command.first_arg == ON:
-                self._enable_camera()
-            elif command.first_arg == OFF:
-                self._disable_camera()
-            elif command.first_arg == 'photo':
-                self._take_photo()
-            elif command.first_arg == 'record':
-                if command.second_arg == ON:
-                    self._start_video_recording()
-                elif command.second_arg == OFF:
-                    self._stop_video_recording()
-                else:
-                    return False
-            else:
-                return False
-
-            return True
-
-        if command.name == BotCommands.SECURITY:
-            if command.first_arg == ON:
-                self._enable_security()
-            elif command.first_arg == OFF:
-                self._disable_security()
-            else:
-                return False
-
-            return True
-
-        return False
 
     @synchronized_method
     def check(self) -> None:

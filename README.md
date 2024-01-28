@@ -10,12 +10,12 @@ hope the code will be helpful to you.
 
 ## TO DO
 
-- [ ] Use the new style for binding commands (`interface.command`).
+- [x] Use the new style for binding commands (`interface.command`).
 - [ ] Remove Arduino and use only ZigBee devices.
 - [ ] Fix typings.
 - [ ] Rewrite the interface (use mini apps from Telegram to improve the interface).
 
-## Used:
+## Components
 
 1. **Raspberry Pi 4**
 2. **Arduino Nano V3.0 ATmega328P** (is connected via USB to the **Raspberry Pi**)
@@ -44,12 +44,12 @@ hope the code will be helpful to you.
 5. Set **ZigBee Dongle** (if you use **CC2531**)
     1. Connect **CC2531**
         1. Install **WiringPi**
-        ```bash
-        git clone https://github.com/WiringPi/WiringPi.git
-        git checkout 5de0d8f5739ccc00ab761639a7e8d3d1696a480a
-        cd WiringPi
-        ./build
-        ```
-        (https://github.com/jmichault/flash_cc2531/issues/18)
+            ```bash
+            git clone https://github.com/WiringPi/WiringPi.git
+            git checkout 5de0d8f5739ccc00ab761639a7e8d3d1696a480a
+            cd WiringPi
+            ./build
+            ```
+            (https://github.com/jmichault/flash_cc2531/issues/18)
         2. [https://kvvhost.ru/2019/05/29/zigbee2mqtt-cc2531-raspberry-pi/](https://kvvhost.ru/2019/05/29/zigbee2mqtt-cc2531-raspberry-pi/)
     2. Add devices.

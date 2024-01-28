@@ -195,14 +195,13 @@ class AllFuncsPage(BasePage):
     description=(
         'The module provides the menu.'
     ),
-    use_auto_mapping_for_commands=True,
 )
 class Menu(BaseModule):
     NEXT = emojize(':right_arrow:')
     PREV = emojize(':BACK_arrow:')
 
     @interface.command(constants.BotCommands.RETURN)
-    def _return(self, command: Command) -> None:
+    def _return(self) -> None:
         menu = self.state[TelegramMenu.menu_state_name]
 
         if len(menu) > 1:

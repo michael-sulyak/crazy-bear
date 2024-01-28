@@ -18,11 +18,10 @@ __all__ = (
     description=(
         'The module manages connected devices to WiFi.'
     ),
-    use_auto_mapping_for_commands=True,
 )
 class WiFiDevices(BaseModule):
     @interface.command(BotCommands.WIFI_DEVICES)
-    def _show_wifi_devices(self, command: Command) -> None:
+    def _show_wifi_devices(self) -> None:
         text = '*Devices*'
 
         for device in device_manager.devices:

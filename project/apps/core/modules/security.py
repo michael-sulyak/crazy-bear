@@ -1,7 +1,7 @@
 import datetime
 import typing
 
-from libs.casual_utils.parallel_computing import synchronized_method, single_synchronized
+from libs.casual_utils.parallel_computing import single_synchronized, synchronized_method
 from libs.task_queue import IntervalTask, TaskPriorities
 from .. import events
 from ..base import BaseModule, Command
@@ -14,17 +14,17 @@ from ...common.constants import AUTO, OFF, ON
 
 
 __all__ = (
-    'AutoSecurity',
+    'Security',
 )
 
 
 @interface.module(
-    title='AutoSecurity',
+    title='Security',
     description=(
         'The module turns on the security mode and the camera after the owner leaves the house.'
     ),
 )
-class AutoSecurity(BaseModule):
+class Security(BaseModule):
     initial_state = {
         AUTO_SECURITY_IS_ENABLED: False,
         SECURITY_IS_ENABLED: False,
@@ -55,32 +55,22 @@ class AutoSecurity(BaseModule):
             events.security_is_disabled.connect(lambda: self.messenger.send_message('Security is disabled')),
         )
 
-    def process_command(self, command: Command) -> typing.Any:
-        if command.name == BotCommands.SECURITY:
-            if command.first_arg == AUTO:
-                if command.second_arg == ON:
-                    self._enable_auto_security()
-                elif command.second_arg == OFF:
-                    self._disable_auto_security()
-                else:
-                    return False
-            elif command.first_arg == ON:
-                self.state[SECURITY_IS_ENABLED] = True
-            elif command.first_arg == OFF:
-                self.state[SECURITY_IS_ENABLED] = False
-            else:
-                return False
-
-            return True
-
-        return False
-
     @synchronized_method
     def disable(self) -> None:
         super().disable()
 
         if self.state[AUTO_SECURITY_IS_ENABLED]:
             self._disable_auto_security()
+
+    @interface.command(BotCommands.SECURITY, ON)
+    @synchronized_method
+    def _enable_security(self) -> None:
+        self.state[SECURITY_IS_ENABLED] = True
+
+    @interface.command(BotCommands.SECURITY, OFF)
+    @synchronized_method
+    def _disable_security(self) -> None:
+        self.state[SECURITY_IS_ENABLED] = False
 
     @interface.command(BotCommands.SECURITY, AUTO, ON)
     @synchronized_method

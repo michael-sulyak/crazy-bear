@@ -54,19 +54,6 @@ class Arduino(BaseModule):
             events.new_arduino_data.connect(self._process_new_arduino_logs),
         )
 
-    def process_command(self, command: Command) -> typing.Any:
-        if command.name == BotCommands.ARDUINO:
-            if command.first_arg == ON:
-                self._enable_arduino()
-            elif command.first_arg == OFF:
-                self._disable_arduino()
-            else:
-                return False
-
-            return True
-
-        return False
-
     @synchronized_method
     def disable(self) -> None:
         super().disable()

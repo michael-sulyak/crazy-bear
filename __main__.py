@@ -105,7 +105,7 @@ def main() -> None:
             modules.Arduino,
             modules.Menu,
             modules.Report,
-            modules.AutoSecurity,
+            modules.Security,
             modules.Router,
             modules.Signals,
             modules.WiFiDevices,

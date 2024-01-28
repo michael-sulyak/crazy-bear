@@ -12,11 +12,10 @@ __all__ = (
     description=(
         'The module manages ZigBee devices.'
     ),
-    use_auto_mapping_for_commands=True,
 )
 class ZigBeeController(BaseModule):
     @interface.command('/zigbee_status')
-    def _show_status(self, command: Command) -> None:
+    def _show_status(self) -> None:
         self.messenger.send_message(f'Is health: `{self.context.zig_bee.is_health()}`', use_markdown=True)
 
         devices_info = '\n\n'.join(

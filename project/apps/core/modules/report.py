@@ -26,24 +26,6 @@ from ...signals.models import Signal
     description=(
         'The module provides a short report with needed data.'
     ),
-    commands=(
-        interface.Command(constants.BotCommands.STATUS),
-        interface.Command(constants.BotCommands.REPORT),
-        interface.Command(constants.BotCommands.HELP),
-        interface.Command(constants.BotCommands.DB_STATS),
-        interface.Command(
-            constants.BotCommands.STATS,
-            interface.Value('number', python_type=int),
-            interface.Choices('days', 'hours', 'minutes', 'seconds'),
-            flags=(
-                interface.Flag('f'),
-                interface.Flag('s'),
-                interface.Flag('e'),
-                interface.Flag('a'),
-                interface.Flag('r'),
-            ),
-        ),
-    ),
 )
 class Report(BaseModule):
     _stats_flags_map = {
@@ -73,60 +55,50 @@ class Report(BaseModule):
         with self._lock_for_status:
             self._message_id_for_status = None
 
-        if command.name == constants.BotCommands.STATUS:
-            self._send_status()
-            return True
+        return super().process_command(command)
 
-        if command.name == constants.BotCommands.STATS:
-            delta_type: str = command.get_second_arg('hours', skip_flags=True)
-            delta_value: str = command.get_first_arg('24', skip_flags=True)
+    @interface.command(
+        constants.BotCommands.STATS,
+        flags=(
+            interface.Flag('s'),
+        ),
+    )
+    @interface.command(
+        constants.BotCommands.STATS,
+        interface.Value('number', python_type=int),
+        interface.Choices('days', 'hours', 'minutes', 'seconds'),
+        flags=(
+            interface.Flag('s'),
+        ),
+    )
+    def _send_stats(self, command: Command) -> None:
+        delta_type = str(command.get_second_arg('hours', skip_flags=True))
+        delta_value = int(command.get_first_arg('24', skip_flags=True))
 
-            if delta_type not in ('days', 'hours', 'minutes', 'seconds',):
-                self.messenger.send_message('Wrong a delta type')
-                return True
+        date_range = convert_params_to_date_range(
+            delta_type=delta_type,
+            delta_value=delta_value,
+        )
 
-            if delta_value.isdigit():
-                delta_value: int = int(delta_value)
-            else:
-                self.messenger.send_message('Wrong a delta value')
-                return True
+        flags = command.get_cleaned_flags()
 
-            date_range = convert_params_to_date_range(
-                delta_type=delta_type,
-                delta_value=delta_value,
-            )
+        if not flags or flags == {'f'}:
+            flags = self._stats_flags_map.keys()
 
-            flags = command.get_cleaned_flags()
+        if flags == {'s'}:
+            flags = {'a', 'e', 'r'}
 
-            if not flags or flags == {'f'}:
-                flags = self._stats_flags_map.keys()
+        events.request_for_statistics.pipe(
+            self._pipe_for_collecting_stats,
+            date_range=date_range,
+            components={self._stats_flags_map[flag] for flag in flags},
+        )
 
-            if flags == {'s'}:
-                flags = {'a', 'e', 'r'}
-
-            events.request_for_statistics.pipe(
-                self._pipe_for_collecting_stats,
-                date_range=date_range,
-                components={self._stats_flags_map[flag] for flag in flags},
-            )
-
-            return True
-
-        if command.name == constants.BotCommands.REPORT:
-            self._send_report()
-            return True
-
-        if command.name == constants.BotCommands.DB_STATS:
-            self._send_db_stats()
-            return True
-
-        if command.name == constants.BotCommands.HELP:
-            docs = sorted(events.getting_doc.process()[0], key=lambda x: x.title)
-            message = '\n\n'.join(doc_.to_str() for doc_ in docs)
-            self.messenger.send_message(message, use_markdown=True)
-            return True
-
-        return False
+    @interface.command(constants.BotCommands.HELP)
+    def _send_help(self) -> None:
+        docs = sorted(events.getting_doc.process()[0], key=lambda x: x.title)
+        message = '\n\n'.join(doc_.to_str() for doc_ in docs)
+        self.messenger.send_message(message, use_markdown=True)
 
     def _update_status(self) -> None:
         with self._lock_for_status:
@@ -182,6 +154,7 @@ class Report(BaseModule):
 
         yield None
 
+    @interface.command(constants.BotCommands.STATUS)
     def _send_status(self) -> None:
         report = ShortTextReport(state=self.state)
         message = report.generate()
@@ -196,6 +169,7 @@ class Report(BaseModule):
                 use_markdown=True,
             )
 
+    @interface.command(constants.BotCommands.REPORT)
     def _send_report(self) -> None:
         now = datetime.datetime.now()
         hour = now.hour
@@ -219,6 +193,7 @@ class Report(BaseModule):
 
         self.messenger.send_message(f'{greeting}\n\n{weather}', use_markdown=True)
 
+    @interface.command(constants.BotCommands.DB_STATS)
     def _send_db_stats(self) -> None:
         sql = """
         SELECT table_name, pg_size_pretty(pg_relation_size(quote_ident(table_name))) AS table_size

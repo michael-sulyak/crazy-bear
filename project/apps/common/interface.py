@@ -4,6 +4,7 @@ import inspect
 import typing
 from collections import defaultdict
 from functools import cached_property
+from itertools import chain
 
 from libs.messengers.utils import escape_markdown
 
@@ -15,16 +16,27 @@ if typing.TYPE_CHECKING:
 @dataclasses.dataclass
 class Module:
     title: str
-    use_auto_mapping_for_commands: bool
     description: typing.Optional[str] = None
     commands: tuple['Command', ...] = ()
-    commands_map: dict[str, list['Command']] = dataclasses.field(
-        default_factory=lambda: defaultdict(list),
-    )
 
-    def __post_init__(self) -> None:
+    @cached_property
+    def use_auto_mapping(self) -> bool:
         for command_ in self.commands:
             self.commands_map[command_.name].append(command_)
+
+            if command_.method_name:
+                return True
+
+        return False
+
+    @cached_property
+    def commands_map(self) -> dict[str, list['Command']]:
+        result = defaultdict(list)
+
+        for command_ in self.commands:
+            result[command_.name].append(command_)
+
+        return result
 
     def to_str(self) -> str:
         result = f'*{escape_markdown(self.title)}*'
@@ -44,6 +56,7 @@ class Command:
     params: tuple[typing.Union['BaseParam', str], ...]
     flags: tuple['Flag', ...]
     method_name: str | None
+    need_to_pass_command: bool
 
     def __init__(
         self,
@@ -51,11 +64,13 @@ class Command:
         *params: typing.Union['BaseParam', str],
         flags: tuple['Flag', ...] = (),
         method_name: str | None = None,
+        need_to_pass_command: bool = False,
     ) -> None:
         self.name = name
         self.params = params
         self.flags = flags
         self.method_name = method_name
+        self.need_to_pass_command = need_to_pass_command
 
     def can_handle(self, outer_command: 'OuterCommand') -> bool:
         if self.name != outer_command.name:
@@ -84,8 +99,8 @@ class Command:
             else:
                 raise RuntimeError('Unknown parameter type')
 
-        if self._str_flags != outer_command.get_cleaned_flags():
-            return False
+        # if self._str_flags != outer_command.get_cleaned_flags():
+        #     return False
 
         return True
 
@@ -162,7 +177,6 @@ def module(
     title: str,
     description: typing.Optional[str] = None,
     commands: tuple['Command', ...] = (),
-    use_auto_mapping_for_commands: bool = False,
 ) -> typing.Callable:
     def wrapper(klass: typing.Type) -> typing.Type:
         klass.interface = Module(
@@ -170,13 +184,12 @@ def module(
             description=description,
             commands=(
                 *commands,
-                *(
-                    method._command
+                *chain.from_iterable(
+                    method._commands
                     for method_name, method in inspect.getmembers(klass, predicate=inspect.isfunction)
-                    if hasattr(method, '_command')
+                    if hasattr(method, '_commands')
                 ),
             ),
-            use_auto_mapping_for_commands=use_auto_mapping_for_commands,
         )
 
         return klass
@@ -190,12 +203,16 @@ def command(
     flags: tuple[Flag, ...] = (),
 ) -> typing.Callable:
     def wrapper(func: typing.Callable) -> typing.Callable:
-        func._command = Command(
+        if not hasattr(func, '_commands'):
+            func._commands = []
+
+        func._commands.append(Command(
             name,
             *params,
             flags=flags,
             method_name=func.__name__,
-        )
+            need_to_pass_command='command' in func.__code__.co_varnames,
+        ))
 
         return func
 
