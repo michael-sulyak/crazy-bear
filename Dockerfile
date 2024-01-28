@@ -19,7 +19,7 @@ RUN apt-get install -y \
 RUN apt-get install -y python3-pip
 
 # Requirements
-RUN pip3 install poetry==1.6.1 --break-system-packages
+RUN pip3 install poetry==1.7.1  --break-system-packages
 RUN poetry config virtualenvs.options.system-site-packages true
 COPY ./pyproject.toml /app
 COPY ./poetry.lock /app

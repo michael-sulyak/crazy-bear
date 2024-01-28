@@ -4,8 +4,8 @@ import threading
 import typing
 from time import sleep
 
-from ...casual_utils.parallel_computing import synchronized_method
 from ..base import ZigBee
+from ...casual_utils.parallel_computing import synchronized_method
 
 
 __all__ = (
@@ -85,6 +85,10 @@ class LCSmartLamp:
             'brightness': brightness,
             'transition': transition,
         })
+
+    @synchronized_method
+    def reset(self) -> None:
+        self.turn_off()
 
     @synchronized_method
     @method_with_transition

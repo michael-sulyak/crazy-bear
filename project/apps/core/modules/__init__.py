@@ -8,3 +8,4 @@ from .signals import *
 from .wifi_devices import *
 from .smart_lamp_controller import *
 from .utils import *
+from .zigbee import *

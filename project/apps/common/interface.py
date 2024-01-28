@@ -103,7 +103,7 @@ def module(
                 *commands,
                 *(
                     method._command
-                    for method in inspect.getmembers(klass, predicate=inspect.isfunction)
+                    for method_name, method in inspect.getmembers(klass, predicate=inspect.isfunction)
                     if hasattr(method, '_command')
                 ),
             ),

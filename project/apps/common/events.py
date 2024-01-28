@@ -61,12 +61,13 @@ class Event:
         for receiver in self.receivers:
             try:
                 result = receiver(**kwargs)
-                results.append(result)
             except Shutdown:
                 raise
             except Exception as e:
                 logging.exception(e)
                 exceptions.append(e)
+            else:
+                results.append(result)
 
         return results, exceptions
 

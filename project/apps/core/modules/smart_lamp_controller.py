@@ -151,6 +151,17 @@ class LampControllerInBedroom(BaseModule):
             return
 
         try:
+            if self.smart_lamp.is_on():
+                self.smart_lamp.reset()
+
+                self.task_queue.put(
+                    partial(self._set_lamp_status),
+                    run_after=datetime.datetime.now() + datetime.timedelta(seconds=3),
+                    priority=TaskPriorities.LOW,
+                )
+
+                return
+
             self.state[constants.MAIN_LAMP_IS_ON] = self.smart_lamp.is_on()
         except ZigBeeTimeoutError:
             pass

@@ -1,4 +1,3 @@
-import asyncio
 import datetime
 import logging
 import signal
@@ -10,7 +9,7 @@ from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from sentry_sdk.integrations.threading import ThreadingIntegration
 
 from libs.messengers.telegram import TelegramMessenger
-from libs.task_queue import TaskPriorities, DelayedTask, ScheduledTask
+from libs.task_queue import DelayedTask, ScheduledTask, TaskPriorities
 from project import config
 from project.apps import db
 from project.apps.common.constants import AUTO, INITED_AT, ON
@@ -110,6 +109,7 @@ def main() -> None:
             modules.Router,
             modules.Signals,
             modules.WiFiDevices,
+            modules.ZigBeeController,
             modules.LampControllerInBedroom,
             modules.Utils,
         ),

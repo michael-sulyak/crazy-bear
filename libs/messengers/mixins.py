@@ -1,11 +1,11 @@
 import abc
+import cv2
 import io
+import numpy as np
 import os
 import tempfile
 import typing
 
-import cv2
-import numpy as np
 import telegram
 
 
