@@ -1,3 +1,4 @@
+import dataclasses
 import itertools
 import json
 import logging
@@ -12,6 +13,27 @@ from . import exceptions
 from ..casual_utils.parallel_computing import synchronized_method
 
 
+@dataclasses.dataclass
+class ZigBeeDevice:
+    friendly_name: str
+    ieee_address: str
+    power_source: str | None = None
+    is_supported: bool | None = None
+    is_disabled: bool | None = None
+    is_available: bool | None = None
+    type: str | None = None
+
+    def to_str(self) -> str:
+        return (
+            f'Friendly name: `{self.friendly_name}`\n'
+            f'IEEE address: `{self.ieee_address}`\n'
+            f'Power source: `{self.power_source}`\n'
+            f'Is supported: `{self.is_supported}`\n'
+            f'Is available: `{self.is_available}`\n'
+            f'Type: `{self.type}`'
+        )
+
+
 class ZigBee:
     _base_topic: str = 'zigbee2mqtt'
     _mq_host: str
@@ -20,7 +42,7 @@ class ZigBee:
     _temporary_subscribers_map: dict[str, list[typing.Callable]]
     _permanent_subscribers_map: dict[str, list[typing.Callable]]
     _permanent_subscriber_key_regexps_map: dict[re.Pattern, str]
-    _devices: list[dict[str, typing.Any]]
+    _devices_map: dict[str, ZigBeeDevice]
     _availability_map: dict[str, bool]
     _lock: threading.RLock
 
@@ -31,12 +53,9 @@ class ZigBee:
         self._permanent_subscribers_map = defaultdict(list)
         self._availability_map = {}
         self._permanent_subscriber_key_regexps_map = {}
-        self._devices = []
+        self._devices_map = {}
 
-        def _set_devices(topic: str, payload: list) -> None:
-            self._devices = payload
-
-        self._permanent_subscribers_map[f'{self._base_topic}/bridge/devices'].append(_set_devices)
+        self._permanent_subscribers_map[f'{self._base_topic}/bridge/devices'].append(self._set_devices)
 
         self._subscribe_on_availability()
 
@@ -55,8 +74,8 @@ class ZigBee:
 
     @property
     @synchronized_method
-    def devices(self) -> list[dict[str, typing.Any]]:
-        return self._devices
+    def devices(self) -> tuple[ZigBeeDevice, ...]:
+        return tuple(self._devices_map.values())
 
     def set(self, friendly_name: str, payload: dict) -> None:
         self._publish_msg(f'{self._base_topic}/{friendly_name}/set', payload)
@@ -159,11 +178,6 @@ class ZigBee:
                     subscriber(message.topic, payload)
 
                 break
-        else:
-            # If we don't find subscribers, then we need to unsubscribe from the topic:
-            if not self._permanent_subscribers_map[message.topic]:
-                logging.info(f'ZigBee: Unsubscribe from {message.topic}')
-                self.mq.unsubscribe(message.topic)
 
     def _request_data(self, *,
                       topic_for_sending: str,
@@ -207,10 +221,38 @@ class ZigBee:
     def _subscribe_on_availability(self) -> None:
         def _func(topic: str, payload: dict) -> None:
             friendly_name = topic.split('/')[1]
-            self._availability_map[friendly_name] = payload['state'] == 'online'
+            is_available = payload['state'] == 'online'
+            self._availability_map[friendly_name] = is_available
+
+            if friendly_name in self._devices_map:
+                self._devices_map[friendly_name].is_available = is_available
+            else:
+                self._devices_map[friendly_name] = ZigBeeDevice(
+                    friendly_name=friendly_name,
+                    ieee_address=friendly_name,
+                )
 
         common_topic = f'{self._base_topic}/+/availability'
         self._permanent_subscriber_key_regexps_map[
             re.compile(common_topic.replace('+', '.*'))
         ] = common_topic
         self._permanent_subscribers_map[common_topic].append(_func)
+
+    @synchronized_method
+    def _set_devices(self, topic: str, payload: list) -> None:
+        for raw_device in payload:
+            device = ZigBeeDevice(
+                friendly_name=raw_device['friendly_name'],
+                ieee_address=raw_device['ieee_address'],
+                power_source=raw_device.get('power_source'),
+                is_supported=raw_device.get('supported'),
+                is_disabled=raw_device.get('is_disabled'),
+                is_available=raw_device.get('is_available'),
+                type=raw_device.get('type'),
+            )
+
+            if device.friendly_name in self._devices_map:
+                for field in dataclasses.fields(device):
+                    setattr(self._devices_map[device.friendly_name], field.name, getattr(device, field.name))
+            else:
+                self._devices_map[device.friendly_name] = device

@@ -1,5 +1,3 @@
-import typing
-
 from ..base import BaseModule, Command
 from ...common import interface
 
@@ -14,42 +12,41 @@ __all__ = (
     description=(
         'The module manages ZigBee devices.'
     ),
+    use_auto_mapping_of_commands=True,
 )
 class ZigBeeController(BaseModule):
-    def process_command(self, command: Command) -> typing.Any:
-        if command.name == '/zigbee':
-            self._show_status()
-            return True
+    @interface.command('/zigbee_status')
+    def _show_status(self, command: Command) -> None:
+        self.messenger.send_message(f'Is health: `{self.context.zig_bee.is_health()}`', use_markdown=True)
 
-        return False
+        devices_info = '\n\n'.join(
+            device.to_str()
+            for device in self.context.zig_bee.devices
+        )
 
-    @interface.command('/zigbee')
-    def _show_status(self) -> None:
-        self.messenger.send_message(f'Is health: {self.context.zig_bee.is_health()}')
+        self.messenger.send_message(f'*Devices*\n\n{devices_info}', use_markdown=True)
 
-        devices_info = []
+        temporary_subscribers = '\n'.join(
+            key
+            for key, value in self.context.zig_bee._temporary_subscribers_map.items()
+            if value
+        )
+        self.messenger.send_message(
+            f'Temporary subscribers:\n```\n{temporary_subscribers or "-"}\n```',
+            use_markdown=True,
+        )
 
-        for device in self.context.zig_bee.devices:
-            if device['type'] == 'Coordinator':
-                devices_info.append(f'Coordinator\nIs disabled: {device["disabled"]}')
-                continue
+        permanent_subscribers = '\n'.join(
+            key
+            for key, value in self.context.zig_bee._permanent_subscribers_map.items()
+            if value
+        )
+        self.messenger.send_message(
+            f'Permanent subscribers:\n```\n{permanent_subscribers or "-"}\n```',
+            use_markdown=True,
+        )
 
-            devices_info.append(
-                f'Friendly name: {device["friendly_name"]}\n'
-                f'IEEE address: {device["ieee_address"]}\n'
-                f'Power source: {device["power_source"]}\n'
-                f'Supported: {device["supported"]}\n'
-                f'Type: {device["type"]}\n'
-            )
-
-        devices_info = '\n\n'.join(devices_info)
-
-        self.messenger.send_message(f'Devices\n\n{devices_info}')
-
-        temporary_subscribers = '\n'.join(self.context.zig_bee._temporary_subscribers_map.keys())
-        self.messenger.send_message(f'Temporary subscribers:\n```\n{temporary_subscribers}\n```')
-
-        permanent_subscribers = '\n'.join(self.context.zig_bee._permanent_subscribers_map.keys())
-        self.messenger.send_message(f'Permanent subscribers:\n```\n{permanent_subscribers}\n```')
-
-        self.messenger.send_message(f'Availability map:\n```\n{self.context.zig_bee._availability_map}\n```')
+        self.messenger.send_message(
+            f'Availability map:\n```\n{self.context.zig_bee._availability_map or "-"}\n```',
+            use_markdown=True,
+        )

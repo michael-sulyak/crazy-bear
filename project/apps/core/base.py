@@ -4,11 +4,12 @@ import threading
 import typing
 from dataclasses import dataclass, field
 
+from libs.casual_utils.caching import memoized_method
 from libs.messengers.base import BaseMessenger
 from libs.task_queue import BaseTaskQueue
 from libs.task_queue.dto import RepeatableTask, ScheduledTask
 from libs.zigbee.base import ZigBee
-from . import events, constants
+from . import constants, events
 from ..common import interface
 from ..common.base import BaseReceiver
 from ..common.state import State
@@ -56,7 +57,10 @@ class BaseModule(abc.ABC):
             events.shutdown.connect(self.disable),
         )
 
-        if self.__class__.process_command is not BaseModule.process_command:
+        if (
+            self.__class__.process_command is not BaseModule.process_command
+            or self.interface.use_auto_mapping_of_commands
+        ):
             # Process input commands if it's overwritten.
             subscribers += (events.input_command.connect(self.process_command),)
 
@@ -65,7 +69,13 @@ class BaseModule(abc.ABC):
         return subscribers
 
     def process_command(self, command: 'Command') -> typing.Any:
-        pass
+        if self.interface.use_auto_mapping_of_commands:
+            for module_command in self.interface.commands_map[command.name]:
+                if module_command.can_handle(command):
+                    getattr(self, module_command.method_name)(command)
+                    return True
+
+        return False
 
     def disable(self) -> None:
         logging.info('[shutdown] Disable module "%s"...', self.__class__.__name__)
@@ -119,18 +129,24 @@ class Command:
         args = self.args
 
         if skip_flags:
-            args = tuple(arg for arg in self.args if not arg.startswith('-'))
+            args = self.get_cleaned_args()
 
         if len(args) <= index:
             return default
 
         return args[index]
 
+    @memoized_method(maxsize=1)
     def get_flags(self) -> typing.Set[str]:
         return set(arg for arg in self.args if arg.startswith('-'))
 
+    @memoized_method(maxsize=1)
     def get_cleaned_flags(self) -> typing.Set[str]:
         return set(arg[1:] for arg in self.get_flags())
+
+    @memoized_method(maxsize=1)
+    def get_cleaned_args(self) -> tuple[str, ...]:
+        return tuple(arg for arg in self.args if not arg.startswith('-'))
 
     @classmethod
     def from_string(cls, string: str) -> 'Command':
