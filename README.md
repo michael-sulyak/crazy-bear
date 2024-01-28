@@ -1,22 +1,19 @@
 # CrazyBear — Home Automation in Telegram
 
-**Note:** This project is not a general solution. This is just an implementation for specific purposes (my purposes 🙂). I
+> [!NOTE]  
+> This project is not a general solution. This is just an implementation for specific purposes (my purposes 🙂). I
 hope the code will be helpful to you.
 
 ## Preview
 
-![Preview](preview.png)
+![Preview](preview.jpg)
 
-# TO DO
+## TO DO
 
-- [ ] Support `asyncio`.
-- [ ] Add asyncio queue.
-- [ ] Add multiprocessing queue.
-- [ ] Use multiprocessing for heavy operations.
-- [x] Add more workers.
+- [ ] Use the new style for binding commands (`interface.command`).
+- [ ] Remove Arduino and use only ZigBee devices.
+- [ ] Fix typings.
 - [ ] Rewrite the interface (use mini apps from Telegram to improve the interface).
-- [ ] Use ZigBee devices instead of Arduino.
-- [ ] Use mypy.
 
 ## Used:
 
@@ -34,20 +31,17 @@ hope the code will be helpful to you.
 2. Copy the code to a **Raspberry Pi** (or somewhere else).
 
 3. Build and run:
-```bash
-docker-compose build
-docker-compose up -d
-```
+    ```bash
+    docker-compose build
+    docker-compose up -d
+    ```
 
 4. If you want to use **Arduino** then you need to upload `arduino_core`. Libs:
+    ```bash
+    arduino-cli lib install RF24 "DHT sensor library" ArduinoJson
+    ```
 
-```bash
-arduino-cli lib install RF24 "DHT sensor library" ArduinoJson
-
-https://github.com/jmichault/flash_cc2531/issues/18
-```
-
-5. Set **ZigBee**
+5. Set **ZigBee Dongle** (if you use **CC2531**)
     1. Connect **CC2531**
         1. Install **WiringPi**
         ```bash
@@ -56,5 +50,6 @@ https://github.com/jmichault/flash_cc2531/issues/18
         cd WiringPi
         ./build
         ```
+        (https://github.com/jmichault/flash_cc2531/issues/18)
         2. [https://kvvhost.ru/2019/05/29/zigbee2mqtt-cc2531-raspberry-pi/](https://kvvhost.ru/2019/05/29/zigbee2mqtt-cc2531-raspberry-pi/)
     2. Add devices.
