@@ -8,8 +8,8 @@ import numpy as np
 
 
 class MotionDetector:
-    target_frame: typing.Optional[np.array] = None
-    marked_frame: typing.Optional[np.array] = None
+    target_frame: typing.Optional[np.ndarray] = None
+    marked_frame: typing.Optional[np.ndarray] = None
     is_occupied: bool = False
     _max_fps: int
     _min_area: int = 500
@@ -21,7 +21,7 @@ class MotionDetector:
         self._need_to_show_frames = show_frames
         self._max_fps = max_fps
 
-    def process_new_frame(self, frame: np.array, *, fps: float) -> None:
+    def process_new_frame(self, frame: np.ndarray, *, fps: float) -> None:
         now = datetime.datetime.now()
 
         # Convert frame to grayscale, and blur it
@@ -75,7 +75,14 @@ class MotionDetector:
         if self._need_to_show_frames:
             cv2.destroyAllWindows()
 
-    def _draw_result(self, *, frame: np.array, thresh: np.array, frame_delta: np.array, fps: float) -> None:
+    def _draw_result(
+        self,
+        *,
+        frame: np.ndarray,
+        thresh: np.ndarray,
+        frame_delta: np.ndarray,
+        fps: float,
+    ) -> None:
         self.marked_frame = np.copy(frame)
 
         cv2.putText(

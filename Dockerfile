@@ -1,4 +1,4 @@
-FROM ubuntu:mantic-20230926
+FROM ubuntu:mantic-20231128
 
 ARG DEBIAN_FRONTEND=noninteractive
 

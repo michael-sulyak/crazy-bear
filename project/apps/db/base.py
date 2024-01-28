@@ -2,7 +2,7 @@ import contextlib
 import typing
 
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import scoped_session, sessionmaker, declarative_base, Session
+from sqlalchemy.orm import Session, declarative_base, scoped_session, sessionmaker
 
 from ... import config
 
@@ -55,4 +55,5 @@ close_db_session = MySession.remove
 
 def vacuum() -> None:
     with db_engine.connect() as connection:
-        connection.execution_options(isolation_level='AUTOCOMMIT').execute(text('VACUUM FULL;'))
+        with connection.execution_options(isolation_level='AUTOCOMMIT'):
+            connection.execute(text('VACUUM FULL;'))

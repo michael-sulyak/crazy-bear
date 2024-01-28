@@ -2,7 +2,7 @@ import abc
 import typing
 
 from emoji.core import emojize
-from telegram import ReplyKeyboardMarkup, KeyboardButton
+from telegram import KeyboardButton, ReplyKeyboardMarkup
 
 from .. import constants
 from ..base import BaseModule, Command
@@ -195,24 +195,14 @@ class AllFuncsPage(BasePage):
     description=(
         'The module provides the menu.'
     ),
+    use_auto_mapping_for_commands=True,
 )
 class Menu(BaseModule):
     NEXT = emojize(':right_arrow:')
     PREV = emojize(':BACK_arrow:')
 
-    def process_command(self, command: Command) -> typing.Any:
-        if command.name == constants.BotCommands.RETURN:
-            self._return()
-            return True
-
-        if command.name == constants.BotCommands.TO:
-            self._to(command.first_arg)
-            return True
-
-        return False
-
     @interface.command(constants.BotCommands.RETURN)
-    def _return(self) -> None:
+    def _return(self, command: Command) -> None:
         menu = self.state[TelegramMenu.menu_state_name]
 
         if len(menu) > 1:
@@ -223,7 +213,9 @@ class Menu(BaseModule):
             self.messenger.send_message(emojize(':thinking_face:'))
 
     @interface.command(constants.BotCommands.TO, interface.Value('name'))
-    def _to(self, name: str) -> None:
+    def _to(self, command: Command) -> None:
+        name = command.first_arg
+
         with self.state.lock(TelegramMenu.menu_state_name):
             self.state[TelegramMenu.menu_state_name].append(name)
 

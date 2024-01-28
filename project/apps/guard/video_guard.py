@@ -36,7 +36,7 @@ class VideoGuard:
 
     def process_frames(self) -> typing.Generator[None, tuple, None]:
         last_is_occupied = False
-        frames: list[np.array] = []
+        frames: list[np.ndarray] = []
         send_video = False
         min_frames_for_send_video = None
         last_sent_photo = None
@@ -103,7 +103,7 @@ class VideoGuard:
                 self._save_video(frames)
                 frames = []
 
-    def _send_image_to_messenger(self, frame: np.array, caption: str) -> None:
+    def _send_image_to_messenger(self, frame: np.ndarray, caption: str) -> None:
         self.task_queue.put(
             self.messenger.send_frame,
             args=(frame,),
@@ -111,7 +111,7 @@ class VideoGuard:
             priority=tq.TaskPriorities.HIGH,
         )
 
-    def _send_video_to_messenger(self, frames: typing.List[np.array], caption: str) -> None:
+    def _send_video_to_messenger(self, frames: typing.List[np.ndarray], caption: str) -> None:
         self.task_queue.put(
             self.messenger.send_frames_as_video,
             args=(frames,),
@@ -122,7 +122,7 @@ class VideoGuard:
             priority=tq.TaskPriorities.HIGH,
         )
 
-    def _save_image(self, frame: np.array) -> None:
+    def _save_image(self, frame: np.ndarray) -> None:
         now = datetime.datetime.now()
 
         self.task_queue.put(
@@ -134,7 +134,7 @@ class VideoGuard:
             priority=tq.TaskPriorities.MEDIUM,
         )
 
-    def _save_video(self, frames: np.array) -> None:
+    def _save_video(self, frames: np.ndarray) -> None:
         now = datetime.datetime.now()
 
         self.task_queue.put(

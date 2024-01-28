@@ -26,9 +26,7 @@ __all__ = (
     description=(
         'The module processes input signals.'
     ),
-    commands=(
-        interface.Command(constants.BotCommands.COMPRESS_DB),
-    ),
+    use_auto_mapping_for_commands=True,
 )
 class Signals(BaseModule):
     _timedelta_for_ping: datetime.timedelta = datetime.timedelta(seconds=30)
@@ -90,20 +88,13 @@ class Signals(BaseModule):
             *self._supreme_signal_handler.get_signals(),
         )
 
-    def process_command(self, command: Command) -> typing.Any:
-        if command.name == constants.BotCommands.COMPRESS_DB:
-            with ProgressBar(self.messenger, title='Checking DB\\.\\.\\.') as progress_bar:
-                for progress in self._compress_db():
-                    progress_bar.set(progress * 0.5)
+    @interface.command(constants.BotCommands.COMPRESS_DB)
+    def _compress_db_with_progress_bar(self, command: Command) -> typing.Any:
+        with ProgressBar(self.messenger, title='Checking DB\\.\\.\\.') as progress_bar:
+            for progress in self._compress_db():
+                progress_bar.set(progress)
 
-                progress_bar.set(0.5, title='Run `VACUUM FULL`\\.\\.\\.')
-                db.vacuum()
-                progress_bar.set(1)
-                self.messenger.send_message('Compressing of DB is finished')
-
-            return True
-
-        return False
+            self.messenger.send_message('Compressing of DB is finished')
 
     def _ping_task_queue(self, *, sent_at: datetime.datetime) -> None:
         now = datetime.datetime.now()

@@ -54,7 +54,7 @@ class Event:
                 logging.exception(e)
 
     @synchronized_method
-    def process(self, **kwargs) -> typing.Tuple[list, list]:
+    def process(self, **kwargs) -> tuple[list, list]:
         results = []
         exceptions = []
 

@@ -15,7 +15,7 @@ if typing.TYPE_CHECKING:
 @dataclasses.dataclass
 class Module:
     title: str
-    use_auto_mapping_of_commands: bool
+    use_auto_mapping_for_commands: bool
     description: typing.Optional[str] = None
     commands: tuple['Command', ...] = ()
     commands_map: dict[str, list['Command']] = dataclasses.field(
@@ -41,7 +41,7 @@ class Module:
 
 class Command:
     name: str
-    params: tuple
+    params: tuple[typing.Union['BaseParam', str], ...]
     flags: tuple['Flag', ...]
     method_name: str | None
 
@@ -63,7 +63,7 @@ class Command:
 
         cleaned_args = outer_command.get_cleaned_args()
 
-        if len(self.params) != len(cleaned_args):
+        if len(self.params) > len(cleaned_args):
             return False
 
         for i, param in enumerate(self.params):
@@ -74,7 +74,13 @@ class Command:
                 if cleaned_args[i] not in param.options:
                     return False
             elif isinstance(param, Value):
-                pass
+                if param.python_type is not str:
+                    try:
+                        param.python_type(cleaned_args[i])
+                    except ValueError:
+                        return False
+            elif isinstance(param, Args):
+                break
             else:
                 raise RuntimeError('Unknown parameter type')
 
@@ -111,14 +117,24 @@ class BaseParam(abc.ABC):
 
 class Value(BaseParam):
     name: str
-    type: str
+    python_type: typing.Type
 
-    def __init__(self, name: str, *, type: str = 'str') -> None:
+    def __init__(self, name: str, *, python_type: typing.Type = str) -> None:
         self.name = name
-        self.type = type
+        self.python_type = python_type
 
     def to_str(self) -> str:
-        return f'<{self.name}:{self.type}>'
+        return f'<{self.name}:{self.python_type.__name__}>'
+
+
+class Args(BaseParam):
+    name: str
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    def to_str(self) -> str:
+        return f'<{self.name} ...>'
 
 
 class Choices(BaseParam):
@@ -146,7 +162,7 @@ def module(
     title: str,
     description: typing.Optional[str] = None,
     commands: tuple['Command', ...] = (),
-    use_auto_mapping_of_commands: bool = False,
+    use_auto_mapping_for_commands: bool = False,
 ) -> typing.Callable:
     def wrapper(klass: typing.Type) -> typing.Type:
         klass.interface = Module(
@@ -160,7 +176,7 @@ def module(
                     if hasattr(method, '_command')
                 ),
             ),
-            use_auto_mapping_of_commands=use_auto_mapping_of_commands,
+            use_auto_mapping_for_commands=use_auto_mapping_for_commands,
         )
 
         return klass
@@ -170,7 +186,7 @@ def module(
 
 def command(
     name: str,
-    *params: tuple[str | Value | Choices, ...],
+    *params: typing.Union['BaseParam', str],
     flags: tuple[Flag, ...] = (),
 ) -> typing.Callable:
     def wrapper(func: typing.Callable) -> typing.Callable:

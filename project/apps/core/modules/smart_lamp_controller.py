@@ -32,8 +32,8 @@ __all__ = (
         interface.Command(constants.BotCommands.LAMP, interface.Choices(ON, OFF)),
         interface.Command(constants.BotCommands.LAMP, 'test'),
         interface.Command(constants.BotCommands.LAMP, 'color', interface.Choices(*LCSmartLamp.colors_map.keys())),
-        interface.Command(constants.BotCommands.LAMP, 'brightness', interface.Value('brightness', type='int')),
-        interface.Command(constants.BotCommands.LAMP, 'color_temp', interface.Value('color_temp', type='int')),
+        interface.Command(constants.BotCommands.LAMP, 'brightness', interface.Value('brightness', python_type=int)),
+        interface.Command(constants.BotCommands.LAMP, 'color_temp', interface.Value('color_temp', python_type=int)),
         interface.Command(constants.BotCommands.LAMP, 'color_temp', interface.Choices(*LCSmartLamp.color_temps)),
         interface.Command(constants.BotCommands.LAMP, 'increase_brightness'),
         interface.Command(constants.BotCommands.LAMP, 'decrease_brightness'),
@@ -69,7 +69,7 @@ class LampControllerInBedroom(BaseModule):
         }
 
     def init_repeatable_tasks(self) -> tuple[ScheduledTask, ...]:
-        repeatable_tasks = ()
+        repeatable_tasks: tuple[ScheduledTask, ...] = ()
 
         if config.ARTIFICIAL_SUNRISE_SCHEDULES:
             repeatable_tasks += tuple(

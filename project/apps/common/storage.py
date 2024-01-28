@@ -29,12 +29,12 @@ class FileStorage:
         io_buffer.seek(0)
         self.upload(file_name=file_name, content=io_buffer.read().encode())
 
-    def upload_frame(self, file_name: str, frame: np.array) -> None:
+    def upload_frame(self, file_name: str, frame: np.ndarray) -> None:
         is_success, buffer = cv2.imencode('.jpg', frame)
         io_buf = io.BytesIO(buffer)
         self.upload(file_name=file_name, content=io_buf.read())
 
-    def upload_frames_as_video(self, file_name: str, frames: np.array, fps: int) -> None:
+    def upload_frames_as_video(self, file_name: str, frames: np.ndarray, fps: int) -> None:
         if not frames:
             return
 

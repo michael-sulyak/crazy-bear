@@ -1,5 +1,6 @@
 import asyncio
 import functools
+import logging
 import threading
 import typing
 
@@ -41,6 +42,9 @@ def async_to_sync(func: typing.Callable) -> typing.Callable:
                     _loop = asyncio.new_event_loop()
                     tread = threading.Thread(target=_start_background_loop, args=(_loop,), daemon=True)
                     tread.start()
+
+            if _loop.is_closed():
+                logging.error('Thread for asyncio was closed')
 
         task = asyncio.run_coroutine_threadsafe(func(*args, **kwargs), _loop)
         return task.result()

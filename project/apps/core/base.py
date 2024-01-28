@@ -59,7 +59,7 @@ class BaseModule(abc.ABC):
 
         if (
             self.__class__.process_command is not BaseModule.process_command
-            or self.interface.use_auto_mapping_of_commands
+            or self.interface.use_auto_mapping_for_commands
         ):
             # Process input commands if it's overwritten.
             subscribers += (events.input_command.connect(self.process_command),)
@@ -69,7 +69,7 @@ class BaseModule(abc.ABC):
         return subscribers
 
     def process_command(self, command: 'Command') -> typing.Any:
-        if self.interface.use_auto_mapping_of_commands:
+        if self.interface.use_auto_mapping_for_commands:
             for module_command in self.interface.commands_map[command.name]:
                 if module_command.can_handle(command):
                     getattr(self, module_command.method_name)(command)

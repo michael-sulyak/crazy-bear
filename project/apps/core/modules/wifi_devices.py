@@ -1,5 +1,3 @@
-import typing
-
 from libs.messengers.utils import escape_markdown
 from ..base import BaseModule, Command
 from ..constants import (
@@ -20,46 +18,50 @@ __all__ = (
     description=(
         'The module manages connected devices to WiFi.'
     ),
-    commands=(
-        interface.Command(BotCommands.WIFI_DEVICES),
-        interface.Command(
-            BotCommands.WIFI_DEVICES,
-            interface.Value('mac_address'),
-        ),
-        interface.Command(
-            BotCommands.WIFI_DEVICES,
-            interface.Value('mac_address'),
-            interface.Value('name'),
-            interface.Choices('true', 'false'),
-        ),
-    ),
+    use_auto_mapping_for_commands=True,
 )
 class WiFiDevices(BaseModule):
-    def process_command(self, command: Command) -> typing.Any:
-        if command.name != BotCommands.WIFI_DEVICES:
-            return False
+    @interface.command(BotCommands.WIFI_DEVICES)
+    def _show_wifi_devices(self, command: Command) -> None:
+        text = '*Devices*'
 
-        if not command.first_arg:
-            text = '*Devices*'
+        for device in device_manager.devices:
+            text += (
+                f'\n\n**Name:** `{escape_markdown(device.name or "")}`\n'
+                f'**MAC:** `{escape_markdown(device.mac_address)}`\n'
+                f'**Is defining:** {device.is_defining}'
+            )
 
-            for device in device_manager.devices:
-                text += (
-                    f'\n\n**Name:** `{escape_markdown(device.name or "")}`\n'
-                    f'**MAC:** `{escape_markdown(device.mac_address)}`\n'
-                    f'**Is defining:** {device.is_defining}'
-                )
+        self.messenger.send_message(text, use_markdown=True)
 
-            self.messenger.send_message(text, use_markdown=True)
+    @interface.command(
+        '/delete_wifi_device',
+        interface.Value('mac_address'),
+    )
+    def _delete_wifi_device(self, command: Command) -> None:
+        mac_address = command.first_arg
 
-            return True
+        device_manager.set_devices([
+            device
+            for device in device_manager.devices
+            if device.mac_address != mac_address
+        ])
 
+        self.messenger.send_message('Deleted')
+
+    @interface.command(
+        '/update_wifi_device',
+        interface.Value('mac_address'),
+        interface.Value('name'),
+        interface.Choices('true', 'false'),
+    )
+    def _update_wifi_device(self, command: Command) -> None:
         mac_address = command.first_arg
         name = command.second_arg
         is_defining = command.third_arg == 'true'
 
-        to_delete = not name and mac_address in device_manager.devices_map
-        to_update = not to_delete and mac_address in device_manager.devices_map
-        to_create = not to_delete and not to_update
+        to_update = mac_address in device_manager.devices_map
+        to_create = not to_update
 
         if to_create:
             device_manager.add_device(Device(mac_address=mac_address, name=name, is_defining=is_defining))
@@ -76,14 +78,5 @@ class WiFiDevices(BaseModule):
 
             device_manager.set_devices(devices)
             self.messenger.send_message('Saved')
-        elif to_delete:
-            device_manager.set_devices([
-                device
-                for device in device_manager.devices
-                if device.mac_address != mac_address
-            ])
-            self.messenger.send_message('Deleted')
         else:
             self.messenger.send_message('Wrong data')
-
-        return True

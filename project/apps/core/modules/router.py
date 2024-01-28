@@ -20,9 +20,7 @@ __all__ = (
     description=(
         'The module provides an integration with a router.'
     ),
-    commands=(
-        interface.Command(constants.BotCommands.RAW_WIFI_DEVICES),
-    ),
+    use_auto_mapping_for_commands=True,
 )
 class Router(BaseModule):
     @property
@@ -50,14 +48,8 @@ class Router(BaseModule):
             }),
         )
 
-    def process_command(self, command: Command) -> typing.Any:
-        if command.name == constants.BotCommands.RAW_WIFI_DEVICES:
-            self._send_wifi_connected_devices()
-            return True
-
-        return False
-
-    def _send_wifi_connected_devices(self) -> None:
+    @interface.command(constants.BotCommands.RAW_WIFI_DEVICES)
+    def _show_wifi_connected_devices(self, command: Command) -> None:
         message = ''
 
         for device in mi_wifi.device_list()['list']:

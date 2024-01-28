@@ -22,6 +22,8 @@ ipython:
 test:
 	poetry run pytest ./libs ./project
 
+full_check: mypy test
+
 
 # Commands for working with the server
 

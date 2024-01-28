@@ -12,7 +12,7 @@ __all__ = (
     description=(
         'The module manages ZigBee devices.'
     ),
-    use_auto_mapping_of_commands=True,
+    use_auto_mapping_for_commands=True,
 )
 class ZigBeeController(BaseModule):
     @interface.command('/zigbee_status')

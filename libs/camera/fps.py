@@ -33,7 +33,6 @@ class FPSTracker:
         """
 
         assert self._started_at is not None
-        assert self._num_frames is not None
         assert self._last_updated_at is not None
 
         now = datetime.datetime.now()
@@ -51,6 +50,8 @@ class FPSTracker:
             else:
                 assert self._new_num_frames is not None
                 self._new_num_frames += 1
+
+        assert self._num_frames is not None
 
         self._num_frames += 1
 

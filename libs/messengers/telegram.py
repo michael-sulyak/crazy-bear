@@ -233,6 +233,9 @@ class TelegramMessenger(CVMixin, BaseMessenger):
     def _process_telegram_message(self, update: TelegramUpdate) -> None:
         assert update.effective_user is not None
 
+        if update.edited_message is not None:
+            return
+
         message = MessageInfo(
             user=UserInfo(
                 name=update.effective_user.name,

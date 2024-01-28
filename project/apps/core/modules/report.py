@@ -33,7 +33,7 @@ from ...signals.models import Signal
         interface.Command(constants.BotCommands.DB_STATS),
         interface.Command(
             constants.BotCommands.STATS,
-            interface.Value('number', type='int'),
+            interface.Value('number', python_type=int),
             interface.Choices('days', 'hours', 'minutes', 'seconds'),
             flags=(
                 interface.Flag('f'),

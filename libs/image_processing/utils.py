@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 
 
-def add_timestamp_in_frame(frame: np.array) -> None:
+def add_timestamp_in_frame(frame: np.ndarray) -> None:
     cv2.putText(
         img=frame,
         text=datetime.datetime.now().strftime('%d.%m.%Y, %H:%M:%S'),
