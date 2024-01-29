@@ -3,7 +3,7 @@ import typing
 
 import sqlalchemy
 from pandas import DataFrame
-from sqlalchemy import func as sa_func
+from sqlalchemy import ColumnElement, func as sa_func
 
 from libs.casual_utils.time import get_current_time
 from .. import db
@@ -61,7 +61,7 @@ class Signal(db.Base):
     @classmethod
     def get(cls,
             signal_type: str, *,
-            datetime_range: tuple[datetime.datetime, datetime.datetime]) -> typing.List['Signal']:
+            datetime_range: tuple[datetime.datetime, datetime.datetime]) -> list['Signal']:
         query_data = cls._get_query_data(
             signal_type=signal_type,
             datetime_range=datetime_range,
@@ -70,7 +70,7 @@ class Signal(db.Base):
         if not query_data:
             return []
 
-        signals = db.get_db_session().query(
+        signals: list['Signal'] = db.get_db_session().query(  # type: ignore
             cls.value,
             cls.received_at.label('received_at'),
         ).filter(
@@ -256,10 +256,12 @@ class Signal(db.Base):
     @classmethod
     def backup(cls,
                datetime_range: typing.Optional[tuple[datetime.datetime, datetime.datetime]] = None) -> None:
+        filters: tuple[ColumnElement[bool], ...]
+
         if datetime_range is None:
             filters = ()
         else:
-            filters = (
+            filters = (  # type: ignore
                 cls.received_at >= datetime_range[0],
                 cls.received_at <= datetime_range[1],
             )
@@ -312,13 +314,14 @@ class Signal(db.Base):
             cls.type == signal_type,
             cls.value.isnot(None),
         )
-        first_time = time_filter.order_by(cls.received_at).first()
-        last_time = time_filter.order_by(cls.received_at.desc()).first()
+        first_time: datetime.datetime = time_filter.order_by(cls.received_at).first()  # type: ignore
+        last_time: datetime.datetime = time_filter.order_by(cls.received_at.desc()).first()  # type: ignore
 
         if not first_time or not last_time:
             return None
 
-        first_time, last_time = first_time[0], last_time[0]
+        first_time: datetime.datetime = first_time[0]  # type: ignore
+        last_time: datetime.datetime = last_time[0]  # type: ignore
 
         diff = last_time - first_time
 

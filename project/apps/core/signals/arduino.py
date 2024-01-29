@@ -160,7 +160,7 @@ class ArduinoHandler(BaseSignalHandler):
 
                 continue
 
-            last_signal_data[signal.type] = signal.value
+            last_signal_data[signal.type] = signal.value  # type: ignore
 
         humidity = last_signal_data.get(ArduinoSensorTypes.HUMIDITY)
         temperature = last_signal_data.get(ArduinoSensorTypes.TEMPERATURE)

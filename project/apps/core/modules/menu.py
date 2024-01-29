@@ -21,14 +21,14 @@ class TelegramMenu:
     menu_state_name = 'menu'
     home_page_code: str
     state: State
-    _last_result: typing.Optional[typing.Sequence] = None
+    _last_result: typing.Optional[ReplyKeyboardMarkup] = None
 
     def __init__(self, state: State) -> None:
         self.state = state
         self.home_page_code = MainPage.code
         self.state.create(self.menu_state_name, [self.home_page_code])
 
-        pages = (
+        pages: tuple[typing.Type[BasePage], ...] = (
             MainPage,
             AllFuncsPage,
             LampPage,

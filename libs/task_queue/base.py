@@ -85,7 +85,10 @@ class BaseTaskQueue(abc.ABC):
 
 
 class BaseWorker(abc.ABC):
-    is_run: bool
+    @property
+    @abc.abstractmethod
+    def is_run(self) -> bool:
+        pass
 
     @abc.abstractmethod
     def run(self) -> None:

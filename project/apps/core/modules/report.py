@@ -3,6 +3,7 @@ import logging
 import threading
 import typing
 
+import numpy as np
 from emoji import emojize
 from sqlalchemy import text
 
@@ -124,7 +125,7 @@ class Report(BaseModule):
     def _pipe_for_collecting_stats(self, receivers: typing.Sequence, kwargs: dict) -> typing.Iterator:
         with ProgressBar(self.messenger, title='Collecting stats\\.\\.\\.') as progress_bar:
             count = len(receivers)
-            plots = []
+            plots: list[np.ndarray] = []
             exceptions = []
 
             for i in range(count):

@@ -26,7 +26,6 @@ class ModuleContext:
 
 class BaseModule(abc.ABC):
     interface: interface.Module
-    initial_state: dict = {}
     context: ModuleContext
     messenger: BaseMessenger
     state: State
@@ -48,6 +47,10 @@ class BaseModule(abc.ABC):
 
         for repeatable_task in self._repeatable_tasks:
             self.task_queue.put_task(repeatable_task)
+
+    @property
+    def initial_state(self) -> dict[str, typing.Any]:
+        return {}
 
     def init_repeatable_tasks(self) -> tuple[ScheduledTask, ...]:
         return ()

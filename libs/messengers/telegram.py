@@ -14,14 +14,14 @@ import telegram
 import urllib3
 from emoji import emojize
 from pika.exceptions import AMQPConnectionError
-from telegram import ReplyKeyboardMarkup, InputMediaPhoto, Update as TelegramUpdate
-from telegram.constants import ParseMode, ChatAction
+from telegram import InputMediaPhoto, ReplyKeyboardMarkup, Update as TelegramUpdate
+from telegram.constants import ChatAction, ParseMode
 from telegram.error import (
     NetworkError as TelegramNetworkError,
 )
 
 from project import config
-from .base import BaseMessenger, MessageInfo, UserInfo, ChatInfo
+from .base import BaseMessenger, ChatInfo, MessageInfo, UserInfo
 from .mixins import CVMixin
 from .utils import escape_markdown
 from ..casual_utils.aio import async_to_sync
@@ -99,7 +99,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
     async def send_message(self,
                            text: str, *,
                            use_markdown: bool = False,
-                           reply_markup: ReplyKeyboardMarkup | DEFAULT | None = DEFAULT,
+                           reply_markup: ReplyKeyboardMarkup | typing.Type[DEFAULT] | None = DEFAULT,
                            message_id: int | None = None) -> typing.Optional[int]:
         if reply_markup is DEFAULT:
             if callable(self.default_reply_markup):
@@ -225,9 +225,13 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         self._worker.start()
 
     def _process_telegram_message(self, update: TelegramUpdate) -> None:
-        assert update.effective_user is not None
-
-        if update.edited_message is not None:
+        if (
+            update.effective_user is None
+            or update.edited_message is not None
+            or update.effective_chat is None
+            or update.message is None
+            or not isinstance(update.message.text, str)
+        ):
             return
 
         message = MessageInfo(

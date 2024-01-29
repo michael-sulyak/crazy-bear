@@ -4,8 +4,8 @@ import typing
 import numpy as np
 
 from libs import task_queue as tq
-from libs.messengers.base import BaseMessenger
 from libs.image_processing.motion_detector import MotionDetector
+from libs.messengers.base import BaseMessenger
 from ..common.storage import file_storage
 from ... import config
 
@@ -15,7 +15,7 @@ class VideoGuard:
     messenger: BaseMessenger
     task_queue: tq.BaseTaskQueue
     motion_detected_callback: typing.Optional[typing.Callable] = None
-    process_frame: typing.Optional[typing.Generator]
+    process_frame: typing.Optional[typing.Generator] = None
 
     def __init__(self, *,
                  messenger: BaseMessenger,
@@ -31,6 +31,8 @@ class VideoGuard:
         next(self.process_frame)
 
     def stop(self) -> None:
+        assert self.process_frame is not None
+
         self.process_frame.close()
         self.motion_detector.realese()
 
@@ -57,31 +59,34 @@ class VideoGuard:
 
             now = datetime.datetime.now()
 
-            if self.motion_detector.is_occupied and not last_is_occupied:
-                last_is_occupied = True
-                last_sent_photo = now
-                frames = frames[-config.FPS * 20:]
-                self._send_image_to_messenger(
-                    frame=self.motion_detector.marked_frame,
-                    caption=f'Motion detected at {now.strftime("%Y-%m-%d, %H:%M:%S")}',
-                )
-                self._save_image(frame=self.motion_detector.marked_frame)
-                self._save_video(frames=frames)
-                self._send_video_to_messenger(
-                    frames=frames,
-                    caption=f'Motion detected at {now.strftime("%Y-%m-%d, %H:%M:%S")}',
-                )
+            if self.motion_detector.is_occupied:
+                if not last_is_occupied:
+                    last_is_occupied = True
+                    last_sent_photo = now
+                    frames = frames[-config.FPS * 20:]
+                    self._send_image_to_messenger(
+                        frame=self.motion_detector.marked_frame,
+                        caption=f'Motion detected at {now.strftime("%Y-%m-%d, %H:%M:%S")}',
+                    )
+                    self._save_image(frame=self.motion_detector.marked_frame)
+                    self._save_video(frames=frames)
+                    self._send_video_to_messenger(
+                        frames=frames,
+                        caption=f'Motion detected at {now.strftime("%Y-%m-%d, %H:%M:%S")}',
+                    )
 
-                if self.motion_detected_callback:
-                    self.motion_detected_callback()
+                    if self.motion_detected_callback:
+                        self.motion_detected_callback()
 
-            if self.motion_detector.is_occupied and now - last_sent_photo > datetime.timedelta(seconds=5):
-                self._save_image(frame=self.motion_detector.marked_frame)
-                self._send_image_to_messenger(
-                    frame=self.motion_detector.marked_frame,
-                    caption=f'Long motion detected at {now.strftime("%Y-%m-%d, %H:%M:%S")}',
-                )
-                last_sent_photo = now
+                assert last_sent_photo is not None
+
+                if now - last_sent_photo > datetime.timedelta(seconds=5):
+                    self._save_image(frame=self.motion_detector.marked_frame)
+                    self._send_image_to_messenger(
+                        frame=self.motion_detector.marked_frame,
+                        caption=f'Long motion detected at {now.strftime("%Y-%m-%d, %H:%M:%S")}',
+                    )
+                    last_sent_photo = now
 
             if not self.motion_detector.is_occupied and last_is_occupied:
                 last_is_occupied = False
@@ -97,11 +102,14 @@ class VideoGuard:
                 else:
                     frames = frames[-self.motion_detector.is_occupied * 60 * 5:]
 
-            if send_video and len(frames) >= min_frames_for_send_video:
-                send_video = False
-                min_frames_for_send_video = None
-                self._save_video(frames)
-                frames = []
+            if send_video:
+                assert min_frames_for_send_video is not None
+
+                if len(frames) >= min_frames_for_send_video:
+                    send_video = False
+                    min_frames_for_send_video = None
+                    self._save_video(frames)
+                    frames = []
 
     def _send_image_to_messenger(self, frame: np.ndarray, caption: str) -> None:
         self.task_queue.put(
@@ -134,7 +142,7 @@ class VideoGuard:
             priority=tq.TaskPriorities.MEDIUM,
         )
 
-    def _save_video(self, frames: np.ndarray) -> None:
+    def _save_video(self, frames: list[np.ndarray]) -> None:
         now = datetime.datetime.now()
 
         self.task_queue.put(

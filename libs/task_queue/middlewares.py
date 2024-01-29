@@ -59,7 +59,7 @@ class ConcreteRetries(BaseMiddleware):
                     logging.debug('Retry policy for %s', task)
                     raise task_exceptions.RepeatTask(delay=self._get_retry_delay(retries))
 
-                task.error = e.source
+                task.error = e
                 task.status = constants.TaskStatuses.FAILED
         else:
             with task._lock:

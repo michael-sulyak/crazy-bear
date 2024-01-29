@@ -11,7 +11,7 @@ def get_config() -> dict[str, typing.Any]:
     constants = models.DynamicConstant.all()
 
     return {
-        constant.name: constant.value
+        constant.name: constant.value  # type: ignore
         for constant in constants
     }
 

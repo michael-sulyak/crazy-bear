@@ -8,14 +8,15 @@ from emoji.core import emojize
 from libs.casual_utils.time import get_current_time
 from libs.messengers.utils import escape_markdown
 from ..constants import (
-    ARDUINO_IS_ENABLED, CAMERA_IS_AVAILABLE, USE_CAMERA, VIDEO_RECORDING_IS_ENABLED,
-    SECURITY_IS_ENABLED, AUTO_SECURITY_IS_ENABLED, VIDEO_SECURITY_IS_ENABLED, CURRENT_FPS,
+    ARDUINO_IS_ENABLED, AUTO_SECURITY_IS_ENABLED, CAMERA_IS_AVAILABLE, CURRENT_FPS, SECURITY_IS_ENABLED, USE_CAMERA,
+    VIDEO_RECORDING_IS_ENABLED, VIDEO_SECURITY_IS_ENABLED,
 )
 from ...arduino.constants import ArduinoSensorTypes
 from ...common.constants import INITED_AT
 from ...common.exceptions import Shutdown
 from ...common.state import State
-from ...common.utils import get_ram_usage, get_cpu_temp, get_free_disk_space, get_effective_temperature
+from ...common.utils import get_cpu_temp, get_effective_temperature, get_free_disk_space, get_ram_usage
+from ...devices.dto import Device
 from ...devices.utils import get_connected_devices_to_router
 from ...signals.models import Signal
 from .... import config
@@ -173,7 +174,7 @@ class ShortTextReport:
 
     @property
     def _connected_devices_info(self) -> str:
-        connected_devices = ()
+        connected_devices: tuple[Device, ...] = ()
 
         try:
             connected_devices = tuple(get_connected_devices_to_router())

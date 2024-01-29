@@ -99,9 +99,12 @@ class Camera(BaseModule):
         use_camera: bool = self.state[USE_CAMERA]
         security_is_enabled: bool = self.state[SECURITY_IS_ENABLED]
 
-        if video_guard and (not self._video_camera.is_run or not use_camera or not security_is_enabled):
-            self._disable_security()
-            video_guard = None
+        if video_guard:
+            assert self._video_camera is not None
+
+            if self._video_camera.is_run or not use_camera or not security_is_enabled:
+                self._disable_security()
+                video_guard = None
 
         if not video_guard and use_camera and security_is_enabled and self.state[CAMERA_IS_AVAILABLE]:
             self._enable_security()
@@ -166,7 +169,9 @@ class Camera(BaseModule):
         if self.state[SECURITY_IS_ENABLED]:
             self._disable_security()
 
-        if self._video_stream:
+        if self._video_stream is not None:
+            assert self._video_camera is not None
+
             self._video_camera.stop()
             self._video_camera = None
             self._video_stream.stop()
@@ -213,6 +218,8 @@ class Camera(BaseModule):
     def _take_photo(self) -> None:
         if not self._can_use_camera():
             return
+
+        assert self._video_stream is not None
 
         frame = self._video_stream.read()
 
@@ -316,6 +323,8 @@ class Camera(BaseModule):
         video_guard: VideoGuard = self.state[VIDEO_SECURITY_IS_ENABLED]
 
         if video_guard:
+            assert video_guard.process_frame is not None
+
             try:
                 video_guard.process_frame.send((frame, fps,))
             except Shutdown:

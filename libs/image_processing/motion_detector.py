@@ -30,7 +30,11 @@ class MotionDetector:
         self.is_occupied = False
 
         # If the target frame is None, initialize it
-        if self.target_frame is None or (now - self._last_changed_at) > self._movement_ttl:
+        if (
+            self.target_frame is None
+            or self._last_changed_at is None
+            or (now - self._last_changed_at) > self._movement_ttl
+        ):
             self.target_frame = gray
             self._last_changed_at = now
             return

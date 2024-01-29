@@ -204,9 +204,9 @@ def command(
 ) -> typing.Callable:
     def wrapper(func: typing.Callable) -> typing.Callable:
         if not hasattr(func, '_commands'):
-            func._commands = []
+            func._commands = []  # type: ignore
 
-        func._commands.append(Command(
+        func._commands.append(Command(  # type: ignore
             name,
             *params,
             flags=flags,

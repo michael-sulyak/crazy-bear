@@ -8,7 +8,11 @@ from . import mixins
 
 class BaseMessenger(mixins.BaseCVMixin, abc.ABC):
     last_message_id: typing.Any
-    last_sent_at: typing.Optional[datetime.datetime]
+
+    @property
+    @abc.abstractmethod
+    def last_sent_at(self) -> typing.Optional[datetime.datetime]:
+        pass
 
     @abc.abstractmethod
     def send_message(self, text: str, *args, **kwargs) -> typing.Any:

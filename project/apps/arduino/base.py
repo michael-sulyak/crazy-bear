@@ -57,6 +57,8 @@ class ArduinoConnector:
             logging.debug(response)
 
             if response.type == constants.ArduinoResponseTypes.SENSORS:
+                assert response.payload is not None
+
                 for name, value in response.payload.items():
                     if value is None:
                         # Skip, if we can't get data.
@@ -87,19 +89,19 @@ class ArduinoConnector:
 
         for line in lines:
             try:
-                line = line.decode()
-                line = json.loads(line)
+                processed_line = line.decode()
+                processed_line = json.loads(processed_line)
             except (json.decoder.JSONDecodeError, UnicodeDecodeError,) as e:
                 logging.warning(e)
                 continue
 
-            if not isinstance(line, dict):
+            if not isinstance(processed_line, dict):
                 continue
 
             yield ArduinoResponse(
-                type=line['t'],
+                type=processed_line['t'],
                 payload={
                     constants.SENSORS_PAYLOAD_MAP[key]: value
-                    for key, value in line['p'].items()
+                    for key, value in processed_line['p'].items()
                 },
             )
