@@ -18,27 +18,28 @@ from ...common.constants import OFF, ON
 from ...common.exceptions import Shutdown
 from ...common.storage import file_storage
 from ...common.utils import (
-    camera_is_available, with_throttling,
+    camera_is_available,
+    with_throttling,
 )
 from ...core import events
 from ...core.constants import (
-    CAMERA_IS_AVAILABLE, CURRENT_FPS, SECURITY_IS_ENABLED, USE_CAMERA, VIDEO_RECORDING_IS_ENABLED,
+    CAMERA_IS_AVAILABLE,
+    CURRENT_FPS,
+    SECURITY_IS_ENABLED,
+    USE_CAMERA,
+    VIDEO_RECORDING_IS_ENABLED,
     VIDEO_SECURITY_IS_ENABLED,
 )
 from ...guard.video_guard import VideoGuard
 from .... import config
 
 
-__all__ = (
-    'Camera',
-)
+__all__ = ('Camera',)
 
 
 @interface.module(
     title='Camera',
-    description=(
-        'The module provides integration with a camera.'
-    ),
+    description=('The module provides integration with a camera.'),
 )
 class Camera(BaseModule):
     initial_state = {
@@ -326,7 +327,12 @@ class Camera(BaseModule):
             assert video_guard.process_frame is not None
 
             try:
-                video_guard.process_frame.send((frame, fps,))
+                video_guard.process_frame.send(
+                    (
+                        frame,
+                        fps,
+                    )
+                )
             except Shutdown:
                 raise
             except Exception as e:

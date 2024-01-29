@@ -8,9 +8,7 @@ from ..base import ZigBee
 from ...casual_utils.parallel_computing import synchronized_method
 
 
-__all__ = (
-    'LCSmartLamp',
-)
+__all__ = ('LCSmartLamp',)
 
 
 def method_with_transition(func: typing.Callable) -> typing.Callable:
@@ -52,11 +50,31 @@ class LCSmartLamp:
         'warm': 150,
     }
     colors_map = {
-        'yellow': (249, 215, 28,),
-        'blue': (30, 144, 255,),
-        'green': (154, 205, 50,),
-        'red': (128, 0, 0,),
-        'white': (254, 254, 254,),
+        'yellow': (
+            249,
+            215,
+            28,
+        ),
+        'blue': (
+            30,
+            144,
+            255,
+        ),
+        'green': (
+            154,
+            205,
+            50,
+        ),
+        'red': (
+            128,
+            0,
+            0,
+        ),
+        'white': (
+            254,
+            254,
+            254,
+        ),
     }
     MIN_BRIGHTNESS = 0
     MAX_BRIGHTNESS = 254
@@ -71,20 +89,20 @@ class LCSmartLamp:
 
     @synchronized_method
     @method_with_transition
-    def turn_on(self, *,
-                color_temp: str = 'neutral',
-                brightness: int = 254,
-                transition: int = 0) -> None:
+    def turn_on(self, *, color_temp: str = 'neutral', brightness: int = 254, transition: int = 0) -> None:
         assert self.MIN_BRIGHTNESS <= brightness <= self.MAX_BRIGHTNESS
         assert not isinstance(color_temp, str) or color_temp in self.color_temps
         assert not isinstance(color_temp, int) or 150 <= color_temp <= 500
 
-        self.zig_bee.set(self.friendly_name, {
-            'state': 'ON',
-            'color_temp': color_temp,
-            'brightness': brightness,
-            'transition': transition,
-        })
+        self.zig_bee.set(
+            self.friendly_name,
+            {
+                'state': 'ON',
+                'color_temp': color_temp,
+                'brightness': brightness,
+                'transition': transition,
+            },
+        )
 
     @synchronized_method
     def reset(self) -> None:
@@ -98,10 +116,13 @@ class LCSmartLamp:
     @synchronized_method
     @method_with_transition
     def set_color(self, rgb: tuple[int, int, int], *, transition: int = 0) -> None:
-        self.zig_bee.set(self.friendly_name, {
-            'color': {'rgb': ','.join(map(str, rgb))},
-            'transition': transition,
-        })
+        self.zig_bee.set(
+            self.friendly_name,
+            {
+                'color': {'rgb': ','.join(map(str, rgb))},
+                'transition': transition,
+            },
+        )
 
     @synchronized_method
     @method_with_transition
@@ -159,16 +180,44 @@ class LCSmartLamp:
         self.turn_on(transition=1)
         sleep(2)
 
-        self.set_color((255, 0, 0,), transition=1)
+        self.set_color(
+            (
+                255,
+                0,
+                0,
+            ),
+            transition=1,
+        )
         sleep(2)
 
-        self.set_color((0, 255, 0,), transition=1)
+        self.set_color(
+            (
+                0,
+                255,
+                0,
+            ),
+            transition=1,
+        )
         sleep(2)
 
-        self.set_color((0, 0, 255,), transition=1)
+        self.set_color(
+            (
+                0,
+                0,
+                255,
+            ),
+            transition=1,
+        )
         sleep(2)
 
-        self.set_color((255, 255, 255,), transition=1)
+        self.set_color(
+            (
+                255,
+                255,
+                255,
+            ),
+            transition=1,
+        )
         sleep(2)
 
         self.set_brightness(0, transition=1)

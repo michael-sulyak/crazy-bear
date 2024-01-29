@@ -42,9 +42,7 @@ class BaseSignalHandler(abc.ABC):
         )
 
     def get_signals(self) -> tuple[Receiver, ...]:
-        return (
-            events.request_for_statistics.connect(self.generate_plots),
-        )
+        return (events.request_for_statistics.connect(self.generate_plots),)
 
     @abc.abstractmethod
     def process(self) -> None:
@@ -54,9 +52,9 @@ class BaseSignalHandler(abc.ABC):
     def compress(self) -> None:
         pass
 
-    def generate_plots(self, *,
-                       date_range: tuple[datetime.datetime, datetime.datetime],
-                       components: typing.Set[str]) -> typing.Optional[typing.Sequence[io.BytesIO]]:
+    def generate_plots(
+        self, *, date_range: tuple[datetime.datetime, datetime.datetime], components: typing.Set[str]
+    ) -> typing.Optional[typing.Sequence[io.BytesIO]]:
         return None
 
 

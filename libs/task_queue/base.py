@@ -32,7 +32,13 @@ class TaskPriorityQueue(Queue):
             self.queue_map[task.priority] = []
             bisect.insort(self.priorities, task.priority)
 
-        heappush(self.queue_map[task.priority], (task.run_after, task,))
+        heappush(
+            self.queue_map[task.priority],
+            (
+                task.run_after,
+                task,
+            ),
+        )
 
     def _get(self) -> typing.Optional[Task]:
         now = datetime.datetime.now()
@@ -54,12 +60,15 @@ class BaseTaskQueue(abc.ABC):
     def __len__(self) -> int:
         pass
 
-    def put(self,
-            target: typing.Callable,
-            args: typing.Optional[tuple] = None,
-            kwargs: typing.Optional[typing.Dict[str, typing.Any]] = None, *,
-            priority: int = TaskPriorities.MEDIUM,
-            run_after: typing.Optional[datetime.datetime] = None) -> typing.Optional[Task]:
+    def put(
+        self,
+        target: typing.Callable,
+        args: typing.Optional[tuple] = None,
+        kwargs: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        *,
+        priority: int = TaskPriorities.MEDIUM,
+        run_after: typing.Optional[datetime.datetime] = None,
+    ) -> typing.Optional[Task]:
         if run_after is None:
             run_after = datetime.datetime.now()
 

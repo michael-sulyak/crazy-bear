@@ -80,9 +80,9 @@ class ArduinoHandler(BaseSignalHandler):
                 approximation_time=datetime.timedelta(hours=1),
             )
 
-    def generate_plots(self, *,
-                       date_range: tuple[datetime.datetime, datetime.datetime],
-                       components: typing.Set[str]) -> typing.Optional[typing.Sequence[io.BytesIO]]:
+    def generate_plots(
+        self, *, date_range: tuple[datetime.datetime, datetime.datetime], components: typing.Set[str]
+    ) -> typing.Optional[typing.Sequence[io.BytesIO]]:
         if 'arduino' not in components:
             return None
 
@@ -96,48 +96,68 @@ class ArduinoHandler(BaseSignalHandler):
             if len(temperature_stats) >= 2:
                 weather_humidity = Signal.get_aggregated(
                     signal_type=constants.WEATHER_HUMIDITY,
-                    datetime_range=(humidity_stats[0].aggregated_time, humidity_stats[-1].aggregated_time,),
+                    datetime_range=(
+                        humidity_stats[0].aggregated_time,
+                        humidity_stats[-1].aggregated_time,
+                    ),
                 )
 
             if len(temperature_stats) >= 2:
                 weather_temperature = Signal.get_aggregated(
                     signal_type=constants.WEATHER_TEMPERATURE,
-                    datetime_range=(temperature_stats[0].aggregated_time, temperature_stats[-1].aggregated_time,),
+                    datetime_range=(
+                        temperature_stats[0].aggregated_time,
+                        temperature_stats[-1].aggregated_time,
+                    ),
                 )
 
         plots = []
 
         if temperature_stats:
-            plots.append(create_plot(
-                title='Temperature',
-                x_attr='aggregated_time',
-                y_attr='value',
-                stats=temperature_stats,
-                additional_plots=(
-                    ({'x_attr': 'aggregated_time', 'y_attr': 'value', 'stats': weather_temperature},)
-                    if weather_temperature else None
-                ),
-                legend=(
-                    ('Inside', 'Outside',)
-                    if weather_temperature else None
-                ),
-            ))
+            plots.append(
+                create_plot(
+                    title='Temperature',
+                    x_attr='aggregated_time',
+                    y_attr='value',
+                    stats=temperature_stats,
+                    additional_plots=(
+                        ({'x_attr': 'aggregated_time', 'y_attr': 'value', 'stats': weather_temperature},)
+                        if weather_temperature
+                        else None
+                    ),
+                    legend=(
+                        (
+                            'Inside',
+                            'Outside',
+                        )
+                        if weather_temperature
+                        else None
+                    ),
+                )
+            )
 
         if humidity_stats:
-            plots.append(create_plot(
-                title='Humidity',
-                x_attr='aggregated_time',
-                y_attr='value',
-                stats=humidity_stats,
-                additional_plots=(
-                    ({'x_attr': 'aggregated_time', 'y_attr': 'value', 'stats': weather_humidity},)
-                    if weather_humidity else None
-                ),
-                legend=(
-                    ('Inside', 'Outside',)
-                    if weather_humidity else None
-                ),
-            ))
+            plots.append(
+                create_plot(
+                    title='Humidity',
+                    x_attr='aggregated_time',
+                    y_attr='value',
+                    stats=humidity_stats,
+                    additional_plots=(
+                        ({'x_attr': 'aggregated_time', 'y_attr': 'value', 'stats': weather_humidity},)
+                        if weather_humidity
+                        else None
+                    ),
+                    legend=(
+                        (
+                            'Inside',
+                            'Outside',
+                        )
+                        if weather_humidity
+                        else None
+                    ),
+                )
+            )
 
         pir_stats = Signal.get(ArduinoSensorTypes.PIR_SENSOR, datetime_range=date_range)
 

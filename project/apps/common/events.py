@@ -29,7 +29,10 @@ class Event:
         assert callable(func)
 
         with self._lock:
-            self.receivers = (*self.receivers, func,)
+            self.receivers = (
+                *self.receivers,
+                func,
+            )
 
         return Receiver(func=func, event=self)
 
@@ -37,11 +40,7 @@ class Event:
         assert callable(receiver)
 
         with self._lock:
-            self.receivers = tuple(
-                receiver_
-                for receiver_ in self.receivers
-                if receiver != receiver_
-            )
+            self.receivers = tuple(receiver_ for receiver_ in self.receivers if receiver != receiver_)
 
     @synchronized_method
     def send(self, **kwargs) -> None:

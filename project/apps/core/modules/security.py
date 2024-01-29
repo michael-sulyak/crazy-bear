@@ -4,25 +4,25 @@ import typing
 from libs.casual_utils.parallel_computing import single_synchronized, synchronized_method
 from libs.task_queue import IntervalTask, TaskPriorities
 from .. import events
-from ..base import BaseModule, Command
+from ..base import BaseModule
 from ..constants import (
-    AUTO_SECURITY_IS_ENABLED, BotCommands, CAMERA_IS_AVAILABLE, SECURITY_IS_ENABLED, USER_IS_CONNECTED_TO_ROUTER,
+    AUTO_SECURITY_IS_ENABLED,
+    BotCommands,
+    CAMERA_IS_AVAILABLE,
+    SECURITY_IS_ENABLED,
+    USER_IS_CONNECTED_TO_ROUTER,
     USE_CAMERA,
 )
 from ...common import interface
 from ...common.constants import AUTO, OFF, ON
 
 
-__all__ = (
-    'Security',
-)
+__all__ = ('Security',)
 
 
 @interface.module(
     title='Security',
-    description=(
-        'The module turns on the security mode and the camera after the owner leaves the house.'
-    ),
+    description='The module turns on the security mode and the camera after the owner leaves the house.',
 )
 class Security(BaseModule):
     initial_state = {
@@ -45,11 +45,23 @@ class Security(BaseModule):
     def subscribe_to_events(self) -> tuple:
         return (
             *super().subscribe_to_events(),
-            self.state.subscribe_toggle(SECURITY_IS_ENABLED, {
-                (False, True,): lambda name: events.security_is_enabled.send(),
-                (True, False,): lambda name: events.security_is_disabled.send(),
-                (None, True,): lambda name: events.security_is_enabled.send(),
-            }),
+            self.state.subscribe_toggle(
+                SECURITY_IS_ENABLED,
+                {
+                    (
+                        False,
+                        True,
+                    ): lambda name: events.security_is_enabled.send(),
+                    (
+                        True,
+                        False,
+                    ): lambda name: events.security_is_disabled.send(),
+                    (
+                        None,
+                        True,
+                    ): lambda name: events.security_is_enabled.send(),
+                },
+            ),
             events.motion_detected.connect(self._update_last_movement_at),
             events.security_is_enabled.connect(lambda: self.messenger.send_message('Security is enabled')),
             events.security_is_disabled.connect(lambda: self.messenger.send_message('Security is disabled')),

@@ -13,10 +13,7 @@ class VideoCamera:
     _callback: typing.Callable
     _fps_tracker: FPSTracker
 
-    def __init__(self, *,
-                 video_stream: VideoStream,
-                 callback: typing.Callable,
-                 max_fps: int) -> None:
+    def __init__(self, *, video_stream: VideoStream, callback: typing.Callable, max_fps: int) -> None:
         self._fps_tracker = FPSTracker()
         self._video_stream = video_stream
         self._callback = callback

@@ -34,9 +34,9 @@ class ConcreteRetries(BaseMiddleware):
     max_retries: float
     exceptions: tuple[typing.Type[Exception], ...]
 
-    def __init__(self, *,
-                 max_retries: float = 3,
-                 exceptions: tuple[typing.Type[Exception], ...] = (Exception,)) -> None:
+    def __init__(
+        self, *, max_retries: float = 3, exceptions: tuple[typing.Type[Exception], ...] = (Exception,)
+    ) -> None:
         super().__init__()
 
         self.max_retries = max_retries
@@ -69,7 +69,7 @@ class ConcreteRetries(BaseMiddleware):
 
     @staticmethod
     def _get_retry_delay(retries: int) -> datetime.timedelta:
-        delay = datetime.timedelta(seconds=retries ** 4 + 10)
+        delay = datetime.timedelta(seconds=retries**4 + 10)
 
         if delay > datetime.timedelta(minutes=30):
             delay = datetime.timedelta(minutes=30)

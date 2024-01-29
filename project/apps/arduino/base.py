@@ -91,7 +91,10 @@ class ArduinoConnector:
             try:
                 processed_line = line.decode()
                 processed_line = json.loads(processed_line)
-            except (json.decoder.JSONDecodeError, UnicodeDecodeError,) as e:
+            except (
+                json.decoder.JSONDecodeError,
+                UnicodeDecodeError,
+            ) as e:
                 logging.warning(e)
                 continue
 
@@ -100,8 +103,5 @@ class ArduinoConnector:
 
             yield ArduinoResponse(
                 type=processed_line['t'],
-                payload={
-                    constants.SENSORS_PAYLOAD_MAP[key]: value
-                    for key, value in processed_line['p'].items()
-                },
+                payload={constants.SENSORS_PAYLOAD_MAP[key]: value for key, value in processed_line['p'].items()},
             )

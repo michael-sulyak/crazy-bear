@@ -9,16 +9,12 @@ from ..constants import (
 from ...common import interface
 
 
-__all__ = (
-    'Utils',
-)
+__all__ = ('Utils',)
 
 
 @interface.module(
     title='Utils',
-    description=(
-        'The module provides additional utils.'
-    ),
+    description='The module provides additional utils.',
 )
 class Utils(BaseModule):
     @interface.command(
@@ -33,7 +29,7 @@ class Utils(BaseModule):
         time_type = command.second_arg
 
         delta = datetime.timedelta(**{time_type: number})
-        command_name_for_run, *command_args_for_run = command.args[command.args.index('|') + 1:]
+        command_name_for_run, *command_args_for_run = command.args[command.args.index('|') + 1 :]
         command_for_run = Command(name=command_name_for_run, args=command_args_for_run)
         run_after = datetime.datetime.now() + delta
 

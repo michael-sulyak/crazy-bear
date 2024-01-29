@@ -8,8 +8,14 @@ from emoji.core import emojize
 from libs.casual_utils.time import get_current_time
 from libs.messengers.utils import escape_markdown
 from ..constants import (
-    ARDUINO_IS_ENABLED, AUTO_SECURITY_IS_ENABLED, CAMERA_IS_AVAILABLE, CURRENT_FPS, SECURITY_IS_ENABLED, USE_CAMERA,
-    VIDEO_RECORDING_IS_ENABLED, VIDEO_SECURITY_IS_ENABLED,
+    ARDUINO_IS_ENABLED,
+    AUTO_SECURITY_IS_ENABLED,
+    CAMERA_IS_AVAILABLE,
+    CURRENT_FPS,
+    SECURITY_IS_ENABLED,
+    USE_CAMERA,
+    VIDEO_RECORDING_IS_ENABLED,
+    VIDEO_SECURITY_IS_ENABLED,
 )
 from ...arduino.constants import ArduinoSensorTypes
 from ...common.constants import INITED_AT
@@ -43,31 +49,27 @@ class ShortTextReport:
         camera_is_used = emojize(':camera_with_flash:') if self.state[USE_CAMERA] else ''
         video_recording_is_on = emojize(':film_frames:') if self.state[VIDEO_RECORDING_IS_ENABLED] else ''
         additional_camera_status = (
-            f' {camera_is_used}{video_recording_is_on}'
-            if camera_is_used or video_recording_is_on else ''
+            f' {camera_is_used}{video_recording_is_on}' if camera_is_used or video_recording_is_on else ''
         )
 
         auto_security_is_enabled = (
-            emojize(':counterclockwise_arrows_button:')
-            if self.state[AUTO_SECURITY_IS_ENABLED] else ''
+            emojize(':counterclockwise_arrows_button:') if self.state[AUTO_SECURITY_IS_ENABLED] else ''
         )
         video_security_is_enabled = emojize(':film_frames:') if self.state[VIDEO_SECURITY_IS_ENABLED] else ''
         additional_security_status = (
             f'{auto_security_is_enabled}{video_security_is_enabled}'
-            if auto_security_is_enabled or video_security_is_enabled else ''
+            if auto_security_is_enabled or video_security_is_enabled
+            else ''
         )
 
         return (
             f'️*Crazy Bear* `v{escape_markdown(config.VERSION)}`\n\n'
-
             f'{emojize(":floppy_disk:")} *Devices*\n'
             f'Arduino: {self.YES if self.state[ARDUINO_IS_ENABLED] else self.NO}\n'
             f'Camera: `{self.YES if self.state[CAMERA_IS_AVAILABLE] else self.NO}{additional_camera_status}'
             f'{f"FPS {escape_markdown(self._fps_info)}" if self.state[CAMERA_IS_AVAILABLE] else ""}`\n\n'
-
             f'{emojize(":shield:")} *Security*\n'
             f'Security: `{self.YES if self.state[SECURITY_IS_ENABLED] else self.NO}{additional_security_status}`\n\n'
-
             f'{emojize(":bar_chart:")} *Sensors*\n'
             f'Humidity: `{escape_markdown(self._humidity_info)}`\n'
             f'Temperature: `{escape_markdown(self._temperature_info)}`\n'
@@ -75,7 +77,6 @@ class ShortTextReport:
             f'CPU Temperature: `{escape_markdown(self._cpu_temperature_info)}`\n'
             f'RAM usage: `{escape_markdown(self._ram_usage_info)}`\n'
             f'Free space: `{escape_markdown(self._free_space_info)}`\n\n'
-
             f'{emojize(":clipboard:")} *Other info*\n'
             f'WiFi: {self._connected_devices_info}\n'
             f'Started at: `{escape_markdown(self.state[INITED_AT].strftime("%d.%m.%Y, %H:%M:%S"))}`'
@@ -199,7 +200,17 @@ class ShortTextReport:
     @property
     def _free_space_info(self) -> str:
         free_space = get_free_disk_space() / 1024
-        mark = self._get_mark(free_space, (1, float("inf"),), (0.5, float("inf"),))
+        mark = self._get_mark(
+            free_space,
+            (
+                1,
+                float("inf"),
+            ),
+            (
+                0.5,
+                float("inf"),
+            ),
+        )
         return f'{round(free_space, 2)}GB {mark}'
 
     @property

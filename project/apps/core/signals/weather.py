@@ -14,10 +14,12 @@ class WeatherHandler(BaseSignalHandler):
         weather = utils.get_weather()
         now = get_current_time()
 
-        Signal.bulk_add((
-            Signal(type=constants.WEATHER_TEMPERATURE, value=weather['main']['temp'], received_at=now),
-            Signal(type=constants.WEATHER_HUMIDITY, value=weather['main']['humidity'], received_at=now),
-        ))
+        Signal.bulk_add(
+            (
+                Signal(type=constants.WEATHER_TEMPERATURE, value=weather['main']['temp'], received_at=now),
+                Signal(type=constants.WEATHER_HUMIDITY, value=weather['main']['humidity'], received_at=now),
+            )
+        )
 
     def compress(self) -> None:
         signal_types = (

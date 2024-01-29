@@ -112,10 +112,7 @@ class Command:
         result = self.name
 
         if self.params:
-            str_params = (
-                param.to_str() if isinstance(param, BaseParam) else param
-                for param in self.params
-            )
+            str_params = (param.to_str() if isinstance(param, BaseParam) else param for param in self.params)
             result += f' {" ".join(str_params)}'
 
         if self.flags:
@@ -206,13 +203,15 @@ def command(
         if not hasattr(func, '_commands'):
             func._commands = []  # type: ignore
 
-        func._commands.append(Command(  # type: ignore
-            name,
-            *params,
-            flags=flags,
-            method_name=func.__name__,
-            need_to_pass_command='command' in func.__code__.co_varnames,
-        ))
+        func._commands.append(
+            Command(  # type: ignore
+                name,
+                *params,
+                flags=flags,
+                method_name=func.__name__,
+                need_to_pass_command='command' in func.__code__.co_varnames,
+            )
+        )
 
         return func
 

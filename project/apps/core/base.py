@@ -56,14 +56,9 @@ class BaseModule(abc.ABC):
         return ()
 
     def subscribe_to_events(self) -> tuple[BaseReceiver, ...]:
-        subscribers: tuple[BaseReceiver, ...] = (
-            events.shutdown.connect(self.disable),
-        )
+        subscribers: tuple[BaseReceiver, ...] = (events.shutdown.connect(self.disable),)
 
-        if (
-            self.__class__.process_command is not BaseModule.process_command
-            or self.interface.use_auto_mapping
-        ):
+        if self.__class__.process_command is not BaseModule.process_command or self.interface.use_auto_mapping:
             # Process input commands if it's overwritten.
             subscribers += (events.input_command.connect(self.process_command),)
 

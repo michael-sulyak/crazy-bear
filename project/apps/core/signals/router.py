@@ -56,7 +56,10 @@ class RouterHandler(BaseAdvancedSignalHandler):
             is_connected = check_if_host_is_at_home()
         except Shutdown:
             raise
-        except (ConnectionError, ReadTimeout,) as e:
+        except (
+            ConnectionError,
+            ReadTimeout,
+        ) as e:
             logging.warning(e)
             is_connected = False
             self._errors_count += 1
@@ -90,9 +93,9 @@ class RouterHandler(BaseAdvancedSignalHandler):
         if not is_connected and can_reset_connection:
             self._state[constants.USER_IS_CONNECTED_TO_ROUTER] = False
 
-    def generate_plots(self, *,
-                       date_range: tuple[datetime.datetime, datetime.datetime],
-                       components: typing.Set[str]) -> typing.Optional[typing.Sequence[io.BytesIO]]:
+    def generate_plots(
+        self, *, date_range: tuple[datetime.datetime, datetime.datetime], components: typing.Set[str]
+    ) -> typing.Optional[typing.Sequence[io.BytesIO]]:
 
         if 'router_usage' not in components:
             return None

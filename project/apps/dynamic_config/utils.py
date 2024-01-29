@@ -10,10 +10,7 @@ from .models import DynamicConstant
 def get_config() -> dict[str, typing.Any]:
     constants = models.DynamicConstant.all()
 
-    return {
-        constant.name: constant.value  # type: ignore
-        for constant in constants
-    }
+    return {constant.name: constant.value for constant in constants}  # type: ignore
 
 
 class DynamicConfigProxy:

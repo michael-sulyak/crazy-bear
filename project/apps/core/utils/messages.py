@@ -26,9 +26,11 @@ def process_telegram_message(message: MessageInfo, *, messanger: TelegramMesseng
 
         return
 
-    events.new_message.send(message=Message(
-        username=message.user.username,
-        chat_id=message.chat.id,
-        text=message.text,
-        command=Command.from_string(message.text),
-    ))
+    events.new_message.send(
+        message=Message(
+            username=message.user.username,
+            chat_id=message.chat.id,
+            text=message.text,
+            command=Command.from_string(message.text),
+        )
+    )

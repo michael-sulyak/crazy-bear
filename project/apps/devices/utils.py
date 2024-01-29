@@ -34,8 +34,7 @@ class DeviceManager:
         with self._lock:
             if self._devices is None:
                 self._devices = tuple(
-                    Device.from_dict(raw_mac_addresses)
-                    for raw_mac_addresses in self.get_raw_devices()
+                    Device.from_dict(raw_mac_addresses) for raw_mac_addresses in self.get_raw_devices()
                 )
 
             return self._devices

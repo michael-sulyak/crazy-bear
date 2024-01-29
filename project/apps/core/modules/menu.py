@@ -34,10 +34,7 @@ class TelegramMenu:
             LampPage,
         )
 
-        self.pages_map = {
-            page.code: page(state=state)
-            for page in pages
-        }
+        self.pages_map = {page.code: page(state=state) for page in pages}
 
     def __call__(self, *args, **kwargs) -> typing.Optional[ReplyKeyboardMarkup]:
         with self.state.lock(self.menu_state_name):
@@ -86,13 +83,16 @@ class MainPage(BasePage):
     def _get_items(self) -> list[list[KeyboardButton]]:
         return [
             [
-                KeyboardButton(text=constants.PrettyBotCommands.SECURITY_OFF)
-                if self.state[constants.SECURITY_IS_ENABLED] else
-                KeyboardButton(text=constants.PrettyBotCommands.SECURITY_ON),
-
-                KeyboardButton(text=constants.PrettyBotCommands.SECURITY_AUTO_OFF)
-                if self.state[constants.AUTO_SECURITY_IS_ENABLED] else
-                KeyboardButton(text=constants.PrettyBotCommands.SECURITY_AUTO_ON),
+                (
+                    KeyboardButton(text=constants.PrettyBotCommands.SECURITY_OFF)
+                    if self.state[constants.SECURITY_IS_ENABLED]
+                    else KeyboardButton(text=constants.PrettyBotCommands.SECURITY_ON)
+                ),
+                (
+                    KeyboardButton(text=constants.PrettyBotCommands.SECURITY_AUTO_OFF)
+                    if self.state[constants.AUTO_SECURITY_IS_ENABLED]
+                    else KeyboardButton(text=constants.PrettyBotCommands.SECURITY_AUTO_ON)
+                ),
             ],
             [
                 KeyboardButton(text=constants.PrettyBotCommands.ALL_FUNCS),
@@ -112,9 +112,7 @@ class LampPage(BasePage):
     def _get_items(self) -> list[list[KeyboardButton]]:
         main_lamp_is_on = self.state[constants.MAIN_LAMP_IS_ON]
 
-        first_row = [
-            KeyboardButton(text=f'{constants.BotCommands.LAMP} {OFF if main_lamp_is_on else ON}')
-        ]
+        first_row = [KeyboardButton(text=f'{constants.BotCommands.LAMP} {OFF if main_lamp_is_on else ON}')]
 
         if not main_lamp_is_on:
             first_row.append(
@@ -164,7 +162,8 @@ class AllFuncsPage(BasePage):
             camera_line.append(KeyboardButton(text=f'{constants.BotCommands.CAMERA} photo'))
             camera_line.append(
                 KeyboardButton(
-                    text=f'{constants.BotCommands.CAMERA} record {OFF if self.state[constants.VIDEO_RECORDING_IS_ENABLED] else ON}'),
+                    text=f'{constants.BotCommands.CAMERA} record {OFF if self.state[constants.VIDEO_RECORDING_IS_ENABLED] else ON}'
+                ),
             )
 
         return [
@@ -181,20 +180,15 @@ class AllFuncsPage(BasePage):
             ],
             [
                 KeyboardButton(constants.BotCommands.RAW_WIFI_DEVICES),
-                KeyboardButton(constants.BotCommands.WIFI_DEVICES)
+                KeyboardButton(constants.BotCommands.WIFI_DEVICES),
             ],
-            [
-                KeyboardButton(constants.BotCommands.HELP),
-                KeyboardButton(constants.BotCommands.RETURN)
-            ],
+            [KeyboardButton(constants.BotCommands.HELP), KeyboardButton(constants.BotCommands.RETURN)],
         ]
 
 
 @interface.module(
     title='Menu',
-    description=(
-        'The module provides the menu.'
-    ),
+    description='The module provides the menu.',
 )
 class Menu(BaseModule):
     NEXT = emojize(':right_arrow:')

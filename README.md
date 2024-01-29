@@ -12,7 +12,7 @@ hope the code will be helpful to you.
 
 - [x] Use the new style for binding commands (`interface.command`).
 - [ ] Remove Arduino and use only ZigBee devices.
-- [ ] Fix typings.
+- [x] Fix typings.
 - [ ] Rewrite the interface (use mini apps from Telegram to improve the interface).
 
 ## Components

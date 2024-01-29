@@ -66,7 +66,10 @@ def get_cpu_temp() -> float:
 
     try:
         return int(temp_str) / 1_000
-    except (IndexError, ValueError,) as e:
+    except (
+        IndexError,
+        ValueError,
+    ) as e:
         raise RuntimeError('Could not parse temperature output.') from e
 
 
@@ -82,13 +85,15 @@ def init_settings_for_plt() -> None:
 
 
 @timer
-def create_plot(*,
-                title: str,
-                x_attr: str,
-                y_attr: str,
-                stats: typing.Sequence,
-                additional_plots: typing.Optional[typing.Sequence[dict]] = None,
-                legend: typing.Optional[typing.Sequence[str]] = None) -> io.BytesIO:
+def create_plot(
+    *,
+    title: str,
+    x_attr: str,
+    y_attr: str,
+    stats: typing.Sequence,
+    additional_plots: typing.Optional[typing.Sequence[dict]] = None,
+    legend: typing.Optional[typing.Sequence[str]] = None,
+) -> io.BytesIO:
     if len(stats) <= 2:
         marker = 'o'
     else:
@@ -96,9 +101,20 @@ def create_plot(*,
 
     x = tuple(getattr(item, x_attr) for item in stats)
     y = tuple(round(getattr(item, y_attr), 1) for item in stats)
-    x_is_date = isinstance(x[0], (datetime.date, datetime.datetime,))
+    x_is_date = isinstance(
+        x[0],
+        (
+            datetime.date,
+            datetime.datetime,
+        ),
+    )
 
-    fig, ax = plt.subplots(figsize=(12, 8,))
+    fig, ax = plt.subplots(
+        figsize=(
+            12,
+            8,
+        )
+    )
     ax.plot(mdates.date2num(x) if x_is_date else x, y, marker=marker)
 
     if additional_plots is not None:
@@ -192,8 +208,9 @@ def is_sleep_hours(timestamp: typing.Optional[datetime.datetime] = None) -> bool
         return config.SLEEPING_TIME[0] <= timestamp_time <= config.SLEEPING_TIME[1]
 
 
-def convert_params_to_date_range(delta_value: int = 24,
-                                 delta_type: str = 'hours') -> tuple[datetime.datetime, datetime.datetime]:
+def convert_params_to_date_range(
+    delta_value: int = 24, delta_type: str = 'hours'
+) -> tuple[datetime.datetime, datetime.datetime]:
     now = get_current_time()
     return now - datetime.timedelta(**{delta_type: delta_value}), now
 

@@ -15,7 +15,9 @@ def test_video_guard():
         task_queue=task_queue,
     )
     video_guard.start()
-    video_guard.process_frame.send((
-        cv2.imread(str(config.APPS_DIR / 'guard/tests/resources/frame_1.png')),
-        1,
-    ))
+    video_guard.process_frame.send(
+        (
+            cv2.imread(str(config.APPS_DIR / 'guard/tests/resources/frame_1.png')),
+            1,
+        )
+    )

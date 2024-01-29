@@ -32,9 +32,9 @@ class CpuTempHandler(BaseAdvancedSignalHandler):
         except RuntimeError:
             return NOTHING
 
-    def generate_plots(self, *,
-                       date_range: tuple[datetime.datetime, datetime.datetime],
-                       components: typing.Set[str]) -> typing.Optional[typing.Sequence[io.BytesIO]]:
+    def generate_plots(
+        self, *, date_range: tuple[datetime.datetime, datetime.datetime], components: typing.Set[str]
+    ) -> typing.Optional[typing.Sequence[io.BytesIO]]:
         if 'inner_stats' not in components:
             return None
 

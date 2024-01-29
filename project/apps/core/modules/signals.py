@@ -8,7 +8,7 @@ from libs.casual_utils.time import get_current_time
 from libs.messengers.utils import ProgressBar
 from libs.task_queue import IntervalTask, ScheduledTask, TaskPriorities
 from .. import constants, events
-from ..base import BaseModule, Command
+from ..base import BaseModule
 from ..signals.supreme_handler import SupremeSignalHandler
 from ... import db
 from ...common import interface
@@ -16,16 +16,12 @@ from ...common.utils import create_plot
 from ...signals.models import Signal
 
 
-__all__ = (
-    'Signals',
-)
+__all__ = ('Signals',)
 
 
 @interface.module(
     title='Signals',
-    description=(
-        'The module processes input signals.'
-    ),
+    description='The module processes input signals.',
 )
 class Signals(BaseModule):
     _timedelta_for_ping: datetime.timedelta = datetime.timedelta(seconds=30)
@@ -110,8 +106,9 @@ class Signals(BaseModule):
         )
 
     @staticmethod
-    def _create_task_queue_stats(date_range: tuple[datetime.datetime, datetime.datetime],
-                                 components: typing.Set[str]) -> typing.Optional[io.BytesIO]:
+    def _create_task_queue_stats(
+        date_range: tuple[datetime.datetime, datetime.datetime], components: typing.Set[str]
+    ) -> typing.Optional[io.BytesIO]:
         if 'inner_stats' not in components:
             return None
 

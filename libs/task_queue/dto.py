@@ -60,11 +60,13 @@ class Task:
         self._status = value
 
     @classmethod
-    def create(cls,
-               target: typing.Callable,
-               args: typing.Optional[tuple] = None,
-               kwargs: typing.Optional[typing.Dict[str, typing.Any]] = None,
-               **params) -> 'Task':
+    def create(
+        cls,
+        target: typing.Callable,
+        args: typing.Optional[tuple] = None,
+        kwargs: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        **params,
+    ) -> 'Task':
         if args is None:
             args = tuple()
 
@@ -103,7 +105,10 @@ class Task:
 
     @synchronized_method
     def cancel(self) -> bool:
-        is_success = self._status in (constants.TaskStatuses.CREATED, constants.TaskStatuses.PENDING,)
+        is_success = self._status in (
+            constants.TaskStatuses.CREATED,
+            constants.TaskStatuses.PENDING,
+        )
         self._status = constants.TaskStatuses.CANCELED
         return is_success
 

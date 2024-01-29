@@ -25,10 +25,7 @@ class SupremeSignalHandler:
     _inited_handlers: tuple[BaseSignalHandler | BaseAdvancedSignalHandler, ...]
 
     def __init__(self, *, messenger: BaseMessenger, state: State) -> None:
-        self._inited_handlers = tuple(
-            handler(messenger=messenger, state=state)
-            for handler in self.handlers
-        )
+        self._inited_handlers = tuple(handler(messenger=messenger, state=state) for handler in self.handlers)
 
     @property
     def count_of_handlers(self) -> int:

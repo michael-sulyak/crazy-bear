@@ -8,16 +8,12 @@ from ...devices.dto import Device
 from ...devices.utils import device_manager
 
 
-__all__ = (
-    'WiFiDevices',
-)
+__all__ = ('WiFiDevices',)
 
 
 @interface.module(
     title='WiFiDevices',
-    description=(
-        'The module manages connected devices to WiFi.'
-    ),
+    description='The module manages connected devices to WiFi.',
 )
 class WiFiDevices(BaseModule):
     @interface.command(BotCommands.WIFI_DEVICES)
@@ -40,11 +36,7 @@ class WiFiDevices(BaseModule):
     def _delete_wifi_device(self, command: Command) -> None:
         mac_address = command.first_arg
 
-        device_manager.set_devices([
-            device
-            for device in device_manager.devices
-            if device.mac_address != mac_address
-        ])
+        device_manager.set_devices([device for device in device_manager.devices if device.mac_address != mac_address])
 
         self.messenger.send_message('Deleted')
 

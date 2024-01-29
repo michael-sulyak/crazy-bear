@@ -39,7 +39,10 @@ class FileStorage:
             return
 
         height, width, layers = frames[0].shape
-        size = (width, height,)
+        size = (
+            width,
+            height,
+        )
 
         with tempfile.TemporaryDirectory() as temp_dir:
             filename = os.path.join(temp_dir, 'video.avi')

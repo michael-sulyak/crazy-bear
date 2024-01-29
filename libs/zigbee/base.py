@@ -113,9 +113,7 @@ class ZigBee:
     #     return response['status'] == 'ok'
 
     @synchronized_method
-    def subscribe_on_topic(self,
-                           topic: str,
-                           func: typing.Callable) -> None:
+    def subscribe_on_topic(self, topic: str, func: typing.Callable) -> None:
         if '+' in topic:
             self._permanent_subscriber_key_regexps_map[re.compile(topic.replace('+', '.*'))] = topic
 
@@ -175,11 +173,9 @@ class ZigBee:
 
                 break
 
-    def _request_data(self, *,
-                      topic_for_sending: str,
-                      topic_for_receiving: str,
-                      payload: typing.Any = None,
-                      timeout: int = 10) -> dict | None:
+    def _request_data(
+        self, *, topic_for_sending: str, topic_for_receiving: str, payload: typing.Any = None, timeout: int = 10
+    ) -> dict | None:
         event = threading.Event()
         result = None
 
@@ -229,9 +225,7 @@ class ZigBee:
                 )
 
         common_topic = f'{self._base_topic}/+/availability'
-        self._permanent_subscriber_key_regexps_map[
-            re.compile(common_topic.replace('+', '.*'))
-        ] = common_topic
+        self._permanent_subscriber_key_regexps_map[re.compile(common_topic.replace('+', '.*'))] = common_topic
         self._permanent_subscribers_map[common_topic].append(_func)
 
     @synchronized_method

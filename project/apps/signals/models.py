@@ -59,9 +59,7 @@ class Signal(db.Base):
             session.query(cls).filter(cls.type.in_(signal_types), cls.received_at <= timestamp).delete()
 
     @classmethod
-    def get(cls,
-            signal_type: str, *,
-            datetime_range: tuple[datetime.datetime, datetime.datetime]) -> list['Signal']:
+    def get(cls, signal_type: str, *, datetime_range: tuple[datetime.datetime, datetime.datetime]) -> list['Signal']:
         query_data = cls._get_query_data(
             signal_type=signal_type,
             datetime_range=datetime_range,
@@ -70,25 +68,34 @@ class Signal(db.Base):
         if not query_data:
             return []
 
-        signals: list['Signal'] = db.get_db_session().query(  # type: ignore
-            cls.value,
-            cls.received_at.label('received_at'),
-        ).filter(
-            cls.received_at >= query_data['start_time'],
-            cls.received_at <= query_data['end_time'],
-            cls.type == signal_type,
-            cls.value.isnot(None),
-        ).order_by(
-            cls.received_at,
-        ).all()
+        signals: list['Signal'] = (
+            db.get_db_session()
+            .query(  # type: ignore
+                cls.value,
+                cls.received_at.label('received_at'),
+            )
+            .filter(
+                cls.received_at >= query_data['start_time'],
+                cls.received_at <= query_data['end_time'],
+                cls.type == signal_type,
+                cls.value.isnot(None),
+            )
+            .order_by(
+                cls.received_at,
+            )
+            .all()
+        )
 
         return signals
 
     @classmethod
-    def get_aggregated(cls,
-                       signal_type: str, *,
-                       aggregate_function: typing.Callable = sa_func.avg,
-                       datetime_range: tuple[datetime.datetime, datetime.datetime]) -> typing.List['Signal']:
+    def get_aggregated(
+        cls,
+        signal_type: str,
+        *,
+        aggregate_function: typing.Callable = sa_func.avg,
+        datetime_range: tuple[datetime.datetime, datetime.datetime],
+    ) -> typing.List['Signal']:
         query_data = cls._get_query_data(
             signal_type=signal_type,
             datetime_range=datetime_range,
@@ -97,49 +104,70 @@ class Signal(db.Base):
         if not query_data:
             return []
 
-        signals = db.get_db_session().query(
-            aggregate_function(cls.value).label('value'),
-            sa_func.date_trunc(query_data['date_trunc'], cls.received_at).label('aggregated_time'),
-        ).filter(
-            cls.received_at >= query_data['start_time'],
-            cls.received_at <= query_data['end_time'],
-            cls.type == signal_type,
-            cls.value.isnot(None),
-        ).group_by(
-            'aggregated_time',
-        ).order_by(
-            'aggregated_time',
-        ).all()
+        signals = (
+            db.get_db_session()
+            .query(
+                aggregate_function(cls.value).label('value'),
+                sa_func.date_trunc(query_data['date_trunc'], cls.received_at).label('aggregated_time'),
+            )
+            .filter(
+                cls.received_at >= query_data['start_time'],
+                cls.received_at <= query_data['end_time'],
+                cls.type == signal_type,
+                cls.value.isnot(None),
+            )
+            .group_by(
+                'aggregated_time',
+            )
+            .order_by(
+                'aggregated_time',
+            )
+            .all()
+        )
 
         return signals
 
     @classmethod
-    def get_one_aggregated(cls,
-                           signal_type: str, *,
-                           aggregate_function: typing.Callable = sa_func.avg,
-                           datetime_range: typing.Optional[tuple[datetime.datetime, datetime.datetime]] = None,
-                           period: datetime.timedelta = datetime.timedelta(minutes=1)) -> typing.Any:
+    def get_one_aggregated(
+        cls,
+        signal_type: str,
+        *,
+        aggregate_function: typing.Callable = sa_func.avg,
+        datetime_range: typing.Optional[tuple[datetime.datetime, datetime.datetime]] = None,
+        period: datetime.timedelta = datetime.timedelta(minutes=1),
+    ) -> typing.Any:
         now = get_current_time()
 
         if datetime_range is None:
-            datetime_range = (now - period, now,)
+            datetime_range = (
+                now - period,
+                now,
+            )
 
-        result = db.get_db_session().query(
-            aggregate_function(cls.value).label('value'),
-        ).filter(
-            cls.type == signal_type,
-            cls.received_at >= datetime_range[0],
-            cls.received_at <= datetime_range[1],
-            cls.value.isnot(None),
-        ).first()[0]
+        result = (
+            db.get_db_session()
+            .query(
+                aggregate_function(cls.value).label('value'),
+            )
+            .filter(
+                cls.type == signal_type,
+                cls.received_at >= datetime_range[0],
+                cls.received_at <= datetime_range[1],
+                cls.value.isnot(None),
+            )
+            .first()[0]
+        )
 
         return result
 
     @classmethod
-    def compress_by_time(cls,
-                         signal_type: str, *,
-                         datetime_range: tuple[datetime.datetime, datetime.datetime],
-                         aggregate_function: typing.Callable = sa_func.avg) -> None:
+    def compress_by_time(
+        cls,
+        signal_type: str,
+        *,
+        datetime_range: tuple[datetime.datetime, datetime.datetime],
+        aggregate_function: typing.Callable = sa_func.avg,
+    ) -> None:
         session = db.get_db_session()
 
         query_data = cls._get_query_data(
@@ -150,19 +178,25 @@ class Signal(db.Base):
         if not query_data:
             return
 
-        signals = session.query(
-            aggregate_function(cls.value).label('aggregated_value'),
-            sa_func.date_trunc(query_data['date_trunc'], cls.received_at).label('aggregated_time'),
-        ).filter(
-            cls.received_at >= query_data['start_time'],
-            cls.received_at <= query_data['end_time'],
-            cls.type == signal_type,
-            cls.value.isnot(None),
-        ).group_by(
-            'aggregated_time',
-        ).order_by(
-            'aggregated_time',
-        ).all()
+        signals = (
+            session.query(
+                aggregate_function(cls.value).label('aggregated_value'),
+                sa_func.date_trunc(query_data['date_trunc'], cls.received_at).label('aggregated_time'),
+            )
+            .filter(
+                cls.received_at >= query_data['start_time'],
+                cls.received_at <= query_data['end_time'],
+                cls.type == signal_type,
+                cls.value.isnot(None),
+            )
+            .group_by(
+                'aggregated_time',
+            )
+            .order_by(
+                'aggregated_time',
+            )
+            .all()
+        )
 
         if not signals:
             return
@@ -182,11 +216,14 @@ class Signal(db.Base):
             session.add_all(new_signals)
 
     @classmethod
-    def compress(cls,
-                 signal_type: str, *,
-                 datetime_range: tuple[datetime.datetime, datetime.datetime],
-                 approximation_value: float = 0,
-                 approximation_time: datetime.timedelta = datetime.timedelta(hours=1)) -> None:
+    def compress(
+        cls,
+        signal_type: str,
+        *,
+        datetime_range: tuple[datetime.datetime, datetime.datetime],
+        approximation_value: float = 0,
+        approximation_time: datetime.timedelta = datetime.timedelta(hours=1),
+    ) -> None:
         signals = cls.get(signal_type, datetime_range=datetime_range)
 
         if len(signals) < 2:
@@ -216,10 +253,13 @@ class Signal(db.Base):
                 ).delete()
 
     @classmethod
-    def aggregated_compress(cls,
-                            signal_type: str, *,
-                            aggregate_function: typing.Callable = sa_func.avg,
-                            datetime_range: tuple[datetime.datetime, datetime.datetime]) -> None:
+    def aggregated_compress(
+        cls,
+        signal_type: str,
+        *,
+        aggregate_function: typing.Callable = sa_func.avg,
+        datetime_range: tuple[datetime.datetime, datetime.datetime],
+    ) -> None:
         session = db.get_db_session()
 
         aggregated_data = cls.get_aggregated(
@@ -254,8 +294,7 @@ class Signal(db.Base):
             )
 
     @classmethod
-    def backup(cls,
-               datetime_range: typing.Optional[tuple[datetime.datetime, datetime.datetime]] = None) -> None:
+    def backup(cls, datetime_range: typing.Optional[tuple[datetime.datetime, datetime.datetime]] = None) -> None:
         filters: tuple[ColumnElement[bool], ...]
 
         if datetime_range is None:
@@ -266,24 +305,37 @@ class Signal(db.Base):
                 cls.received_at <= datetime_range[1],
             )
 
-        all_data = get_db_session().query(
-            cls.type,
-            cls.value,
-            cls.received_at,
-        ).filter(
-            *filters,
-        ).order_by(
-            cls.received_at,
-        ).all()
+        all_data = (
+            get_db_session()
+            .query(
+                cls.type,
+                cls.value,
+                cls.received_at,
+            )
+            .filter(
+                *filters,
+            )
+            .order_by(
+                cls.received_at,
+            )
+            .all()
+        )
 
         if not all_data:
             return
 
-        df = DataFrame(all_data, columns=('type', 'value', 'received_at',))
+        df = DataFrame(
+            all_data,
+            columns=(
+                'type',
+                'value',
+                'received_at',
+            ),
+        )
 
         file_storage.upload_df_as_csv(
             file_name=f'signals/{df.iloc[0].received_at.strftime("%Y-%m-%d, %H:%M:%S")}'
-                      f'-{df.iloc[-1].received_at.strftime("%Y-%m-%d, %H:%M:%S")}.csv',
+            f'-{df.iloc[-1].received_at.strftime("%Y-%m-%d, %H:%M:%S")}.csv',
             data_frame=df,
         )
 
@@ -291,28 +343,28 @@ class Signal(db.Base):
     def get_table_stats(cls) -> dict[str, int]:
         session = db.get_db_session()
 
-        all_types = (
-            item[0]
-            for item in session.query(cls.type.distinct()).all()
-        )
+        all_types = (item[0] for item in session.query(cls.type.distinct()).all())
 
-        return {
-            item: session.query(cls).filter(cls.type == item).count()
-            for item in all_types
-        }
+        return {item: session.query(cls).filter(cls.type == item).count() for item in all_types}
 
     @classmethod
-    def _get_query_data(cls,
-                        signal_type: str, *,
-                        datetime_range: tuple[datetime.datetime, datetime.datetime],
-                        ) -> typing.Optional[dict[str, typing.Any]]:
-        time_filter = db.get_db_session().query(
-            cls.received_at,
-        ).filter(
-            cls.received_at >= datetime_range[0],
-            cls.received_at <= datetime_range[1],
-            cls.type == signal_type,
-            cls.value.isnot(None),
+    def _get_query_data(
+        cls,
+        signal_type: str,
+        *,
+        datetime_range: tuple[datetime.datetime, datetime.datetime],
+    ) -> typing.Optional[dict[str, typing.Any]]:
+        time_filter = (
+            db.get_db_session()
+            .query(
+                cls.received_at,
+            )
+            .filter(
+                cls.received_at >= datetime_range[0],
+                cls.received_at <= datetime_range[1],
+                cls.type == signal_type,
+                cls.value.isnot(None),
+            )
         )
         first_time: datetime.datetime = time_filter.order_by(cls.received_at).first()  # type: ignore
         last_time: datetime.datetime = time_filter.order_by(cls.received_at.desc()).first()  # type: ignore

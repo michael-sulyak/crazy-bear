@@ -19,10 +19,14 @@ class DynamicConstant(db.Base):
 
     @classmethod
     def all(cls) -> typing.List['DynamicConstant']:
-        return db.get_db_session().query(
-            cls.name,
-            cls.value,
-        ).all()
+        return (
+            db.get_db_session()
+            .query(
+                cls.name,
+                cls.value,
+            )
+            .all()
+        )
 
     @classmethod
     def set(cls, name: str, value: typing.Any) -> None:

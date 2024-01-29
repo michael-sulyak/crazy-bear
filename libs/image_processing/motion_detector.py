@@ -26,7 +26,14 @@ class MotionDetector:
 
         # Convert frame to grayscale, and blur it
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        gray = cv2.GaussianBlur(gray, (21, 21,), 0)
+        gray = cv2.GaussianBlur(
+            gray,
+            (
+                21,
+                21,
+            ),
+            0,
+        )
         self.is_occupied = False
 
         # If the target frame is None, initialize it
@@ -62,7 +69,23 @@ class MotionDetector:
             # Compute the bounding box for the contour, draw it on the frame,
             # and update the text
             x, y, w, h = cv2.boundingRect(contour)
-            cv2.rectangle(frame, (x, y,), (x + w, y + h,), (0, 0, 255,), 1)
+            cv2.rectangle(
+                frame,
+                (
+                    x,
+                    y,
+                ),
+                (
+                    x + w,
+                    y + h,
+                ),
+                (
+                    0,
+                    0,
+                    255,
+                ),
+                1,
+            )
             self.is_occupied = True
 
         self._draw_result(
@@ -92,29 +115,66 @@ class MotionDetector:
         cv2.putText(
             img=self.marked_frame,
             text=f'Status: {"Occupied" if self.is_occupied else "Unoccupied"}',
-            org=(10, 20,),
+            org=(
+                10,
+                20,
+            ),
             fontFace=cv2.FONT_HERSHEY_SIMPLEX,
             fontScale=0.5,
-            color=(0, 0, 255,) if self.is_occupied else (0, 255, 0,),
+            color=(
+                (
+                    0,
+                    0,
+                    255,
+                )
+                if self.is_occupied
+                else (
+                    0,
+                    255,
+                    0,
+                )
+            ),
             thickness=1,
         )
         current_fps = round(fps, 2)
         cv2.putText(
             img=self.marked_frame,
             text=f'FPS: {current_fps}',
-            org=(10, 50,),
+            org=(
+                10,
+                50,
+            ),
             fontFace=cv2.FONT_HERSHEY_SIMPLEX,
             fontScale=0.5,
-            color=(0, 0, 255,) if self._max_fps - current_fps > 0.1 else (0, 255, 0,),
+            color=(
+                (
+                    0,
+                    0,
+                    255,
+                )
+                if self._max_fps - current_fps > 0.1
+                else (
+                    0,
+                    255,
+                    0,
+                )
+            ),
             thickness=1,
         )
         cv2.putText(
             img=self.marked_frame,
             text=datetime.datetime.now().strftime('%d.%m.%Y, %H:%M:%S'),
-            org=(10, frame.shape[0] - 10,),
+            org=(
+                10,
+                frame.shape[0] - 10,
+            ),
             fontFace=cv2.FONT_HERSHEY_SIMPLEX,
             fontScale=0.5,
-            color=(0, 0, 255,),
+            color=(
+                0,
+                0,
+                255,
+            ),
             thickness=1,
         )
 

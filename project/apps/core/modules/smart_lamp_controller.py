@@ -17,16 +17,13 @@ from ...common.constants import OFF, ON
 from ...common.utils import get_sunrise_time
 
 
-__all__ = (
-    'LampControllerInBedroom',
-)
+__all__ = ('LampControllerInBedroom',)
 
 
 @interface.module(
     title='LampControllerInBedroom',
     description=(
-        'The module provides an interface for working with the smart lamp. '
-        'Also, it\'s a part of the smart home.'
+        'The module provides an interface for working with the smart lamp. Also, it\'s a part of the smart home.'
     ),
     commands=(
         interface.Command(constants.BotCommands.LAMP, interface.Choices(ON, OFF)),
@@ -90,8 +87,7 @@ class LampControllerInBedroom(BaseModule):
             'test': self._test_lamp,
             'color': lambda: self.smart_lamp.set_color_by_name(command.second_arg, transition=self._default_transition),
             'brightness': lambda: self.smart_lamp.set_brightness(
-                int(command.second_arg),
-                transition=self._default_transition
+                int(command.second_arg), transition=self._default_transition
             ),
             'color_temp': lambda: self.smart_lamp.set_color_temp(int(command.second_arg)),
             'increase_brightness': lambda: self.smart_lamp.step_brightness(50, transition=self._default_transition),
@@ -234,6 +230,5 @@ class LampControllerInBedroom(BaseModule):
     @synchronized_method
     def _can_continue_artificial_sunrise(self) -> bool:
         return self._last_artificial_sunrise_time is not None and (
-            self._last_manual_action is None
-            or self._last_manual_action < self._last_artificial_sunrise_time
+            self._last_manual_action is None or self._last_manual_action < self._last_artificial_sunrise_time
         )

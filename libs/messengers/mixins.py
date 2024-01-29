@@ -15,10 +15,9 @@ class BaseCVMixin(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def send_frames_as_video(self,
-                             frames: typing.List[np.ndarray], *,
-                             fps: int,
-                             caption: typing.Optional[str] = None) -> None:
+    def send_frames_as_video(
+        self, frames: typing.List[np.ndarray], *, fps: int, caption: typing.Optional[str] = None
+    ) -> None:
         pass
 
 
@@ -35,15 +34,17 @@ class CVMixin(BaseCVMixin):
             caption=caption,
         )
 
-    def send_frames_as_video(self,
-                             frames: typing.List[np.ndarray], *,
-                             fps: int,
-                             caption: typing.Optional[str] = None) -> None:
+    def send_frames_as_video(
+        self, frames: typing.List[np.ndarray], *, fps: int, caption: typing.Optional[str] = None
+    ) -> None:
         if not frames:
             return
 
         height, width, layers = frames[0].shape
-        size = (width, height,)
+        size = (
+            width,
+            height,
+        )
 
         with tempfile.TemporaryDirectory() as temp_dir:
             filename = os.path.join(temp_dir, 'video.avi')

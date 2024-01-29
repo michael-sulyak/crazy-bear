@@ -43,11 +43,23 @@ def test_state_subscribe_toggle():
     f3 = Mock()
 
     state.create('TEST', None)
-    state.subscribe_toggle('TEST', {
-        (None, True,): f1,
-        (False, True,): f2,
-        (True, False,): f3,
-    })
+    state.subscribe_toggle(
+        'TEST',
+        {
+            (
+                None,
+                True,
+            ): f1,
+            (
+                False,
+                True,
+            ): f2,
+            (
+                True,
+                False,
+            ): f3,
+        },
+    )
 
     f1.assert_not_called()
     f2.assert_not_called()
@@ -67,4 +79,3 @@ def test_state_subscribe_toggle():
     f1.assert_called_once()
     f2.assert_called_once()
     f3.assert_called_once()
-

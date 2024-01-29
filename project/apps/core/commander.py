@@ -29,20 +29,21 @@ class Commander:
     zig_bee: ZigBee
     _receivers: tuple[BaseReceiver, ...]
 
-    def __init__(self, *,
-                 messenger: BaseMessenger,
-                 module_classes: tuple[typing.Type[BaseModule], ...],
-                 state: State) -> None:
+    def __init__(
+        self, *, messenger: BaseMessenger, module_classes: tuple[typing.Type[BaseModule], ...], state: State
+    ) -> None:
         self.message_queue = queue.Queue()
         self.task_queue = MemTaskQueue()
         self.task_worker = ThreadWorker(
             task_queue=self.task_queue,
             middlewares=(
                 ExceptionLogging(),
-                ConcreteRetries(exceptions=(
-                    ConnectionError,
-                    NetworkError,
-                )),
+                ConcreteRetries(
+                    exceptions=(
+                        ConnectionError,
+                        NetworkError,
+                    )
+                ),
                 SupportOfRetries(),
             ),
             count=2,
@@ -62,14 +63,9 @@ class Commander:
             zig_bee=self.zig_bee,
         )
 
-        self.command_handlers = tuple(
-            module_class(context=module_context)
-            for module_class in module_classes
-        )
+        self.command_handlers = tuple(module_class(context=module_context) for module_class in module_classes)
 
-        self._receivers = (
-            new_message.connect(lambda message: self.message_queue.put(message)),
-        )
+        self._receivers = (new_message.connect(lambda message: self.message_queue.put(message)),)
 
     def run(self) -> None:
         self.zig_bee.open()

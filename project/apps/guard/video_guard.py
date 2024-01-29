@@ -17,10 +17,13 @@ class VideoGuard:
     motion_detected_callback: typing.Optional[typing.Callable] = None
     process_frame: typing.Optional[typing.Generator] = None
 
-    def __init__(self, *,
-                 messenger: BaseMessenger,
-                 task_queue: tq.BaseTaskQueue,
-                 motion_detected_callback: typing.Optional[typing.Callable] = None) -> None:
+    def __init__(
+        self,
+        *,
+        messenger: BaseMessenger,
+        task_queue: tq.BaseTaskQueue,
+        motion_detected_callback: typing.Optional[typing.Callable] = None,
+    ) -> None:
         self.motion_detector = MotionDetector(show_frames=config.IMSHOW, max_fps=config.FPS)
         self.messenger = messenger
         self.task_queue = task_queue
@@ -63,7 +66,7 @@ class VideoGuard:
                 if not last_is_occupied:
                     last_is_occupied = True
                     last_sent_photo = now
-                    frames = frames[-config.FPS * 20:]
+                    frames = frames[-config.FPS * 20 :]
                     self._send_image_to_messenger(
                         frame=self.motion_detector.marked_frame,
                         caption=f'Motion detected at {now.strftime("%Y-%m-%d, %H:%M:%S")}',
@@ -100,7 +103,7 @@ class VideoGuard:
                     send_video = True
                     min_frames_for_send_video = 0
                 else:
-                    frames = frames[-self.motion_detector.is_occupied * 60 * 5:]
+                    frames = frames[-self.motion_detector.is_occupied * 60 * 5 :]
 
             if send_video:
                 assert min_frames_for_send_video is not None

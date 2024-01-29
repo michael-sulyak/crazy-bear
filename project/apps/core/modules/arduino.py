@@ -6,7 +6,7 @@ import serial
 from libs.casual_utils.parallel_computing import synchronized_method
 from libs.messengers.utils import escape_markdown
 from libs.task_queue import IntervalTask, TaskPriorities
-from ..base import BaseModule, Command
+from ..base import BaseModule
 from ..constants import ARDUINO_IS_ENABLED, BotCommands, MotionTypeSources
 from ...arduino.base import ArduinoConnector
 from ...arduino.constants import ArduinoSensorTypes
@@ -18,16 +18,12 @@ from ...core.constants import SECURITY_IS_ENABLED
 from ...signals.models import Signal
 
 
-__all__ = (
-    'Arduino',
-)
+__all__ = ('Arduino',)
 
 
 @interface.module(
     title='Arduino',
-    description=(
-        'The module processes data from Arduino. Also it contains logic for the security mode.'
-    ),
+    description='The module processes data from Arduino. Also it contains logic for the security mode.',
 )
 class Arduino(BaseModule):
     initial_state = {

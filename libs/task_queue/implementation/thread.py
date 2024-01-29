@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import queue
 import threading
@@ -48,11 +47,14 @@ class ThreadWorker(BaseWorker):
     _on_close: typing.Optional[typing.Callable]
     _getting_delay: float = 0.1
 
-    def __init__(self, *,
-                 task_queue: BaseTaskQueue,
-                 on_close: typing.Optional[typing.Callable] = None,
-                 middlewares: typing.Tuple[BaseMiddleware, ...],
-                 count: int = 1) -> None:
+    def __init__(
+        self,
+        *,
+        task_queue: BaseTaskQueue,
+        on_close: typing.Optional[typing.Callable] = None,
+        middlewares: typing.Tuple[BaseMiddleware, ...],
+        count: int = 1,
+    ) -> None:
         self.task_queue = task_queue
         self.middlewares = middlewares
         self._on_close = on_close
@@ -67,10 +69,7 @@ class ThreadWorker(BaseWorker):
                 task_queue=self.task_queue,
             )
 
-        self._threads = tuple(
-            threading.Thread(target=self._process_tasks)
-            for _ in range(count)
-        )
+        self._threads = tuple(threading.Thread(target=self._process_tasks) for _ in range(count))
 
     @property
     def is_run(self) -> bool:

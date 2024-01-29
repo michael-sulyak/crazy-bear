@@ -29,9 +29,7 @@ from ..casual_utils.parallel_computing import synchronized_method
 from ..casual_utils.time import get_current_time
 
 
-__all__ = (
-    'TelegramMessenger',
-)
+__all__ = ('TelegramMessenger',)
 
 WEBHOOK_SSL_PEM = './certificate/cert.pem'
 WEBHOOK_SSL_KEY = './certificate/private.key'
@@ -69,9 +67,9 @@ class TelegramMessenger(CVMixin, BaseMessenger):
     _last_sent_at: typing.Optional[datetime.datetime] = None
     _message_handler: typing.Callable
 
-    def __init__(self, *,
-                 message_handler: typing.Callable,
-                 default_reply_markup: typing.Callable | None = None) -> None:
+    def __init__(
+        self, *, message_handler: typing.Callable, default_reply_markup: typing.Callable | None = None
+    ) -> None:
         self.default_reply_markup = default_reply_markup
         self._bot = telegram.Bot(token=config.TELEGRAM_TOKEN)
         self._lock = threading.RLock()
@@ -96,11 +94,14 @@ class TelegramMessenger(CVMixin, BaseMessenger):
     @synchronized_method
     @handel_telegram_exceptions
     @async_to_sync
-    async def send_message(self,
-                           text: str, *,
-                           use_markdown: bool = False,
-                           reply_markup: ReplyKeyboardMarkup | typing.Type[DEFAULT] | None = DEFAULT,
-                           message_id: int | None = None) -> typing.Optional[int]:
+    async def send_message(
+        self,
+        text: str,
+        *,
+        use_markdown: bool = False,
+        reply_markup: ReplyKeyboardMarkup | typing.Type[DEFAULT] | None = DEFAULT,
+        message_id: int | None = None,
+    ) -> typing.Optional[int]:
         if reply_markup is DEFAULT:
             if callable(self.default_reply_markup):
                 reply_markup = self.default_reply_markup()
