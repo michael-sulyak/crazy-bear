@@ -117,7 +117,7 @@ class MiWiFi:
     @staticmethod
     def _get_mac_address() -> str:
         as_hex = f'{uuid.getnode():012x}'
-        return ':'.join(as_hex[i: i + 2] for i in range(0, 12, 2))
+        return ':'.join(as_hex[i : i + 2] for i in range(0, 12, 2))
 
 
 mi_wifi = MiWiFi(password=config.ROUTER_PASSWORD, url=config.ROUTER_URL)
