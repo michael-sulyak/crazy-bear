@@ -122,9 +122,7 @@ class ZigBee:
         self._permanent_subscribers_map[topic].append(func)
         self.mq.subscribe(topic)
 
-        logging.info(f'ZigBee: {func} subscribes on {topic}')
-        logging.info(f'ZigBee: {self._permanent_subscriber_key_regexps_map = }')
-        logging.info(f'ZigBee: {self._permanent_subscribers_map = }')
+        logging.info(f'ZigBee: "{func}" subscribes on "{topic}".')
 
     @synchronized_method
     def open(self) -> None:
@@ -138,7 +136,7 @@ class ZigBee:
         mq.loop_start()
 
         for topic in itertools.chain(self._temporary_subscribers_map, self._permanent_subscribers_map):
-            logging.info(f'ZigBee: Subscribe on {topic}')
+            logging.info(f'ZigBee: Subscribe on "{topic}" when opening.')
             mq.subscribe(topic)
 
         self._mq = mq
@@ -166,7 +164,6 @@ class ZigBee:
             self._temporary_subscribers_map[message.topic],
             self._permanent_subscribers_map[message.topic],
         ):
-            logging.info(f'ZigBee: Processed temp message {message.topic} ({payload}) for {subscriber}')
             subscriber(message.topic, payload)
 
         self._temporary_subscribers_map[message.topic].clear()
@@ -174,7 +171,6 @@ class ZigBee:
         for pattern, key in self._permanent_subscriber_key_regexps_map.items():
             if pattern.fullmatch(message.topic):
                 for subscriber in self._permanent_subscribers_map[key]:
-                    logging.info(f'ZigBee: Processed temp message {message.topic} ({payload}) for {subscriber}')
                     subscriber(message.topic, payload)
 
                 break

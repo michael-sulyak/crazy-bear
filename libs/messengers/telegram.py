@@ -163,21 +163,15 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         self._last_message_id = result.message_id
         self._last_sent_at = get_current_time()
 
-    @synchronized_method
-    @handel_telegram_exceptions
-    @async_to_sync
-    async def error(self, text: str, *, title: str = 'Error') -> None:
+    def error(self, text: str, *, title: str = 'Error') -> None:
         logging.warning(text)
-        await self.send_message(
+        self.send_message(
             f'{emojize(":pager:")} ️*{title}* ```\n{escape_markdown(text, entity_type="pre")}\n```',
             use_markdown=True,
         )
 
-    @synchronized_method
-    @handel_telegram_exceptions
-    @async_to_sync
-    async def exception(self, exp: Exception) -> None:
-        await self.error(
+    def exception(self, exp: Exception) -> None:
+        self.error(
             f'{repr(exp)}\n{"".join(traceback.format_tb(exp.__traceback__))}',
             title='Exception',
         )

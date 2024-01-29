@@ -4,6 +4,7 @@ import threading
 import typing
 
 from emoji import emojize
+from sqlalchemy import text
 
 from libs.casual_utils.time import get_current_time
 from libs.messengers.utils import ProgressBar, escape_markdown
@@ -201,8 +202,11 @@ class Report(BaseModule):
         WHERE table_schema = 'public'
         ORDER BY table_size;
         """
-        with db.db_engine.connect() as con:
-            result = tuple(dict(row) for row in con.execute(sql))
+
+        with db.db_engine.connect() as connection:
+            db_result = connection.execute(text(sql))
+
+        result = tuple(dict(zip(db_result.keys(), row)) for row in db_result)
 
         prepared_result = '**Table:**\n'
 
