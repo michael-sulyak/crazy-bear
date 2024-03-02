@@ -10,6 +10,8 @@ from sentry_sdk.integrations.threading import ThreadingIntegration
 
 from libs.messengers.telegram import TelegramMessenger
 from libs.task_queue import DelayedTask, ScheduledTask, TaskPriorities
+from libs.zigbee.base import ZigBee
+from libs.zigbee.lamps.life_control import LCSmartLamp
 from project import config
 from project.apps import db
 from project.apps.common.constants import AUTO, INITED_AT, ON
@@ -87,6 +89,8 @@ def main() -> None:
     logging.info('Creating database...')
     db.Base.metadata.create_all(db.db_engine, checkfirst=True)
 
+    logging.info('Setting up commander...')
+
     state = State({
         INITED_AT: datetime.datetime.now(),
     })
@@ -96,10 +100,15 @@ def main() -> None:
         default_reply_markup=TelegramMenu(state=state),
     )
 
-    logging.info('Starting bot...')
+    zig_bee = ZigBee(
+        mq_host=config.ZIGBEE_MQ_HOST,
+        mq_port=config.ZIGBEE_MQ_PORT,
+    )
 
     commander = Commander(
         messenger=messenger,
+        zig_bee=zig_bee,
+        state=state,
         module_classes=(
             modules.Camera,
             modules.Arduino,
@@ -113,14 +122,16 @@ def main() -> None:
             modules.LampControllerInBedroom,
             modules.Utils,
         ),
-        state=state,
+        smart_devices=(
+            LCSmartLamp(config.SMART_DEVICE_NAMES.MAIN_SMART_LAMP, zig_bee=zig_bee),
+        ),
     )
 
     initial_tasks = (
         DelayedTask(
             target=file_storage.remove_old_folders,
             priority=TaskPriorities.LOW,
-            delay=datetime.timedelta(seconds=30),
+            delay=datetime.timedelta(minutes=1),
         ),
         ScheduledTask(
             target=file_storage.remove_old_folders,
@@ -141,8 +152,9 @@ def main() -> None:
     for command in initial_commands:
         commander.message_queue.put(Message(command=command))
 
+    logging.info('Running commander...')
+
     try:
-        logging.info('Running commander...')
         commander.run()
     finally:
         db.close_db_session()

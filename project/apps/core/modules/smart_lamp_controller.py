@@ -50,7 +50,7 @@ class LampControllerInBedroom(BaseModule):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-        self.smart_lamp = LCSmartLamp(config.MAIN_SMART_LAMP, zig_bee=self.context.zig_bee)
+        self.smart_lamp = self.context.smart_devices_map[config.SMART_DEVICE_NAMES.MAIN_SMART_LAMP]  # type: ignore
         self._lock = threading.RLock()
 
         self.task_queue.put(

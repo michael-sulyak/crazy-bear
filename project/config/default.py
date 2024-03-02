@@ -76,4 +76,7 @@ ARTIFICIAL_SUNRISE_SCHEDULES = tuple(env.list('ARTIFICIAL_SUNRISE_SCHEDULES', de
 # Smart devices
 ZIGBEE_MQ_HOST = env('ZIGBEE_MQ_HOST')
 ZIGBEE_MQ_PORT = env.int('ZIGBEE_MQ_PORT')  # type: ignore
-MAIN_SMART_LAMP = env('MAIN_SMART_LAMP')
+
+
+class SMART_DEVICE_NAMES:
+    MAIN_SMART_LAMP = 'lamp:main_room'

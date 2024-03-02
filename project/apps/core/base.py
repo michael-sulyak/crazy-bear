@@ -5,6 +5,7 @@ import typing
 from dataclasses import dataclass, field
 
 from libs.casual_utils.caching import memoized_method
+from libs.smart_devices.base import BaseSmartDevice
 from libs.messengers.base import BaseMessenger
 from libs.task_queue import BaseTaskQueue
 from libs.task_queue.dto import RepeatableTask, ScheduledTask
@@ -22,6 +23,7 @@ class ModuleContext:
     state: State
     task_queue: BaseTaskQueue
     zig_bee: ZigBee
+    smart_devices_map: dict[str, BaseSmartDevice]
 
 
 class BaseModule(abc.ABC):

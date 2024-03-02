@@ -5,18 +5,18 @@ import typing
 from telegram.error import NetworkError
 
 from libs.casual_utils.logging import log_performance
+from libs.smart_devices.base import BaseSmartDevice
 from libs.messengers.base import BaseMessenger
 from libs.task_queue import BaseTaskQueue, BaseWorker, MemTaskQueue, ThreadWorker
-from libs.task_queue.middlewares import ConcreteRetries, SupportOfRetries, ExceptionLogging
+from libs.task_queue.middlewares import ConcreteRetries, ExceptionLogging, SupportOfRetries
 from libs.zigbee.base import ZigBee
-from . import events as core_events, events
+from . import events, events as core_events
 from .base import BaseModule, ModuleContext
 from .events import new_message
 from ..common.base import BaseReceiver
 from ..common.exceptions import Shutdown
 from ..common.state import State
 from ..db import close_db_session
-from ... import config
 
 
 class Commander:
@@ -30,7 +30,12 @@ class Commander:
     _receivers: tuple[BaseReceiver, ...]
 
     def __init__(
-        self, *, messenger: BaseMessenger, module_classes: tuple[typing.Type[BaseModule], ...], state: State
+        self, *,
+        messenger: BaseMessenger,
+        module_classes: tuple[typing.Type[BaseModule], ...],
+        state: State,
+        zig_bee: ZigBee,
+        smart_devices: tuple[BaseSmartDevice, ...],
     ) -> None:
         self.message_queue = queue.Queue()
         self.task_queue = MemTaskQueue()
@@ -51,16 +56,22 @@ class Commander:
         )
         self.messenger = messenger
         self.state = state
-        self.zig_bee = ZigBee(
-            mq_host=config.ZIGBEE_MQ_HOST,
-            mq_port=config.ZIGBEE_MQ_PORT,
-        )
+        self.zig_bee = zig_bee
+
+        smart_devices_map = {}
+
+        for smart_device in smart_devices:
+            if smart_device.friendly_name in smart_devices_map:
+                raise RuntimeError(f'"{smart_device.friendly_name}" has been already added in the map.')
+
+            smart_devices_map[smart_device.friendly_name] = smart_device
 
         module_context = ModuleContext(
             messenger=self.messenger,
             state=self.state,
             task_queue=self.task_queue,
             zig_bee=self.zig_bee,
+            smart_devices_map=smart_devices_map,
         )
 
         self.command_handlers = tuple(module_class(context=module_context) for module_class in module_classes)

@@ -68,11 +68,6 @@ class Signals(BaseModule):
                 priority=TaskPriorities.LOW,
                 crontab=CronTab('0 5 * * *'),
             ),
-            ScheduledTask(
-                target=db.vacuum,
-                priority=TaskPriorities.LOW,
-                crontab=CronTab('0 4 * * *'),
-            ),
             *self._supreme_signal_handler.get_tasks(),
         )
 

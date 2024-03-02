@@ -51,7 +51,7 @@ class WiFiDevices(BaseModule):
         name = command.second_arg
         is_defining = command.third_arg == 'true'
 
-        to_update = mac_address in device_manager.devices_map
+        to_update = mac_address in device_manager.smart_devices_map
         to_create = not to_update
 
         if to_create:
