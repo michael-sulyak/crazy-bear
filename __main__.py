@@ -117,7 +117,6 @@ def main() -> None:
             modules.Security,
             modules.Router,
             modules.Signals,
-            modules.WiFiDevices,
             modules.ZigBeeController,
             modules.LampControllerInBedroom,
             modules.Utils,

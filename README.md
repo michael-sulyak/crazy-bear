@@ -1,19 +1,13 @@
 # CrazyBear — Home Automation in Telegram
 
 > [!NOTE]  
-> This project is not a general solution. This is just an implementation for specific purposes (my purposes 🙂). I
-hope the code will be helpful to you.
+> This project is not a general solution. This is just an implementation for specific purposes (my purposes 🙂).
+> Some things were implemented quite simply so as not to complicate support.
+> I hope the code will be helpful to you.
 
 ## Preview
 
 ![Preview](preview.jpg)
-
-## TO DO
-
-- [x] Use the new style for binding commands (`interface.command`).
-- [ ] Remove Arduino and use only ZigBee devices.
-- [x] Fix typings.
-- [ ] Rewrite the interface (use mini apps from Telegram to improve the interface).
 
 ## Components
 

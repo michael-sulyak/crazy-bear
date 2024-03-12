@@ -6,8 +6,9 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile
-    env_file:
-      - envs/local.env
+    environment:
+      - PYTHONPATH="/usr/local/lib/python3.11/dist-packages:/usr/lib/python3/dist-packages:/usr/lib/python3.11/dist-packages:$PYTHONPATH"
+      - CONFIG_PATH="./config/local.json"
     privileged: true
     volumes:
       - .:/app
@@ -41,7 +42,7 @@ services:
     ports:
       - "5432:5432"
     env_file:
-      - envs/local.env
+      - config/db.env
 
   zigbee_mq:
     restart: always

@@ -7,6 +7,7 @@ from emoji.core import emojize
 
 from libs.casual_utils.time import get_current_time
 from libs.messengers.utils import escape_markdown
+from .wifi import WifiDevice, get_connected_devices_to_router
 from ..constants import (
     ARDUINO_IS_ENABLED,
     AUTO_SECURITY_IS_ENABLED,
@@ -22,8 +23,6 @@ from ...common.constants import INITED_AT
 from ...common.exceptions import Shutdown
 from ...common.state import State
 from ...common.utils import get_cpu_temp, get_effective_temperature, get_free_disk_space, get_ram_usage
-from ...devices.dto import Device
-from ...devices.utils import get_connected_devices_to_router
 from ...signals.models import Signal
 from .... import config
 
@@ -175,7 +174,7 @@ class ShortTextReport:
 
     @property
     def _connected_devices_info(self) -> str:
-        connected_devices: tuple[Device, ...] = ()
+        connected_devices: tuple[WifiDevice, ...] = ()
 
         try:
             connected_devices = tuple(get_connected_devices_to_router())

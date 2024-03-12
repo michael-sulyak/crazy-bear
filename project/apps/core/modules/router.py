@@ -3,11 +3,11 @@ import typing
 
 from libs.messengers.utils import escape_markdown
 from ..base import BaseModule
+from ..utils.wifi import check_if_host_is_at_home
 from ...common import interface
 from ...common.exceptions import Shutdown
 from ...common.routers.mi import mi_wifi
 from ...core import constants, events
-from ...devices.utils import check_if_host_is_at_home
 
 
 __all__ = ('Router',)

@@ -141,7 +141,7 @@ cython_debug/
 .idea/
 
 # Other
-/envs/
+/config/
 main.db
 .dev/
 certificate/

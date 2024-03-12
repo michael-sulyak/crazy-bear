@@ -10,10 +10,10 @@ from libs import task_queue
 from libs.casual_utils.parallel_computing import synchronized_method
 from .base import BaseAdvancedSignalHandler
 from .. import constants, events
+from ..utils.wifi import check_if_host_is_at_home
 from ...common.events import Receiver
 from ...common.exceptions import Shutdown
-from ...common.utils import is_sleep_hours, create_plot
-from ...devices.utils import check_if_host_is_at_home
+from ...common.utils import create_plot, is_sleep_hours
 from ...signals.models import Signal
 
 

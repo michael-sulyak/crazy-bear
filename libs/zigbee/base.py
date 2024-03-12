@@ -8,6 +8,7 @@ import typing
 from collections import defaultdict
 
 from paho.mqtt.client import Client, MQTTMessage, MQTTMessageInfo, MQTTv5
+from paho.mqtt.enums import CallbackAPIVersion
 
 from . import exceptions
 from ..casual_utils.parallel_computing import synchronized_method
@@ -127,7 +128,11 @@ class ZigBee:
         if self._mq is not None:
             raise exceptions.ZigBeeError('MQ was created.')
 
-        mq = Client('mqtt5_client', protocol=MQTTv5)
+        mq = Client(
+            callback_api_version=CallbackAPIVersion.VERSION2,
+            client_id='mqtt5_client',
+            protocol=MQTTv5,
+        )
         mq.on_message = self._on_message
         mq.on_disconnect = self._on_disconnect
         mq.connect(self._mq_host, port=self._mq_port)

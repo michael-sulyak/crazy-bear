@@ -107,7 +107,7 @@ scp:
 	    $(shell git ls-files) \
 	    ./hardware/arduino/core/JsonRadioTransmitter \
 	    ./hardware/arduino/viewer/JsonRadioTransmitter \
-	    ./envs/prod.env
+	    ./config/
 	@echo "Coping to RPi..."
 	@scp ./crazy_bear.zip pi:~
 	@echo "Cleaning..."
@@ -142,8 +142,7 @@ arduino_monitor:
 # Other
 
 bump_version:
-	poetry run python3 -c "from dotenv import load_dotenv; load_dotenv('envs/local.env'); \
-                           from project.config.utils import VersionDetails; \
+	poetry run python3 -c "from libs.casual_utils.version_manager import VersionDetails; \
                            version_details = VersionDetails(); version_details.increase(); \
                            version_details.save()"
 
