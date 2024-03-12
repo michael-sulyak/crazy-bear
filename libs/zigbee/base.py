@@ -11,6 +11,7 @@ from paho.mqtt.client import Client, MQTTMessage, MQTTMessageInfo, MQTTv5
 from paho.mqtt.enums import CallbackAPIVersion
 
 from . import exceptions
+from .constants import COORDINATOR_FRIENDLY_NAME, ZigBeePowerSources
 from ..casual_utils.parallel_computing import synchronized_method
 
 
@@ -33,6 +34,18 @@ class ZigBeeDevice:
             f'Is available: `{self.is_available}`\n'
             f'Type: `{self.type}`'
         )
+
+    @property
+    def is_coordinator(self) -> bool:
+        return self.friendly_name == COORDINATOR_FRIENDLY_NAME
+
+    @property
+    def is_active(self) -> bool:
+        return self.power_source == ZigBeePowerSources.MAINS
+
+    @property
+    def is_passive(self) -> bool:
+        return self.power_source == ZigBeePowerSources.BATTERY
 
 
 class ZigBee:

@@ -1,5 +1,8 @@
+from libs.messengers.utils import escape_markdown
+from libs.task_queue import IntervalTask, TaskPriorities
 from ..base import BaseModule
 from ...common import interface
+from .... import config
 
 
 __all__ = ('ZigBeeController',)
@@ -10,6 +13,28 @@ __all__ = ('ZigBeeController',)
     description='The module manages ZigBee devices.',
 )
 class ZigBeeController(BaseModule):
+    _previous_availability_map: dict[str, bool]
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._previous_availability_map = {}
+
+    def init_repeatable_tasks(self) -> tuple:
+        return (
+            IntervalTask(
+                target=lambda: self._check_connected_devices(check_active_devices=True),
+                priority=TaskPriorities.LOW,
+                interval=config.ZIGBEE_AVAILABILITY_ACTIVE_TIMEOUT_CHECK,
+                run_immediately=False,
+            ),
+            IntervalTask(
+                target=lambda: self._check_connected_devices(check_active_devices=False),
+                priority=TaskPriorities.LOW,
+                interval=config.ZIGBEE_AVAILABILITY_PASSIVE_TIMEOUT_CHECK,
+                run_immediately=False,
+            ),
+        )
+
     @interface.command('/zigbee_status')
     def _show_status(self) -> None:
         self.messenger.send_message(f'Is health: `{self.context.zig_bee.is_health()}`', use_markdown=True)
@@ -38,3 +63,27 @@ class ZigBeeController(BaseModule):
             f'Availability map:\n```\n{self.context.zig_bee._availability_map or "-"}\n```',
             use_markdown=True,
         )
+
+    def _check_connected_devices(self, *, check_active_devices: bool) -> None:
+        zig_bee = self.context.zig_bee
+
+        for device in zig_bee.devices:
+            if device.is_coordinator:
+                continue
+
+            if device.is_active != check_active_devices:
+                continue
+
+            if device.is_available:
+                if not self._previous_availability_map.get(device.friendly_name, True):
+                    self.messenger.send_message(
+                        f'ZigBee device *{escape_markdown(device.friendly_name)}* is available now',
+                        use_markdown=True,
+                    )
+            else:
+                self.messenger.send_message(
+                    f'ZigBee device *{escape_markdown(device.friendly_name)}* is not available',
+                    use_markdown=True,
+                )
+
+            self._previous_availability_map[device.friendly_name] = device.is_available

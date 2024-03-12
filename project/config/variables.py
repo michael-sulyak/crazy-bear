@@ -71,6 +71,12 @@ ROUTER_URL = json_config['router_url']
 # Zigbee
 ZIGBEE_MQ_HOST = json_config['zigbee_mq_host']
 ZIGBEE_MQ_PORT = json_config['zigbee_mq_port']
+ZIGBEE_AVAILABILITY_ACTIVE_TIMEOUT_CHECK = datetime.timedelta(
+    minutes=json_config['zigbee_availability_active_timeout_check'],
+)
+ZIGBEE_AVAILABILITY_PASSIVE_TIMEOUT_CHECK = datetime.timedelta(
+    minutes=json_config['zigbee_availability_passive_timeout_check'],
+)
 
 # WiFi devices
 WIFI_DEVICES = json_config['wifi_devices']
