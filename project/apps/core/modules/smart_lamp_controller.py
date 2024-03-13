@@ -1,4 +1,5 @@
 import datetime
+import math
 import threading
 import typing
 from functools import partial
@@ -41,7 +42,6 @@ __all__ = ('LampControllerInBedroom',)
 )
 class LampControllerInBedroom(BaseModule):
     smart_lamp: LCSmartLamp
-    _sunrise_time: datetime.timedelta = datetime.timedelta(hours=2)
     _lock: threading.RLock
     _last_manual_action: typing.Optional[datetime.datetime] = None
     _last_artificial_sunrise_time: typing.Optional[datetime.datetime] = None
@@ -164,13 +164,20 @@ class LampControllerInBedroom(BaseModule):
 
     @synchronized_method
     def _run_artificial_sunrise(self, *, step: int = 1) -> None:
-        def _run_next_step(timedelta: datetime.timedelta) -> None:
+        delay_between_steps = datetime.timedelta(seconds=10)
+        sunrise_time = datetime.timedelta(hours=1)
+        total_steps = int(sunrise_time.total_seconds() / delay_between_steps.total_seconds())
+        max_brightness = self.smart_lamp.MAX_BRIGHTNESS
+
+        def _run_next_step() -> None:
             self.task_queue.put(
                 self._run_artificial_sunrise,
                 kwargs={'step': step + 1},
-                run_after=datetime.datetime.now() + timedelta,
+                run_after=datetime.datetime.now() + delay_between_steps,
                 priority=TaskPriorities.LOW,
             )
+
+        brightness = self._calculate_brightness(step=step, max_brightness=max_brightness, total_steps=total_steps)
 
         if step == 1:
             if self.smart_lamp.is_on():
@@ -180,36 +187,43 @@ class LampControllerInBedroom(BaseModule):
                 return
 
             self.smart_lamp.turn_on(
-                brightness=5,
-                color_temp=150,
+                brightness=brightness,
+                color_temp='warm',
                 transition=self._default_transition,
             )
-            self.smart_lamp.set_color_temp(150)
+            self.smart_lamp.set_color_temp('warm')
             self.state[constants.MAIN_LAMP_IS_ON] = True
 
             self._last_artificial_sunrise_time = get_current_time()
-            _run_next_step(datetime.timedelta(minutes=5))
+            _run_next_step()
             return
 
         if not self._can_continue_artificial_sunrise():
             return
 
-        brightness = step * 5
+        prev_brightness = self._calculate_brightness(
+            step=step - 1,
+            max_brightness=max_brightness,
+            total_steps=total_steps,
+        )
 
-        if brightness > self.smart_lamp.MAX_BRIGHTNESS:
-            brightness = self.smart_lamp.MAX_BRIGHTNESS
+        if prev_brightness != brightness:
+            self.smart_lamp.set_brightness(brightness, transition=1)
 
-        self.smart_lamp.set_brightness(brightness, transition=1)
-
-        if brightness == self.smart_lamp.MAX_BRIGHTNESS:
+        if step >= total_steps:
             assert self._last_artificial_sunrise_time is not None
 
-            diff_1 = get_sunrise_time() - get_current_time()
-            diff_2 = self._last_artificial_sunrise_time + self._sunrise_time - get_current_time()
-            diff = max(diff_1, diff_2)
+            delta_to_wait_sunrise = get_sunrise_time() - get_current_time()
+            delta_to_wait_one_hour_after_finishing = (
+                self._last_artificial_sunrise_time
+                + sunrise_time
+                + datetime.timedelta(hours=1)
+                - get_current_time()
+            )
+            diff = max(delta_to_wait_sunrise, delta_to_wait_one_hour_after_finishing, datetime.timedelta())
 
-            if diff < datetime.timedelta(minutes=5):
-                diff = datetime.timedelta(minutes=5)
+            self.smart_lamp.set_brightness(max_brightness, transition=1)
+            self.smart_lamp.set_color_temp('neutral', transition=1)
 
             self.task_queue.put(
                 self._turn_down_lamp_artificial_sunrise,
@@ -217,7 +231,23 @@ class LampControllerInBedroom(BaseModule):
                 priority=TaskPriorities.LOW,
             )
         else:
-            _run_next_step(datetime.timedelta(minutes=2))
+            _run_next_step()
+
+    @staticmethod
+    def _calculate_brightness(*, step: int, max_brightness: int, total_steps: int) -> int:
+        # Sigmoid parameters
+        l = max_brightness  # The maximum brightness the lamp can achieve.
+        k = 10 / total_steps  # The steepness of the curve. Adjust k dynamically based on the total steps.
+        x_0 = total_steps / 2  # The midpoint of the sigmoid function.
+
+        # Current step converted to the sigmoid function's x-value.
+        x = step
+
+        # Sigmoid function for smooth brightness transition.
+        brightness = l / (1 + math.exp(-k * (x - x_0)))
+
+        # Ensure the brightness is within the valid range for the lamp.
+        return max(0, min(int(brightness), max_brightness))
 
     @synchronized_method
     def _turn_down_lamp_artificial_sunrise(self) -> None:
