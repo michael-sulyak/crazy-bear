@@ -29,6 +29,7 @@ from project.apps.core.utils.messages import process_telegram_message
 
 logging_level = logging.DEBUG if config.DEBUG else logging.INFO
 logging.basicConfig(level=logging_level)
+logging.getLogger('https').setLevel(logging.WARNING)
 
 
 def get_traces_sampler(sampling_context: dict) -> float:
