@@ -47,10 +47,6 @@ class Router(BaseModule):
                         True,
                         False,
                     ): lambda name: events.user_is_disconnected_to_router.send(),
-                    (
-                        None,
-                        True,
-                    ): lambda name: events.user_is_connected_to_router.send(),
                 },
             ),
         )
