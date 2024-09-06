@@ -109,12 +109,12 @@ class Report(BaseModule):
                     and get_current_time() - self.messenger.last_sent_at > datetime.timedelta(minutes=5)
                     and not is_sleep_hours()
                 ):
-                    logging.info('Send status after 5 min.')
+                    logging.debug('Send status after 5 min.')
                     self._send_status()
 
                 return
 
-            logging.info('Update status')
+            logging.debug('Update status')
             self._send_status()
 
     def _pipe_for_collecting_stats(self, receivers: typing.Sequence, kwargs: dict) -> typing.Iterator:
