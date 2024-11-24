@@ -17,9 +17,11 @@ import pytz
 import requests
 from matplotlib.dates import DateFormatter
 from matplotlib.ticker import AutoLocator, MaxNLocator
+from requests import RequestException
 
 from libs.casual_utils.time import get_current_time
 from ... import config
+from ...config import PY_TZ
 
 
 def timer(func: typing.Callable) -> typing.Callable:
@@ -186,11 +188,16 @@ def camera_is_available(src: int) -> bool:
 
 
 def get_weather() -> dict:
-    return requests.get(config.OPENWEATHERMAP_URL, timeout=10).json()
+    return requests.get(config.OPENWEATHERMAP_URL, timeout=30).json()
 
 
 def get_sunrise_time() -> datetime.datetime:
-    weather_info = get_weather()
+    try:
+        weather_info = get_weather()
+    except RequestException:
+        logging.exception('Cannot get weather info')
+        return PY_TZ.localize(datetime.datetime.combine(datetime.datetime.today(), datetime.time(6, 00)))
+
     sunrise_dt = datetime.datetime.fromtimestamp(weather_info['sys']['sunrise'])
     sunrise_dt -= datetime.timedelta(seconds=weather_info['timezone'])
     return pytz.UTC.localize(sunrise_dt)

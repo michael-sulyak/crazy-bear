@@ -31,6 +31,7 @@ class ZigBeeDevice:
             f'IEEE address: `{self.ieee_address}`\n'
             f'Power source: `{self.power_source}`\n'
             f'Is supported: `{self.is_supported}`\n'
+            f'Is disabled: `{self.is_disabled}`\n'
             f'Is available: `{self.is_available}`\n'
             f'Type: `{self.type}`'
         )
@@ -249,13 +250,15 @@ class ZigBee:
     @synchronized_method
     def _set_devices(self, topic: str, payload: list) -> None:
         for raw_device in payload:
+            friendly_name = raw_device['friendly_name']
+
             device = ZigBeeDevice(
-                friendly_name=raw_device['friendly_name'],
+                friendly_name=friendly_name,
                 ieee_address=raw_device['ieee_address'],
                 power_source=raw_device.get('power_source'),
                 is_supported=raw_device.get('supported'),
-                is_disabled=raw_device.get('is_disabled'),
-                is_available=raw_device.get('is_available'),
+                is_disabled=raw_device.get('disabled'),
+                is_available=self._availability_map.get(friendly_name),
                 type=raw_device.get('type'),
             )
 

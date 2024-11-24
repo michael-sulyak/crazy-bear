@@ -1,3 +1,5 @@
+import datetime
+
 from libs.messengers.utils import escape_markdown
 from libs.task_queue import IntervalTask, TaskPriorities
 from ..base import BaseModule
@@ -20,18 +22,20 @@ class ZigBeeController(BaseModule):
         self._previous_availability_map = {}
 
     def init_repeatable_tasks(self) -> tuple:
+        run_after = datetime.datetime.now() + datetime.timedelta(minutes=10)
+
         return (
             IntervalTask(
                 target=lambda: self._check_connected_devices(check_active_devices=True),
                 priority=TaskPriorities.LOW,
                 interval=config.ZIGBEE_AVAILABILITY_ACTIVE_TIMEOUT_CHECK,
-                run_immediately=False,
+                run_after=run_after,
             ),
             IntervalTask(
                 target=lambda: self._check_connected_devices(check_active_devices=False),
                 priority=TaskPriorities.LOW,
                 interval=config.ZIGBEE_AVAILABILITY_PASSIVE_TIMEOUT_CHECK,
-                run_immediately=False,
+                run_after=run_after,
             ),
         )
 
@@ -80,6 +84,11 @@ class ZigBeeController(BaseModule):
                         f'ZigBee device *{escape_markdown(device.friendly_name)}* is available now',
                         use_markdown=True,
                     )
+            elif device.is_available is None:
+                self.messenger.send_message(
+                    f'ZigBee device *{escape_markdown(device.friendly_name)}* has unknown availability',
+                    use_markdown=True,
+                )
             else:
                 self.messenger.send_message(
                     f'ZigBee device *{escape_markdown(device.friendly_name)}* is not available',

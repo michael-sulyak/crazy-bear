@@ -1,10 +1,8 @@
 import typing
 
-from .mi import mi_wifi
+from .tplink import tplink_router
 
 
 def get_connected_macs_to_router() -> typing.Generator[str, None, None]:
-    connected_devices = mi_wifi.device_list()['list']
-
-    for device in connected_devices:
-        yield device['mac']
+    for device in tplink_router.get_devices():
+        yield device.macaddr.replace('-', ':')

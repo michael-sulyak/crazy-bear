@@ -6,7 +6,7 @@ from ..base import BaseModule
 from ..utils.wifi import check_if_host_is_at_home
 from ...common import interface
 from ...common.exceptions import Shutdown
-from ...common.routers.mi import mi_wifi
+from ...common.routers.tplink import tplink_router
 from ...core import constants, events
 
 
@@ -54,10 +54,20 @@ class Router(BaseModule):
     @interface.command(constants.BotCommands.RAW_WIFI_DEVICES)
     def _show_wifi_connected_devices(self) -> None:
         message = ''
+        device_fields = (
+            'type',
+            'macaddr',
+            'hostname',
+            'packets_sent',
+            'packets_received',
+            'down_speed',
+            'up_speed',
+            'ipaddr',
+        )
 
-        for device in mi_wifi.device_list()['list']:
-            for key, value in device.items():
-                message += f'*{escape_markdown(str(key))}:* {escape_markdown(str(value))}\n'
+        for device in tplink_router.get_devices():
+            for device_field in device_fields:
+                message += f'*{escape_markdown(device_field)}:* {escape_markdown(str(getattr(device, device_field)))}\n'
 
             message += '\n'
 

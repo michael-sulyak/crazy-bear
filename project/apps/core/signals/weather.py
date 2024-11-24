@@ -8,7 +8,7 @@ from ...signals.models import Signal
 
 
 class WeatherHandler(BaseSignalHandler):
-    task_interval = datetime.timedelta(minutes=5)
+    task_interval = datetime.timedelta(minutes=10)  # Note: See recommendation from https://openweathermap.org/faq
 
     def process(self) -> None:
         weather = utils.get_weather()

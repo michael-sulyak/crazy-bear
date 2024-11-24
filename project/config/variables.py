@@ -65,6 +65,7 @@ DROPBOX_TOKEN = json_config['dropbox_token']
 
 # Router
 ROUTER_TYPE = json_config['router_type']
+assert ROUTER_TYPE == 'tplink'
 ROUTER_PASSWORD = json_config['router_password']
 ROUTER_URL = json_config['router_url']
 

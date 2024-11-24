@@ -193,7 +193,7 @@ class Report(BaseModule):
             if weather_data["main"]["temp_min"] != weather_data["main"]["temp_max"]
             else ', '
         )
-        weather += f'{weather_data["weather"][0]["description"]}.'
+        weather += f'{weather_data["weather"][0]["description"]}\\.'
 
         self.messenger.send_message(f'{greeting}\n\n{weather}', use_markdown=True)
 

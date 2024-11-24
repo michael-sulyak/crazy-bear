@@ -18,15 +18,15 @@ from ...signals.models import Signal
 
 
 class RouterHandler(BaseAdvancedSignalHandler):
-    task_interval = datetime.timedelta(seconds=5)
+    task_interval = datetime.timedelta(seconds=10)
     priority = task_queue.TaskPriorities.HIGH
     signal_type = constants.USER_IS_CONNECTED_TO_ROUTER
     compress_by_time = False
     _lock: threading.RLock
     _check_after: datetime.datetime = datetime.datetime.min
     _errors_count: int = 0
-    _timedelta_for_checking: datetime.timedelta = datetime.timedelta(seconds=10)
-    _timedelta_for_connection: datetime.timedelta = datetime.timedelta(seconds=10)
+    _timedelta_for_checking: datetime.timedelta = datetime.timedelta(seconds=30)
+    _timedelta_for_connection: datetime.timedelta = datetime.timedelta(minutes=2)
     _last_connected_at: datetime.datetime = datetime.datetime.min
 
     def __init__(self, *args, **kwargs) -> None:
@@ -46,6 +46,7 @@ class RouterHandler(BaseAdvancedSignalHandler):
     @synchronized_method
     def process(self) -> None:
         now = datetime.datetime.now()
+        date_coefficient = 2 if is_sleep_hours() else 1
 
         need_to_recheck = self._check_after <= now
 
@@ -71,16 +72,14 @@ class RouterHandler(BaseAdvancedSignalHandler):
             self._errors_count = 0
 
         if self._errors_count > 0:
-            delta = self._timedelta_for_checking + datetime.timedelta(seconds=self._errors_count * 10)
+            delta = self._timedelta_for_checking * date_coefficient + datetime.timedelta(seconds=self._errors_count * 10)
 
             if delta > datetime.timedelta(minutes=10):
                 delta = datetime.timedelta(minutes=10)
 
             self._check_after = now + delta
-        elif is_sleep_hours():
-            self._check_after = now + self._timedelta_for_checking + datetime.timedelta(seconds=10)
         else:
-            self._check_after = now + self._timedelta_for_checking
+            self._check_after = now + self._timedelta_for_checking * date_coefficient
 
         Signal.add(signal_type=constants.USER_IS_CONNECTED_TO_ROUTER, value=int(is_connected))
 
@@ -88,7 +87,7 @@ class RouterHandler(BaseAdvancedSignalHandler):
             self._last_connected_at = now
             self._state[constants.USER_IS_CONNECTED_TO_ROUTER] = True
 
-        can_reset_connection = now - self._last_connected_at >= self._timedelta_for_connection
+        can_reset_connection = now - self._last_connected_at >= self._timedelta_for_connection * date_coefficient
 
         if not is_connected and can_reset_connection:
             self._state[constants.USER_IS_CONNECTED_TO_ROUTER] = False
