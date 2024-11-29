@@ -29,8 +29,7 @@ class Signals(BaseModule):
 
     def __init__(self, *args, **kwargs) -> None:
         self._supreme_signal_handler = SupremeSignalHandler(
-            messenger=kwargs['context'].messenger,
-            state=kwargs['context'].state,
+            context=kwargs['context'],
         )
 
         super().__init__(*args, **kwargs)

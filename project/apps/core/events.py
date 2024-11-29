@@ -1,13 +1,14 @@
 from ..common.events import Event
 
 
-motion_detected = Event(providing_kwargs=('source ',))
-new_arduino_data = Event(providing_kwargs=('signals ',))
+motion_detected = Event(providing_kwargs=('source',))
+new_arduino_data = Event(providing_kwargs=('signals',))
 security_is_enabled = Event()
 security_is_disabled = Event()
 user_is_connected_to_router = Event()
 user_is_disconnected_to_router = Event()
-check_if_user_is_at_home = Event(providing_kwargs=('force',))
+user_is_at_home = Event()
+user_is_not_at_home = Event()
 shutdown = Event()
 request_for_statistics = Event(
     providing_kwargs=(

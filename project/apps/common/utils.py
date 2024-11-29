@@ -188,7 +188,7 @@ def camera_is_available(src: int) -> bool:
 
 
 def get_weather() -> dict:
-    return requests.get(config.OPENWEATHERMAP_URL, timeout=30).json()
+    return requests.get(config.OPENWEATHERMAP_URL, timeout=10).json()
 
 
 def get_sunrise_time() -> datetime.datetime:

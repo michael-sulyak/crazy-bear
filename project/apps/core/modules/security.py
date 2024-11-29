@@ -10,8 +10,7 @@ from ..constants import (
     BotCommands,
     CAMERA_IS_AVAILABLE,
     SECURITY_IS_ENABLED,
-    USER_IS_CONNECTED_TO_ROUTER,
-    USE_CAMERA,
+    USER_IS_AT_HOME, USE_CAMERA,
 )
 from ...common import interface
 from ...common.constants import AUTO, OFF, ON
@@ -93,13 +92,13 @@ class Security(BaseModule):
 
         self.state[AUTO_SECURITY_IS_ENABLED] = True
 
-        events.user_is_connected_to_router.connect(self._process_user_is_connected_to_router)
-        events.user_is_disconnected_to_router.connect(self._process_user_is_disconnected_to_router)
+        events.user_is_at_home.connect(self._process_user_is_at_home)
+        events.user_is_not_at_home.connect(self._process_user_is_not_at_home)
 
         self.messenger.send_message('Auto security is enabled')
 
-        if not self.state[USER_IS_CONNECTED_TO_ROUTER]:
-            self._process_user_is_disconnected_to_router()
+        if not self.state[USER_IS_AT_HOME]:
+            self._process_user_is_not_at_home()
 
     @interface.command(BotCommands.SECURITY, AUTO, OFF)
     @synchronized_method
@@ -115,8 +114,8 @@ class Security(BaseModule):
 
         self._camera_was_not_used = False
 
-        events.user_is_connected_to_router.disconnect(self._process_user_is_connected_to_router)
-        events.user_is_disconnected_to_router.disconnect(self._process_user_is_disconnected_to_router)
+        events.user_is_at_home.disconnect(self._process_user_is_at_home)
+        events.user_is_not_at_home.disconnect(self._process_user_is_not_at_home)
 
         self.messenger.send_message('Auto security is disabled')
 
@@ -125,14 +124,14 @@ class Security(BaseModule):
         self._last_movement_at = datetime.datetime.now()
 
         if (
-            not self.state[USER_IS_CONNECTED_TO_ROUTER]
+            not self.state[USER_IS_AT_HOME]
             and not self.state[USE_CAMERA]
             and self.state[CAMERA_IS_AVAILABLE]
         ):
             self._camera_was_not_used = True
             self._run_command(BotCommands.CAMERA, ON)
 
-    def _process_user_is_connected_to_router(self) -> None:
+    def _process_user_is_at_home(self) -> None:
         if not self.state[AUTO_SECURITY_IS_ENABLED]:
             return
 
@@ -140,7 +139,7 @@ class Security(BaseModule):
             self.messenger.send_message('The owner is found')
             self._run_command(BotCommands.SECURITY, OFF)
 
-    def _process_user_is_disconnected_to_router(self) -> None:
+    def _process_user_is_not_at_home(self) -> None:
         if not self.state[AUTO_SECURITY_IS_ENABLED]:
             return
 
@@ -156,7 +155,7 @@ class Security(BaseModule):
         now = datetime.datetime.now()
         has_movement = self._last_movement_at and now - self._last_movement_at <= self._twenty_minutes
 
-        user_is_connected: bool = self.state[USER_IS_CONNECTED_TO_ROUTER]
+        user_is_connected: bool = self.state[USER_IS_AT_HOME]
         use_camera: bool = self.state[USE_CAMERA]
 
         if (user_is_connected or not has_movement) and self._camera_was_not_used and use_camera:

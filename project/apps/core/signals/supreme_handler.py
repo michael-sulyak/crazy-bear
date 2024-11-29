@@ -1,31 +1,32 @@
 import typing
 
 from libs import task_queue
-from libs.messengers.base import BaseMessenger
 from .arduino import ArduinoHandler
-from .base import BaseAdvancedSignalHandler, BaseSignalHandler
+from .base import BaseSignalHandler
 from .cpu_temp import CpuTempHandler
 from .free_disk_space import FreeDiskSpaceHandler
 from .ram_usage import RamUsageHandler
 from .router import RouterHandler
+from .water_leak_sensor import WaterLeakSensorHandler
 from .weather import WeatherHandler
+from ..base import ModuleContext
 from ...common.events import Receiver
-from ...common.state import State
 
 
 class SupremeSignalHandler:
-    handlers: tuple[typing.Type[BaseSignalHandler | BaseAdvancedSignalHandler], ...] = (
+    handlers: tuple[typing.Type[BaseSignalHandler], ...] = (
         CpuTempHandler,
         WeatherHandler,
         RamUsageHandler,
         FreeDiskSpaceHandler,
         ArduinoHandler,
         RouterHandler,
+        WaterLeakSensorHandler,
     )
-    _inited_handlers: tuple[BaseSignalHandler | BaseAdvancedSignalHandler, ...]
+    _inited_handlers: tuple[BaseSignalHandler, ...]
 
-    def __init__(self, *, messenger: BaseMessenger, state: State) -> None:
-        self._inited_handlers = tuple(handler(messenger=messenger, state=state) for handler in self.handlers)
+    def __init__(self, *, context: ModuleContext) -> None:
+        self._inited_handlers = tuple(handler(context=context) for handler in self.handlers)
 
     @property
     def count_of_handlers(self) -> int:

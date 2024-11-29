@@ -10,6 +10,7 @@ RAM_USAGE = 'ram_usage'
 FREE_DISK_SPACE = 'free_disk_space'
 TASK_QUEUE_DELAY = 'task_queue_delay'
 USER_IS_CONNECTED_TO_ROUTER = 'user_is_connected_to_router'
+USER_IS_AT_HOME = 'user_is_at_home'
 
 AUTO_SECURITY_IS_ENABLED = 'auto_security_is_enabled'
 USE_CAMERA = 'use_camera'

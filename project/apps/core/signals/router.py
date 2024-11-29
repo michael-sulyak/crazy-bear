@@ -9,9 +9,8 @@ from requests import ReadTimeout
 from libs import task_queue
 from libs.casual_utils.parallel_computing import synchronized_method
 from .base import BaseAdvancedSignalHandler
-from .. import constants, events
+from .. import constants
 from ..utils.wifi import check_if_host_is_at_home
-from ...common.events import Receiver
 from ...common.exceptions import Shutdown
 from ...common.utils import create_plot, is_sleep_hours
 from ...signals.models import Signal
@@ -33,12 +32,6 @@ class RouterHandler(BaseAdvancedSignalHandler):
         super().__init__(*args, **kwargs)
 
         self._lock = threading.RLock()
-
-    def get_signals(self) -> tuple[Receiver, ...]:
-        return (
-            *super().get_signals(),
-            events.check_if_user_is_at_home.connect(self.process),
-        )
 
     def get_value(self) -> typing.Any:
         pass
@@ -72,10 +65,12 @@ class RouterHandler(BaseAdvancedSignalHandler):
             self._errors_count = 0
 
         if self._errors_count > 0:
-            delta = self._timedelta_for_checking * date_coefficient + datetime.timedelta(seconds=self._errors_count * 10)
+            delta = self._timedelta_for_checking * date_coefficient + datetime.timedelta(
+                seconds=self._errors_count * 10)
+            max_delta = datetime.timedelta(minutes=10) * date_coefficient
 
-            if delta > datetime.timedelta(minutes=10):
-                delta = datetime.timedelta(minutes=10)
+            if delta > max_delta:
+                delta = max_delta
 
             self._check_after = now + delta
         else:
@@ -86,11 +81,25 @@ class RouterHandler(BaseAdvancedSignalHandler):
         if is_connected:
             self._last_connected_at = now
             self._state[constants.USER_IS_CONNECTED_TO_ROUTER] = True
+            self._state[constants.USER_IS_AT_HOME] = True
+        elif self._state[constants.USER_IS_CONNECTED_TO_ROUTER]:
+            can_reset_connection = now - self._last_connected_at >= self._timedelta_for_connection * date_coefficient
 
-        can_reset_connection = now - self._last_connected_at >= self._timedelta_for_connection * date_coefficient
+            if can_reset_connection:
+                self._state[constants.USER_IS_CONNECTED_TO_ROUTER] = False
 
-        if not is_connected and can_reset_connection:
-            self._state[constants.USER_IS_CONNECTED_TO_ROUTER] = False
+                if self._state[constants.USER_IS_AT_HOME]:
+                    device_can_sleep = (
+                        is_sleep_hours()
+                        and now - self._last_connected_at <= datetime.timedelta(hours=8)
+                    )
+
+                    if device_can_sleep:
+                        self._messenger.send_message(
+                            'Owner is not connected to the router, but we do not change his home presence status',
+                        )
+                    else:
+                        self._state[constants.USER_IS_AT_HOME] = False
 
     def generate_plots(
         self, *, date_range: tuple[datetime.datetime, datetime.datetime], components: typing.Set[str]

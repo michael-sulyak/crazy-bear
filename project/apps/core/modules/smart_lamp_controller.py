@@ -50,7 +50,7 @@ class LampControllerInBedroom(BaseModule):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-        self.smart_lamp = self.context.smart_devices_map[config.SMART_DEVICE_NAMES.MAIN_SMART_LAMP]  # type: ignore
+        self.smart_lamp = self.context.smart_devices_map[config.SmartDeviceNames.MAIN_SMART_LAMP]  # type: ignore
         self._lock = threading.RLock()
 
         self.task_queue.put(
@@ -183,7 +183,7 @@ class LampControllerInBedroom(BaseModule):
             if self.smart_lamp.is_on():
                 return
 
-            if not self.state[constants.USER_IS_CONNECTED_TO_ROUTER]:
+            if not self.state[constants.USER_IS_AT_HOME]:
                 return
 
             self.smart_lamp.turn_on(

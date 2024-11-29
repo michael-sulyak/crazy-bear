@@ -8,10 +8,11 @@ from libs import task_queue
 from libs.casual_utils.time import get_current_time
 from libs.messengers.base import BaseMessenger
 from .. import events
+from ..base import ModuleContext
+from ...common.constants import NOTHING
 from ...common.events import Receiver
 from ...common.state import State
 from ...signals.models import Signal
-from ...common.constants import NOTHING
 
 
 @dataclasses.dataclass
@@ -22,24 +23,30 @@ class NotificationParams:
 
 
 class BaseSignalHandler(abc.ABC):
-    task_interval: datetime.timedelta
+    # TODO: Add method `disable`
+    # TODO: Refactor `BaseSignalHandler`
+    task_interval: datetime.timedelta | None
     priority = task_queue.TaskPriorities.LOW
     _messenger: BaseMessenger
     _state: State
 
-    def __init__(self, *, messenger: BaseMessenger, state: State) -> None:
-        self._messenger = messenger
-        self._state = state
+    def __init__(self, *, context: ModuleContext) -> None:
+        self._context = context
+        self._messenger = context.messenger
+        self._state = context.state
 
     def get_tasks(self) -> tuple[task_queue.Task, ...]:
-        return (
-            task_queue.IntervalTask(
-                target=self.process,
-                priority=self.priority,
-                interval=self.task_interval,
-                run_after=datetime.datetime.now() + datetime.timedelta(seconds=10),
-            ),
-        )
+        if self.task_interval is None:
+            return ()
+        else:
+            return (
+                task_queue.IntervalTask(
+                    target=self.process,
+                    priority=self.priority,
+                    interval=self.task_interval,
+                    run_after=datetime.datetime.now() + datetime.timedelta(seconds=10),
+                ),
+            )
 
     def get_signals(self) -> tuple[Receiver, ...]:
         return (events.request_for_statistics.connect(self.generate_plots),)
@@ -57,13 +64,28 @@ class BaseSignalHandler(abc.ABC):
     ) -> typing.Optional[typing.Sequence[io.BytesIO]]:
         return None
 
-
-class BaseAdvancedSignalHandler(BaseSignalHandler, abc.ABC):
-    signal_type: str
+class SignalNotificationMixin(abc.ABC):
     list_of_notification_params: tuple[NotificationParams, ...] = ()
+    _last_notified_at: datetime.datetime = datetime.datetime.min
+
+    def _check_notifications(self, value: typing.Any) -> None:
+        for notification_params in self.list_of_notification_params:
+            if not notification_params.condition(value):
+                continue
+
+            now = datetime.datetime.now()
+
+            if now - self._last_notified_at > notification_params.delay:
+                self._messenger.send_message(notification_params.message)
+                self._last_notified_at = now
+
+            break
+
+
+class BaseAdvancedSignalHandler(SignalNotificationMixin, BaseSignalHandler, abc.ABC):
+    signal_type: str
     compress_by_time: bool
     approximation_value: float = 0
-    _last_notified_at: datetime.datetime = datetime.datetime.min
 
     def process(self) -> None:
         value = self.get_value()
@@ -72,7 +94,7 @@ class BaseAdvancedSignalHandler(BaseSignalHandler, abc.ABC):
             return
 
         Signal.add(signal_type=self.signal_type, value=value)
-        self._validate_value(value)
+        self._check_notifications(value)
 
     @abc.abstractmethod
     def get_value(self) -> typing.Any:
@@ -100,16 +122,3 @@ class BaseAdvancedSignalHandler(BaseSignalHandler, abc.ABC):
             approximation_value=self.approximation_value,
             approximation_time=datetime.timedelta(hours=1),
         )
-
-    def _validate_value(self, value: typing.Any) -> None:
-        for notification_params in self.list_of_notification_params:
-            if not notification_params.condition(value):
-                continue
-
-            now = datetime.datetime.now()
-
-            if now - self._last_notified_at > notification_params.delay:
-                self._messenger.send_message(notification_params.message)
-                self._last_notified_at = now
-
-            break

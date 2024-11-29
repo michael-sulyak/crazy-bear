@@ -89,5 +89,6 @@ NORMAL_TEMPERATURE_RANGE = json_config['normal_temperature_range']
 ARTIFICIAL_SUNRISE_SCHEDULES = tuple(CronTab(schedule) for schedule in json_config['artificial_sunrise_schedules'])
 
 
-class SMART_DEVICE_NAMES:
+class SmartDeviceNames:
     MAIN_SMART_LAMP = 'lamp:main_room'
+    WATER_LEAK_SENSOR_WC_OPEN = 'water_leak_sensor:wc_open'

@@ -31,6 +31,7 @@ class Router(BaseModule):
 
         return {
             constants.USER_IS_CONNECTED_TO_ROUTER: host_is_at_home,
+            constants.USER_IS_AT_HOME: host_is_at_home,
         }
 
     def subscribe_to_events(self) -> tuple:
@@ -47,6 +48,19 @@ class Router(BaseModule):
                         True,
                         False,
                     ): lambda name: events.user_is_disconnected_to_router.send(),
+                },
+            ),
+            self.state.subscribe_toggle(
+                constants.USER_IS_AT_HOME,
+                {
+                    (
+                        False,
+                        True,
+                    ): lambda name: events.user_is_at_home.send(),
+                    (
+                        True,
+                        False,
+                    ): lambda name: events.user_is_not_at_home.send(),
                 },
             ),
         )

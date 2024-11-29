@@ -1,3 +1,4 @@
+import abc
 import dataclasses
 import itertools
 import json
@@ -6,6 +7,7 @@ import re
 import threading
 import typing
 from collections import defaultdict
+import datetime
 
 from paho.mqtt.client import Client, MQTTMessage, MQTTMessageInfo, MQTTv5
 from paho.mqtt.enums import CallbackAPIVersion
@@ -13,6 +15,8 @@ from paho.mqtt.enums import CallbackAPIVersion
 from . import exceptions
 from .constants import COORDINATOR_FRIENDLY_NAME, ZigBeePowerSources
 from ..casual_utils.parallel_computing import synchronized_method
+from ..smart_devices.base import BaseSmartDevice
+from ..smart_devices.constants import SmartDeviceType
 
 
 @dataclasses.dataclass
@@ -50,7 +54,7 @@ class ZigBeeDevice:
 
 
 class ZigBee:
-    _base_topic: str = 'zigbee2mqtt'
+    base_topic: str = 'zigbee2mqtt'
     _mq_host: str
     _mq_port: int
     _mq: Client | None = None
@@ -60,6 +64,7 @@ class ZigBee:
     _devices_map: dict[str, ZigBeeDevice]
     _availability_map: dict[str, bool]
     _lock: threading.RLock
+    _is_opened: bool = False
 
     def __init__(self, *, mq_host: str, mq_port: int) -> None:
         self._lock = threading.RLock()
@@ -70,7 +75,7 @@ class ZigBee:
         self._permanent_subscriber_key_regexps_map = {}
         self._devices_map = {}
 
-        self._permanent_subscribers_map[f'{self._base_topic}/bridge/devices'].append(self._set_devices)
+        self._permanent_subscribers_map[f'{self.base_topic}/bridge/devices'].append(self._set_devices)
 
         self._subscribe_on_availability()
 
@@ -93,21 +98,27 @@ class ZigBee:
         return tuple(self._devices_map.values())
 
     def set(self, friendly_name: str, payload: dict) -> None:
-        self._publish_msg(f'{self._base_topic}/{friendly_name}/set', payload)
+        self._publish_msg(f'{self.base_topic}/{friendly_name}/set', payload)
 
-    def get_state(self, friendly_name: str) -> typing.Any:
+    def get_state(
+        self,
+        friendly_name: str,
+        *,
+        timeout: datetime.timedelta = datetime.timedelta(seconds=10),
+    ) -> typing.Any:
         return self._request_data(
-            topic_for_sending=f'{self._base_topic}/{friendly_name}/get',
-            topic_for_receiving=f'{self._base_topic}/{friendly_name}',
+            topic_for_sending=f'{self.base_topic}/{friendly_name}/get',
+            topic_for_receiving=f'{self.base_topic}/{friendly_name}',
             payload={'state': ''},
+            timeout=timeout,
         )
 
     def is_health(self) -> bool:
         name = 'health_check'
 
         response = self._request_data(
-            topic_for_sending=f'{self._base_topic}/bridge/request/{name}',
-            topic_for_receiving=f'{self._base_topic}/bridge/response/{name}',
+            topic_for_sending=f'{self.base_topic}/bridge/request/{name}',
+            topic_for_receiving=f'{self.base_topic}/bridge/response/{name}',
         )
 
         assert response is not None
@@ -133,7 +144,9 @@ class ZigBee:
             self._permanent_subscriber_key_regexps_map[re.compile(topic.replace('+', '.*'))] = topic
 
         self._permanent_subscribers_map[topic].append(func)
-        self.mq.subscribe(topic)
+
+        if self._is_opened:
+            self.mq.subscribe(topic)
 
         logging.info(f'ZigBee: "{func}" subscribes on "{topic}".')
 
@@ -158,6 +171,8 @@ class ZigBee:
 
         self._mq = mq
 
+        self._is_opened = True
+
     @synchronized_method
     def close(self) -> None:
         if self._mq is None:
@@ -172,7 +187,7 @@ class ZigBee:
 
     @synchronized_method
     def _on_message(self, client: Client, userdata: typing.Any, message: MQTTMessage) -> None:
-        if not message.topic.startswith(f'{self._base_topic}/'):
+        if not message.topic.startswith(f'{self.base_topic}/'):
             return
 
         payload = json.loads(message.payload.decode())
@@ -193,7 +208,12 @@ class ZigBee:
                 break
 
     def _request_data(
-        self, *, topic_for_sending: str, topic_for_receiving: str, payload: typing.Any = None, timeout: int = 10
+        self,
+        *,
+        topic_for_sending: str,
+        topic_for_receiving: str,
+        payload: typing.Any = None,
+        timeout: datetime.timedelta = datetime.timedelta(seconds=10),
     ) -> dict | None:
         event = threading.Event()
         result = None
@@ -207,7 +227,7 @@ class ZigBee:
         self._subscribe_on_topic(topic_for_receiving, _func)
         self._publish_msg(topic_for_sending, payload)
 
-        event.wait(timeout=timeout)
+        event.wait(timeout=timeout.total_seconds())
 
         if not event.is_set():
             raise exceptions.ZigBeeTimeoutError
@@ -243,7 +263,7 @@ class ZigBee:
                     ieee_address=friendly_name,
                 )
 
-        common_topic = f'{self._base_topic}/+/availability'
+        common_topic = f'{self.base_topic}/+/availability'
         self._permanent_subscriber_key_regexps_map[re.compile(common_topic.replace('+', '.*'))] = common_topic
         self._permanent_subscribers_map[common_topic].append(_func)
 
@@ -267,3 +287,12 @@ class ZigBee:
                     setattr(self._devices_map[device.friendly_name], field.name, getattr(device, field.name))
             else:
                 self._devices_map[device.friendly_name] = device
+
+
+class BaseZigBeeDevice(BaseSmartDevice, abc.ABC):
+    device_type = SmartDeviceType.ZIGBEE
+    zig_bee: ZigBee
+
+    def __init__(self, friendly_name: str, *, zig_bee: ZigBee) -> None:
+        self.friendly_name = friendly_name
+        self.zig_bee = zig_bee

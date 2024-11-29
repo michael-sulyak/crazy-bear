@@ -12,6 +12,7 @@ from libs.messengers.telegram import TelegramMessenger
 from libs.task_queue import DelayedTask, ScheduledTask, TaskPriorities
 from libs.zigbee.base import ZigBee
 from libs.zigbee.lamps.life_control import LCSmartLamp
+from libs.zigbee.water_leak_sensor.aqara import AqaraWaterLeakSensor
 from project import config
 from project.apps import db
 from project.apps.common.constants import AUTO, INITED_AT, ON
@@ -123,7 +124,8 @@ def main() -> None:
             modules.Utils,
         ),
         smart_devices=(
-            LCSmartLamp(config.SMART_DEVICE_NAMES.MAIN_SMART_LAMP, zig_bee=zig_bee),
+            LCSmartLamp(config.SmartDeviceNames.MAIN_SMART_LAMP, zig_bee=zig_bee),
+            AqaraWaterLeakSensor(config.SmartDeviceNames.WATER_LEAK_SENSOR_WC_OPEN, zig_bee=zig_bee),
         ),
     )
 

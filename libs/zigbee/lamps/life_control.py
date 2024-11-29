@@ -4,10 +4,8 @@ import threading
 import typing
 from time import sleep
 
-from ..base import ZigBee
+from ..base import BaseZigBeeDevice
 from ...casual_utils.parallel_computing import synchronized_method
-from ...smart_devices.base import BaseSmartDevice
-from ...smart_devices.constants import SmartDeviceType
 
 
 __all__ = ('LCSmartLamp',)
@@ -30,15 +28,13 @@ def method_with_transition(func: typing.Callable) -> typing.Callable:
     return wrap_func
 
 
-class LCSmartLamp(BaseSmartDevice):
+class LCSmartLamp(BaseZigBeeDevice):
     """
     This class is made to support LifeControl MCLH-01.
 
     Note: MCLH-01 has unstable behaviour in some cases.
     """
 
-    device_type = SmartDeviceType.ZIGBEE
-    zig_bee: ZigBee
     color_temps = (
         'coolest',
         'cool',
@@ -83,9 +79,9 @@ class LCSmartLamp(BaseSmartDevice):
     _can_run_after: datetime.datetime
     _lock: threading.RLock
 
-    def __init__(self, friendly_name: str, *, zig_bee: ZigBee) -> None:
-        self.friendly_name = friendly_name
-        self.zig_bee = zig_bee
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
         self._can_run_after = datetime.datetime.now()
         self._lock = threading.RLock()
 
