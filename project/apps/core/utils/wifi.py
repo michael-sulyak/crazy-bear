@@ -23,5 +23,8 @@ def get_connected_devices_to_router() -> typing.Generator[WifiDevice, None, None
             yield WifiDevice(mac_address=mac)
 
 
-def check_if_host_is_at_home() -> bool:
-    return any(device.is_defining for device in get_connected_devices_to_router())
+def check_if_host_is_at_home(devices: typing.Sequence[WifiDevice] | None = None) -> bool:
+    if devices is None:
+        devices = get_connected_devices_to_router()
+
+    return any(device.is_defining for device in devices)

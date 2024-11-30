@@ -11,6 +11,7 @@ from contextlib import contextmanager
 import cv2
 import matplotlib as mpl
 import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
 import pandas as pd
 import pytz
 import requests
@@ -79,11 +80,11 @@ def init_settings_for_plt() -> None:
     import mplcyberpunk  # NOQA
 
     mpl.use('Agg')
-    mpl.plt.ioff()
+    plt.ioff()
     pd.plotting.register_matplotlib_converters()
-    mpl.plt.rcParams.update({'font.family': 'Roboto'})
+    plt.rcParams.update({'font.family': 'Roboto'})
 
-    mpl.plt.style.use('cyberpunk')
+    plt.style.use('cyberpunk')
 
 
 @timer
@@ -109,7 +110,7 @@ def create_plot(
             datetime.date| datetime.datetime,
     )
 
-    fig, ax = mpl.plt.subplots(
+    fig, ax = plt.subplots(
         figsize=(
             12,
             8,
@@ -138,27 +139,27 @@ def create_plot(
         if diff < datetime.timedelta(seconds=10):
             ax.xaxis.set_major_formatter(DateFormatter('%H:%M:%S', tz=config.PY_TZ))
             ax.xaxis.set_major_locator(mdates.SecondLocator(interval=1))
-            mpl.plt.xlabel(f'Time {postfix}')
+            plt.xlabel(f'Time {postfix}')
         elif diff < datetime.timedelta(minutes=20):
             ax.xaxis.set_major_formatter(DateFormatter('%H:%M', tz=config.PY_TZ))
             ax.xaxis.set_major_locator(mdates.MinuteLocator(interval=1))
-            mpl.plt.xlabel(f'Time {postfix}')
+            plt.xlabel(f'Time {postfix}')
         elif diff <= datetime.timedelta(hours=24):
             ax.xaxis.set_major_formatter(DateFormatter('%H', tz=config.PY_TZ))
             ax.xaxis.set_major_locator(mdates.HourLocator(interval=1))
-            mpl.plt.xlabel(f'Hours {postfix}')
+            plt.xlabel(f'Hours {postfix}')
         elif diff < datetime.timedelta(days=30):
             ax.xaxis.set_major_formatter(DateFormatter('%d', tz=config.PY_TZ))
             ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
-            mpl.plt.xlabel(f'Days {postfix}')
+            plt.xlabel(f'Days {postfix}')
         elif diff < datetime.timedelta(days=30 * 15):
             ax.xaxis.set_major_formatter(DateFormatter('%m', tz=config.PY_TZ))
             ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
-            mpl.plt.xlabel(f'Months {postfix}')
+            plt.xlabel(f'Months {postfix}')
         else:
             ax.xaxis.set_major_formatter(DateFormatter('%y', tz=config.PY_TZ))
             ax.xaxis.set_major_locator(mdates.YearLocator())
-            mpl.plt.xlabel(f'Years {postfix}')
+            plt.xlabel(f'Years {postfix}')
     else:
         ax.xaxis.set_major_locator(AutoLocator())
 
@@ -172,7 +173,7 @@ def create_plot(
     buffer.seek(0)
 
     fig.clear()
-    mpl.plt.close(fig)
+    plt.close(fig)
 
     return buffer
 
