@@ -14,19 +14,21 @@ import telegram
 import urllib3
 from emoji import emojize
 from pika.exceptions import AMQPConnectionError
-from telegram import InputMediaPhoto, ReplyKeyboardMarkup, Update as TelegramUpdate
+from telegram import InputMediaPhoto, ReplyKeyboardMarkup
+from telegram import Update as TelegramUpdate
 from telegram.constants import ChatAction, ParseMode
 from telegram.error import (
     NetworkError as TelegramNetworkError,
 )
 
 from project import config
-from .base import BaseMessenger, ChatInfo, MessageInfo, UserInfo
-from .mixins import CVMixin
-from .utils import escape_markdown
+
 from ..casual_utils.aio import async_to_sync
 from ..casual_utils.parallel_computing import synchronized_method
 from ..casual_utils.time import get_current_time
+from .base import BaseMessenger, ChatInfo, MessageInfo, UserInfo
+from .mixins import CVMixin
+from .utils import escape_markdown
 
 
 __all__ = ('TelegramMessenger',)
@@ -59,12 +61,12 @@ class TelegramMessenger(CVMixin, BaseMessenger):
     chat_id: int = config.TELEGRAM_CHAT_ID
     default_reply_markup: typing.Callable | None
     _bot: telegram.Bot
-    _updates_offset: typing.Optional[int] = None
+    _updates_offset: int | None = None
     _lock: threading.RLock
     _update_queue: queue.Queue
     _worker: threading.Thread
     _last_message_id: typing.Any = None
-    _last_sent_at: typing.Optional[datetime.datetime] = None
+    _last_sent_at: datetime.datetime | None = None
     _message_handler: typing.Callable
 
     def __init__(
@@ -84,7 +86,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
 
     @property
     @synchronized_method
-    def last_sent_at(self) -> typing.Optional[datetime.datetime]:
+    def last_sent_at(self) -> datetime.datetime | None:
         return self._last_sent_at
 
     @synchronized_method
@@ -99,9 +101,9 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         text: str,
         *,
         use_markdown: bool = False,
-        reply_markup: ReplyKeyboardMarkup | typing.Type[DEFAULT] | None = DEFAULT,
+        reply_markup: ReplyKeyboardMarkup | type[DEFAULT] | None = DEFAULT,
         message_id: int | None = None,
-    ) -> typing.Optional[int]:
+    ) -> int | None:
         if reply_markup is DEFAULT:
             if callable(self.default_reply_markup):
                 reply_markup = self.default_reply_markup()
@@ -128,7 +130,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
     @synchronized_method
     @handel_telegram_exceptions
     @async_to_sync
-    async def send_image(self, image: typing.Any, *, caption: typing.Optional[str] = None) -> None:
+    async def send_image(self, image: typing.Any, *, caption: str | None = None) -> None:
         result = await self._bot.send_photo(
             self.chat_id,
             photo=image,
@@ -146,7 +148,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
 
         results = await self._bot.send_media_group(
             self.chat_id,
-            media=list(InputMediaPhoto(media=image) for image in images),
+            media=[InputMediaPhoto(media=image) for image in images],
         )
 
         self._last_message_id = results[-1].message_id
@@ -155,7 +157,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
     @synchronized_method
     @handel_telegram_exceptions
     @async_to_sync
-    async def send_file(self, file: typing.Any, *, caption: typing.Optional[str] = None) -> None:
+    async def send_file(self, file: typing.Any, *, caption: str | None = None) -> None:
         result = await self._bot.send_document(
             self.chat_id,
             document=file,
@@ -173,7 +175,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
 
     def exception(self, exp: Exception) -> None:
         self.error(
-            f'{repr(exp)}\n{"".join(traceback.format_tb(exp.__traceback__))}',
+            f'{exp!r}\n{"".join(traceback.format_tb(exp.__traceback__))}',
             title='Exception',
         )
 

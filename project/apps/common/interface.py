@@ -16,7 +16,7 @@ if typing.TYPE_CHECKING:
 @dataclasses.dataclass
 class Module:
     title: str
-    description: typing.Optional[str] = None
+    description: str | None = None
     commands: tuple['Command', ...] = ()
 
     @cached_property
@@ -129,9 +129,9 @@ class BaseParam(abc.ABC):
 
 class Value(BaseParam):
     name: str
-    python_type: typing.Type
+    python_type: type
 
-    def __init__(self, name: str, *, python_type: typing.Type = str) -> None:
+    def __init__(self, name: str, *, python_type: type = str) -> None:
         self.name = name
         self.python_type = python_type
 
@@ -172,10 +172,10 @@ class Flag:
 def module(
     *,
     title: str,
-    description: typing.Optional[str] = None,
+    description: str | None = None,
     commands: tuple['Command', ...] = (),
 ) -> typing.Callable:
-    def wrapper(klass: typing.Type) -> typing.Type:
+    def wrapper(klass: type) -> type:
         klass.interface = Module(
             title=title,
             description=description,

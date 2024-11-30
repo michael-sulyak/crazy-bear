@@ -6,13 +6,14 @@ import typing
 
 from libs import task_queue
 from libs.messengers.base import BaseMessenger
-from .utils import get_default_signal_compress_datetime_range
-from .. import events
-from ..base import ModuleContext
+
 from ...common.constants import NOTHING
 from ...common.events import Receiver
 from ...common.state import State
 from ...signals.models import Signal
+from .. import events
+from ..base import ModuleContext
+from .utils import get_default_signal_compress_datetime_range
 
 
 @dataclasses.dataclass
@@ -76,7 +77,7 @@ class IntervalNotificationCheckMixin(abc.ABC):
         *,
         date_range: tuple[datetime.datetime, datetime.datetime],
         components: set[str],
-    ) -> typing.Optional[typing.Sequence[io.BytesIO]]:
+    ) -> typing.Sequence[io.BytesIO] | None:
         return None
 
 

@@ -1,5 +1,4 @@
 import datetime
-import typing
 
 
 __all__ = (
@@ -14,14 +13,14 @@ class BaseTaskQueueException(Exception):
 
 class RepeatTask(BaseTaskQueueException):
     after: datetime.datetime
-    source: typing.Optional[Exception]
+    source: Exception | None
 
     def __init__(
         self,
         *,
-        after: typing.Optional[datetime.datetime] = None,
-        delay: typing.Optional[datetime.timedelta] = None,
-        source: typing.Optional[Exception] = None,
+        after: datetime.datetime | None = None,
+        delay: datetime.timedelta | None = None,
+        source: Exception | None = None,
     ) -> None:
         if after is None:
             after = datetime.datetime.now()

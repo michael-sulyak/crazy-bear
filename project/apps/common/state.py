@@ -4,10 +4,11 @@ import typing
 from dataclasses import dataclass
 
 from libs.casual_utils.parallel_computing import synchronized_method
+
 from .base import BaseReceiver
 
 
-class StateException(Exception):
+class StateError(Exception):
     pass
 
 
@@ -17,7 +18,7 @@ class State:
     _subscribers_map: dict[str, set[typing.Callable]]
     _subscriber_locks_map: dict[str, threading.RLock]
 
-    def __init__(self, init_state: typing.Optional[dict] = None) -> None:
+    def __init__(self, init_state: dict | None = None) -> None:
         self._lock = threading.RLock()
         self._state = {}
         self._subscribers_map = {}
@@ -38,7 +39,7 @@ class State:
     @synchronized_method
     def create(self, name: str, value: typing.Any = None) -> None:
         if self.has(name):
-            raise StateException(f'The state already has key "{name}".')
+            raise StateError(f'The state already has key "{name}".')
 
         self._subscribers_map[name] = set()
         self._subscriber_locks_map[name] = threading.RLock()
@@ -60,7 +61,7 @@ class State:
     def set(self, name: str, value: typing.Any, *, _need_to_create: bool = False) -> None:
         with self._lock:
             if not _need_to_create and not self.has(name):
-                raise StateException(f'The state has not key "{name}".')
+                raise StateError(f'The state has not key "{name}".')
 
             old_value = self._state.get(name)
             self._state[name] = value
@@ -84,7 +85,7 @@ class State:
     @synchronized_method
     def remove(self, name: str) -> None:
         if not self.has(name):
-            raise StateException(f'The state has not key "{name}".')
+            raise StateError(f'The state has not key "{name}".')
 
         self._state.pop(name)
         self._subscribers_map.pop(name)
@@ -93,7 +94,7 @@ class State:
     def subscribe(self, name: str, subscriber: typing.Callable) -> 'Subscriber':
         with self._lock:
             if not self.has(name):
-                raise StateException(f'The state has not key "{name}".')
+                raise StateError(f'The state has not key "{name}".')
 
             with self._subscriber_locks_map[name]:
                 self._subscribers_map[name].add(subscriber)
@@ -122,18 +123,16 @@ class State:
     @synchronized_method
     def unsubscribe(self, name: str, subscriber: typing.Callable) -> None:
         if not self.has(name):
-            raise StateException(f'The state has not key "{name}".')
+            raise StateError(f'The state has not key "{name}".')
 
-        try:
+        with contextlib.suppress(KeyError):
             self._subscribers_map[name].remove(subscriber)
-        except KeyError:
-            pass
 
     @contextlib.contextmanager
     def lock(self, name: str) -> typing.Generator[None, None, None]:
         with self._lock:
             if not self.has(name):
-                raise StateException(f'The state has not key "{name}".')
+                raise StateError(f'The state has not key "{name}".')
 
             lock = self._subscriber_locks_map[name]
 

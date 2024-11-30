@@ -1,5 +1,4 @@
 import datetime
-import typing
 
 import cv2
 import imutils
@@ -8,13 +7,13 @@ import numpy as np
 
 
 class MotionDetector:
-    target_frame: typing.Optional[np.ndarray] = None
-    marked_frame: typing.Optional[np.ndarray] = None
+    target_frame: np.ndarray | None = None
+    marked_frame: np.ndarray | None = None
     is_occupied: bool = False
     _max_fps: int
     _min_area: int = 500
     _movement_ttl = datetime.timedelta(seconds=20)
-    _last_changed_at: typing.Optional[datetime.datetime] = None
+    _last_changed_at: datetime.datetime | None = None
     _need_to_show_frames: bool
 
     def __init__(self, *, show_frames: bool, max_fps: int) -> None:

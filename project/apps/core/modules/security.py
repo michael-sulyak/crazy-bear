@@ -3,18 +3,19 @@ import typing
 
 from libs.casual_utils.parallel_computing import single_synchronized, synchronized_method
 from libs.task_queue import IntervalTask, TaskPriorities
+
+from ...common import interface
+from ...common.constants import AUTO, OFF, ON
 from .. import events
 from ..base import BaseModule
 from ..constants import (
     AUTO_SECURITY_IS_ENABLED,
-    BotCommands,
     CAMERA_IS_AVAILABLE,
     SECURITY_IS_ENABLED,
-    USER_IS_AT_HOME,
     USE_CAMERA,
+    USER_IS_AT_HOME,
+    BotCommands,
 )
-from ...common import interface
-from ...common.constants import AUTO, OFF, ON
 
 
 __all__ = ('Security',)
@@ -25,11 +26,11 @@ __all__ = ('Security',)
     description='The module turns on the security mode and the camera after the owner leaves the house.',
 )
 class Security(BaseModule):
-    initial_state = {
+    initial_state: typing.ClassVar = {
         AUTO_SECURITY_IS_ENABLED: False,
         SECURITY_IS_ENABLED: False,
     }
-    _last_movement_at: typing.Optional[datetime.datetime] = None
+    _last_movement_at: datetime.datetime | None = None
     _camera_was_not_used: bool = False
     _twenty_minutes: datetime.timedelta = datetime.timedelta(minutes=20)
 

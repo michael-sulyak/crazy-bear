@@ -2,8 +2,8 @@ from unittest.mock import Mock
 
 import cv2
 
-from ..video_guard import VideoGuard
 from .... import config
+from ..video_guard import VideoGuard
 
 
 def test_video_guard():

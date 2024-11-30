@@ -1,13 +1,19 @@
 import datetime
 import logging
-import typing
 from functools import cached_property
 
 from emoji.core import emojize
 
 from libs.casual_utils.time import get_current_time
 from libs.messengers.utils import escape_markdown
-from .wifi import WifiDevice, get_connected_devices_to_router
+
+from .... import config
+from ...arduino.constants import ArduinoSensorTypes
+from ...common.constants import INITED_AT
+from ...common.exceptions import Shutdown
+from ...common.state import State
+from ...common.utils import get_cpu_temp, get_effective_temperature, get_free_disk_space, get_ram_usage
+from ...signals.models import Signal
 from ..constants import (
     ARDUINO_IS_ENABLED,
     AUTO_SECURITY_IS_ENABLED,
@@ -18,13 +24,7 @@ from ..constants import (
     VIDEO_RECORDING_IS_ENABLED,
     VIDEO_SECURITY_IS_ENABLED,
 )
-from ...arduino.constants import ArduinoSensorTypes
-from ...common.constants import INITED_AT
-from ...common.exceptions import Shutdown
-from ...common.state import State
-from ...common.utils import get_cpu_temp, get_effective_temperature, get_free_disk_space, get_ram_usage
-from ...signals.models import Signal
-from .... import config
+from .wifi import WifiDevice, get_connected_devices_to_router
 
 
 class ShortTextReport:
@@ -82,22 +82,22 @@ class ShortTextReport:
         )
 
     @cached_property
-    def _humidity(self) -> typing.Optional[float]:
+    def _humidity(self) -> float | None:
         return Signal.get_one_aggregated(ArduinoSensorTypes.HUMIDITY)
 
     @cached_property
-    def _second_humidity(self) -> typing.Optional[float]:
+    def _second_humidity(self) -> float | None:
         return Signal.get_one_aggregated(
             ArduinoSensorTypes.HUMIDITY,
             datetime_range=self._datetime_range_for_second_aggregation,
         )
 
     @cached_property
-    def _temperature(self) -> typing.Optional[float]:
+    def _temperature(self) -> float | None:
         return Signal.get_one_aggregated(ArduinoSensorTypes.TEMPERATURE)
 
     @cached_property
-    def _second_temperature(self) -> typing.Optional[float]:
+    def _second_temperature(self) -> float | None:
         return Signal.get_one_aggregated(
             ArduinoSensorTypes.TEMPERATURE,
             datetime_range=self._datetime_range_for_second_aggregation,
@@ -108,7 +108,7 @@ class ShortTextReport:
         if self._humidity is None:
             return self.NOTHING
 
-        humidity_info = f'{round(self._humidity, 1)}%{self._get_mark(self._humidity, (30, 45.5,), (30, 60.5,))}'
+        humidity_info = f'{round(self._humidity, 1)}%{self._get_mark(self._humidity, (30, 45.5), (30, 60.5))}'
 
         if self._second_humidity is not None:
             diff = round(self._humidity - self._second_humidity, 1)
@@ -123,9 +123,7 @@ class ShortTextReport:
         if self._temperature is None:
             return self.NOTHING
 
-        temperature_info = (
-            f'{round(self._temperature, 1)}℃{self._get_mark(self._temperature, (20, 22.5,), (18, 24.5,))}'
-        )
+        temperature_info = f'{round(self._temperature, 1)}℃{self._get_mark(self._temperature, (20, 22.5), (18, 24.5))}'
 
         if self._second_temperature is not None:
             diff = round(self._temperature - self._second_temperature, 1)
@@ -145,7 +143,7 @@ class ShortTextReport:
             humidity=self._humidity,
         )
 
-        temperature_info = f'{round(temperature, 1)}℃{self._get_mark(temperature, (18, 22.5,), (16, 26.5,))}'
+        temperature_info = f'{round(temperature, 1)}℃{self._get_mark(temperature, (18, 22.5), (16, 26.5))}'
 
         if self._second_temperature is not None and self._second_humidity is not None:
             second_temperature = get_effective_temperature(
@@ -194,7 +192,7 @@ class ShortTextReport:
     @property
     def _ram_usage_info(self) -> str:
         ram_usage = get_ram_usage() * 100
-        return f'{round(ram_usage, 1)}%{self._get_mark(ram_usage, (0, 60,), (0, 80,))}'
+        return f'{round(ram_usage, 1)}%{self._get_mark(ram_usage, (0, 60), (0, 80))}'
 
     @property
     def _free_space_info(self) -> str:
@@ -203,11 +201,11 @@ class ShortTextReport:
             free_space,
             (
                 1,
-                float("inf"),
+                float('inf'),
             ),
             (
                 0.5,
-                float("inf"),
+                float('inf'),
             ),
         )
         return f'{round(free_space, 2)}GB {mark}'
@@ -219,7 +217,7 @@ class ShortTextReport:
         except RuntimeError:
             cpu_temperature_info = self.NOTHING
         else:
-            cpu_temperature_info = f'{round(cpu_temperature, 1)}℃{self._get_mark(cpu_temperature, (0, 60,), (0, 80,))}'
+            cpu_temperature_info = f'{round(cpu_temperature, 1)}℃{self._get_mark(cpu_temperature, (0, 60), (0, 80))}'
 
         return cpu_temperature_info
 

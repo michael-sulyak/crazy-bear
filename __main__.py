@@ -37,24 +37,21 @@ def get_traces_sampler(sampling_context: dict) -> float:
     op = sampling_context['transaction_context']['op']
 
     if op == 'cmd':
-        return 0.1
+        value = 0.1
+    elif op == 'task':
+        value = 0.05
+    elif op == 'repeatabletask':
+        value = 0.0005
+    elif op == 'delayedtask':
+        value = 0.005
+    elif op == 'intervaltask':
+        value = 0.001
+    elif op == 'scheduledtask':
+        value = 0.05
+    else:
+        value = 0.25
 
-    if op == 'task':
-        return 0.05
-
-    if op == 'repeatabletask':
-        return 0.0005
-
-    if op == 'delayedtask':
-        return 0.005
-
-    if op == 'intervaltask':
-        return 0.001
-
-    if op == 'scheduledtask':
-        return 0.05
-
-    return 0.25
+    return value
 
 
 def main() -> None:
@@ -65,7 +62,10 @@ def main() -> None:
         # commander.close()
         raise Shutdown
 
-    for signal_name in ('SIGINT', 'SIGTERM',):
+    for signal_name in (
+        'SIGINT',
+        'SIGTERM',
+    ):
         signal.signal(getattr(signal, signal_name), shutdown)
 
     sentry_sdk.init(
@@ -93,9 +93,11 @@ def main() -> None:
 
     logging.info('Setting up commander...')
 
-    state = State({
-        INITED_AT: datetime.datetime.now(),
-    })
+    state = State(
+        {
+            INITED_AT: datetime.datetime.now(),
+        },
+    )
 
     messenger = TelegramMessenger(
         message_handler=process_telegram_message,
@@ -147,7 +149,13 @@ def main() -> None:
 
     initial_commands = (
         Command(name=BotCommands.ARDUINO, args=(ON,)),
-        Command(name=BotCommands.SECURITY, args=(AUTO, ON,)),
+        Command(
+            name=BotCommands.SECURITY,
+            args=(
+                AUTO,
+                ON,
+            ),
+        ),
         Command(name=BotCommands.STATUS),
     )
 

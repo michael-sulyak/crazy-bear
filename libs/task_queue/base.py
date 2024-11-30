@@ -17,8 +17,8 @@ __all__ = (
 
 
 class TaskPriorityQueue(Queue):
-    queue_map: typing.Dict[int, typing.List[tuple[typing.Any, Task]]]
-    priorities: typing.List[int]
+    queue_map: dict[int, list[tuple[typing.Any, Task]]]
+    priorities: list[int]
 
     def _init(self, maxsize) -> None:
         self.queue_map = {}
@@ -40,7 +40,7 @@ class TaskPriorityQueue(Queue):
             ),
         )
 
-    def _get(self) -> typing.Optional[Task]:
+    def _get(self) -> Task | None:
         now = datetime.datetime.now()
 
         for priority in self.priorities:
@@ -63,12 +63,12 @@ class BaseTaskQueue(abc.ABC):
     def put(
         self,
         target: typing.Callable,
-        args: typing.Optional[tuple] = None,
-        kwargs: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        args: tuple | None = None,
+        kwargs: dict[str, typing.Any] | None = None,
         *,
         priority: int = TaskPriorities.MEDIUM,
-        run_after: typing.Optional[datetime.datetime] = None,
-    ) -> typing.Optional[Task]:
+        run_after: datetime.datetime | None = None,
+    ) -> Task | None:
         if run_after is None:
             run_after = datetime.datetime.now()
 
@@ -89,7 +89,7 @@ class BaseTaskQueue(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get(self) -> typing.Optional[Task]:
+    def get(self) -> Task | None:
         pass
 
 

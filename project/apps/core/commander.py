@@ -1,22 +1,23 @@
 import logging
 import queue
-import typing
 
 from telegram.error import NetworkError
 
 from libs.casual_utils.logging import log_performance
-from libs.smart_devices.base import BaseSmartDevice
 from libs.messengers.base import BaseMessenger
+from libs.smart_devices.base import BaseSmartDevice
 from libs.task_queue import BaseTaskQueue, BaseWorker, MemTaskQueue, ThreadWorker
 from libs.task_queue.middlewares import ConcreteRetries, ExceptionLogging, SupportOfRetries
 from libs.zigbee.base import ZigBee
-from . import events, events as core_events
-from .base import BaseModule, ModuleContext
-from .events import new_message
+
 from ..common.base import BaseReceiver
 from ..common.exceptions import Shutdown
 from ..common.state import State
 from ..db import close_db_session
+from . import events
+from . import events as core_events
+from .base import BaseModule, ModuleContext
+from .events import new_message
 
 
 class Commander:
@@ -33,7 +34,7 @@ class Commander:
         self,
         *,
         messenger: BaseMessenger,
-        module_classes: tuple[typing.Type[BaseModule], ...],
+        module_classes: tuple[type[BaseModule], ...],
         state: State,
         zig_bee: ZigBee,
         smart_devices: tuple[BaseSmartDevice, ...],

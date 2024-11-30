@@ -4,6 +4,7 @@ import typing
 from dataclasses import dataclass
 
 from libs.casual_utils.parallel_computing import synchronized_method
+
 from .base import BaseReceiver
 from .exceptions import Shutdown
 

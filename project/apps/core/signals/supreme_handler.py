@@ -1,6 +1,9 @@
 import typing
 
 from libs import task_queue
+
+from ...common.events import Receiver
+from ..base import ModuleContext
 from .arduino import ArduinoHandler
 from .base import BaseSignalHandler
 from .cpu_temp import CpuTempHandler
@@ -9,12 +12,10 @@ from .ram_usage import RamUsageHandler
 from .router import RouterHandler
 from .water_leak_sensor import WaterLeakSensorHandler
 from .weather import WeatherHandler
-from ..base import ModuleContext
-from ...common.events import Receiver
 
 
 class SupremeSignalHandler:
-    handlers: tuple[typing.Type[BaseSignalHandler], ...] = (
+    handlers: tuple[type[BaseSignalHandler], ...] = (
         CpuTempHandler,
         WeatherHandler,
         RamUsageHandler,

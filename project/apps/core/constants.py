@@ -1,6 +1,6 @@
 from emoji.core import emojize
 
-from ..common.constants import ON, OFF
+from ..common.constants import OFF, ON
 
 
 CPU_TEMPERATURE = 'cpu_temperature'

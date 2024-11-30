@@ -1,11 +1,12 @@
 import datetime
 
 from libs.casual_utils.time import get_current_time
-from .base import BaseSignalHandler, IntervalNotificationCheckMixin
-from .utils import get_default_signal_compress_datetime_range
-from .. import constants
+
 from ...common import utils
 from ...signals.models import Signal
+from .. import constants
+from .base import BaseSignalHandler, IntervalNotificationCheckMixin
+from .utils import get_default_signal_compress_datetime_range
 
 
 class WeatherHandler(IntervalNotificationCheckMixin, BaseSignalHandler):

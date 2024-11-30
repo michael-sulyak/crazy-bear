@@ -6,8 +6,7 @@ import serial
 from libs.casual_utils.parallel_computing import synchronized_method
 from libs.messengers.utils import escape_markdown
 from libs.task_queue import IntervalTask, TaskPriorities
-from ..base import BaseModule
-from ..constants import ARDUINO_IS_ENABLED, BotCommands, MotionTypeSources
+
 from ...arduino.base import ArduinoConnector
 from ...arduino.constants import ArduinoSensorTypes
 from ...common import interface
@@ -16,6 +15,8 @@ from ...common.utils import with_throttling
 from ...core import events
 from ...core.constants import SECURITY_IS_ENABLED
 from ...signals.models import Signal
+from ..base import BaseModule
+from ..constants import ARDUINO_IS_ENABLED, BotCommands, MotionTypeSources
 
 
 __all__ = ('Arduino',)
@@ -26,10 +27,10 @@ __all__ = ('Arduino',)
     description='The module processes data from Arduino. Also it contains logic for the security mode.',
 )
 class Arduino(BaseModule):
-    initial_state = {
+    initial_state: typing.ClassVar= {
         ARDUINO_IS_ENABLED: False,
     }
-    _arduino_connector: typing.Optional[ArduinoConnector] = None
+    _arduino_connector: ArduinoConnector | None = None
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -105,7 +106,7 @@ class Arduino(BaseModule):
             self.messenger.send_message('Arduino is already off')
 
     @synchronized_method
-    def _process_new_arduino_logs(self, signals: typing.List[Signal]) -> None:
+    def _process_new_arduino_logs(self, signals: list[Signal]) -> None:
         if self.state[SECURITY_IS_ENABLED]:
             last_movement = None
 

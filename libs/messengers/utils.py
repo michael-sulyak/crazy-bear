@@ -1,4 +1,3 @@
-import typing
 
 from telegram.helpers import escape_markdown as telegram_escape_markdown
 
@@ -12,7 +11,7 @@ class ProgressBar:
     _last_progress: float
     _last_title: str
 
-    def __init__(self, messenger: BaseMessenger, *, title: typing.Optional[str] = None) -> None:
+    def __init__(self, messenger: BaseMessenger, *, title: str | None = None) -> None:
         self.messenger = messenger
         self.title = '' if title is None else f'{title}\n'
 
@@ -29,7 +28,7 @@ class ProgressBar:
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         self.messenger.remove_message(self.message_id)
 
-    def set(self, progress: float, *, title: typing.Optional[str] = None) -> None:
+    def set(self, progress: float, *, title: str | None = None) -> None:
         if title is not None:
             if title == '':
                 self.title = ''
@@ -55,5 +54,5 @@ class ProgressBar:
         return f'`{a * s}{b * (length - s)} {str(int(progress * 100)).rjust(3, " ")}%`'
 
 
-def escape_markdown(text: str, entity_type: typing.Optional[str] = None) -> str:
+def escape_markdown(text: str, entity_type: str | None = None) -> str:
     return telegram_escape_markdown(text, version=2, entity_type=entity_type)

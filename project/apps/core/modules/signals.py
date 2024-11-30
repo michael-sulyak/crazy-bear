@@ -7,13 +7,14 @@ from crontab import CronTab
 from libs.casual_utils.time import get_current_time
 from libs.messengers.utils import ProgressBar
 from libs.task_queue import IntervalTask, ScheduledTask, TaskPriorities
-from .. import constants, events
-from ..base import BaseModule
-from ..signals.supreme_handler import SupremeSignalHandler
+
 from ... import db
 from ...common import interface
 from ...common.utils import create_plot
 from ...signals.models import Signal
+from .. import constants, events
+from ..base import BaseModule
+from ..signals.supreme_handler import SupremeSignalHandler
 
 
 __all__ = ('Signals',)
@@ -107,7 +108,7 @@ class Signals(BaseModule):
     def _create_task_queue_stats(
         date_range: tuple[datetime.datetime, datetime.datetime],
         components: set[str],
-    ) -> typing.Optional[io.BytesIO]:
+    ) -> io.BytesIO | None:
         if 'inner_stats' not in components:
             return None
 

@@ -2,7 +2,6 @@ import hashlib
 import random
 import threading
 import time
-import typing
 import uuid
 
 import requests
@@ -20,7 +19,7 @@ __all__ = (
 class MiWiFi:
     url: str
     password: str
-    token: typing.Optional[str] = None
+    token: str | None = None
     miwifi_type: int
     _lock: threading.RLock
     _timeout: int = 5

@@ -33,7 +33,7 @@ class VersionDetails:
             * `MICRO` - Version in the month.
         """
 
-        now = datetime.datetime.now(datetime.timezone.utc)
+        now = datetime.datetime.now(datetime.UTC)
         year = now.year % 1_000
         month = now.month
 
@@ -45,11 +45,11 @@ class VersionDetails:
     def save(self) -> None:
         version_line = self._get_version_match().group(0)
 
-        with open(self._filename_with_version, 'r') as file:
+        with open(self._filename_with_version) as file:
             file_data = file.read()
 
         with open(self._filename_with_version, 'w') as file:
-            file_data = file_data.replace(version_line, f'__version__ = \'{self.version}\'')
+            file_data = file_data.replace(version_line, f"__version__ = '{self.version}'")
             file.write(file_data)
 
     def _get_version(self) -> str:
@@ -64,7 +64,7 @@ class VersionDetails:
         with open(self._filename_with_version) as file:
             version_file = file.read()
 
-        version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", version_file, re.M)
+        version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", version_file, re.MULTILINE)
 
         assert version_match is not None
 

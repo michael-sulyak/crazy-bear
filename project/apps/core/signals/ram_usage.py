@@ -2,10 +2,10 @@ import datetime
 import io
 import typing
 
-from .base import BaseSimpleSignalHandler, NotificationParams
-from .. import constants
 from ...common import utils
 from ...signals.models import Signal
+from .. import constants
+from .base import BaseSimpleSignalHandler, NotificationParams
 
 
 class RamUsageHandler(BaseSimpleSignalHandler):
@@ -33,7 +33,7 @@ class RamUsageHandler(BaseSimpleSignalHandler):
         *,
         date_range: tuple[datetime.datetime, datetime.datetime],
         components: set[str],
-    ) -> typing.Optional[typing.Sequence[io.BytesIO]]:
+    ) -> typing.Sequence[io.BytesIO] | None:
         if 'inner_stats' not in components:
             return None
 

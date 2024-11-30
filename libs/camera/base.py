@@ -8,7 +8,7 @@ from libs.camera.fps import FPSTracker
 
 class VideoCamera:
     _is_run: threading.Event
-    _worker: typing.Optional[threading.Thread] = None
+    _worker: threading.Thread | None = None
     _video_stream: VideoStream
     _callback: typing.Callable
     _fps_tracker: FPSTracker

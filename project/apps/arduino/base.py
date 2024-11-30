@@ -7,15 +7,16 @@ from dataclasses import dataclass, field
 import serial as serial_lib
 
 from libs.casual_utils.time import get_current_time
-from . import constants
-from ..signals.models import Signal
+
 from ... import config
+from ..signals.models import Signal
+from . import constants
 
 
 @dataclass
 class ArduinoResponse:
     type: str
-    payload: typing.Optional[dict] = None
+    payload: dict | None = None
     received_at: datetime.datetime = field(
         default_factory=get_current_time,
     )
@@ -28,7 +29,7 @@ class ArduinoConnector:
     _empty_string: bytes = b''
     _buffer: bytes = _empty_string
 
-    def __init__(self, serial: typing.Optional[serial_lib.Serial] = None) -> None:
+    def __init__(self, serial: serial_lib.Serial | None = None) -> None:
         if serial is None:
             serial = serial_lib.Serial()
             serial.setPort(config.ARDUINO_TTY)

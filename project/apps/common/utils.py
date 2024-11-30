@@ -9,9 +9,8 @@ from collections import deque
 from contextlib import contextmanager
 
 import cv2
-import matplotlib
+import matplotlib as mpl
 import matplotlib.dates as mdates
-import matplotlib.pyplot as plt
 import pandas as pd
 import pytz
 import requests
@@ -20,6 +19,7 @@ from matplotlib.ticker import AutoLocator, MaxNLocator
 from requests import RequestException
 
 from libs.casual_utils.time import get_current_time
+
 from ... import config
 from ...config import PY_TZ
 
@@ -78,12 +78,12 @@ def get_cpu_temp() -> float:
 def init_settings_for_plt() -> None:
     import mplcyberpunk  # NOQA
 
-    matplotlib.use('Agg')
-    plt.ioff()
+    mpl.use('Agg')
+    mpl.plt.ioff()
     pd.plotting.register_matplotlib_converters()
-    plt.rcParams.update({'font.family': 'Roboto'})
+    mpl.plt.rcParams.update({'font.family': 'Roboto'})
 
-    plt.style.use('cyberpunk')
+    mpl.plt.style.use('cyberpunk')
 
 
 @timer
@@ -93,8 +93,8 @@ def create_plot(
     x_attr: str,
     y_attr: str,
     stats: typing.Sequence,
-    additional_plots: typing.Optional[typing.Sequence[dict]] = None,
-    legend: typing.Optional[typing.Sequence[str]] = None,
+    additional_plots: typing.Sequence[dict] | None = None,
+    legend: typing.Sequence[str] | None = None,
 ) -> io.BytesIO:
     if len(stats) <= 2:
         marker = 'o'
@@ -105,17 +105,15 @@ def create_plot(
     y = tuple(round(getattr(item, y_attr), 1) for item in stats)
     x_is_date = isinstance(
         x[0],
-        (
-            datetime.date,
-            datetime.datetime,
-        ),
+
+            datetime.date| datetime.datetime
     )
 
-    fig, ax = plt.subplots(
+    fig, ax = mpl.plt.subplots(
         figsize=(
             12,
             8,
-        )
+        ),
     )
     ax.plot(mdates.date2num(x) if x_is_date else x, y, marker=marker)
 
@@ -140,27 +138,27 @@ def create_plot(
         if diff < datetime.timedelta(seconds=10):
             ax.xaxis.set_major_formatter(DateFormatter('%H:%M:%S', tz=config.PY_TZ))
             ax.xaxis.set_major_locator(mdates.SecondLocator(interval=1))
-            plt.xlabel(f'Time {postfix}')
+            mpl.plt.xlabel(f'Time {postfix}')
         elif diff < datetime.timedelta(minutes=20):
             ax.xaxis.set_major_formatter(DateFormatter('%H:%M', tz=config.PY_TZ))
             ax.xaxis.set_major_locator(mdates.MinuteLocator(interval=1))
-            plt.xlabel(f'Time {postfix}')
+            mpl.plt.xlabel(f'Time {postfix}')
         elif diff <= datetime.timedelta(hours=24):
             ax.xaxis.set_major_formatter(DateFormatter('%H', tz=config.PY_TZ))
             ax.xaxis.set_major_locator(mdates.HourLocator(interval=1))
-            plt.xlabel(f'Hours {postfix}')
+            mpl.plt.xlabel(f'Hours {postfix}')
         elif diff < datetime.timedelta(days=30):
             ax.xaxis.set_major_formatter(DateFormatter('%d', tz=config.PY_TZ))
             ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
-            plt.xlabel(f'Days {postfix}')
+            mpl.plt.xlabel(f'Days {postfix}')
         elif diff < datetime.timedelta(days=30 * 15):
             ax.xaxis.set_major_formatter(DateFormatter('%m', tz=config.PY_TZ))
             ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
-            plt.xlabel(f'Months {postfix}')
+            mpl.plt.xlabel(f'Months {postfix}')
         else:
             ax.xaxis.set_major_formatter(DateFormatter('%y', tz=config.PY_TZ))
             ax.xaxis.set_major_locator(mdates.YearLocator())
-            plt.xlabel(f'Years {postfix}')
+            mpl.plt.xlabel(f'Years {postfix}')
     else:
         ax.xaxis.set_major_locator(AutoLocator())
 
@@ -174,7 +172,7 @@ def create_plot(
     buffer.seek(0)
 
     fig.clear()
-    plt.close(fig)
+    mpl.plt.close(fig)
 
     return buffer
 
@@ -203,7 +201,7 @@ def get_sunrise_time() -> datetime.datetime:
     return pytz.UTC.localize(sunrise_dt)
 
 
-def is_sleep_hours(timestamp: typing.Optional[datetime.datetime] = None) -> bool:
+def is_sleep_hours(timestamp: datetime.datetime | None = None) -> bool:
     if timestamp is None:
         timestamp = datetime.datetime.now()
 
@@ -211,8 +209,8 @@ def is_sleep_hours(timestamp: typing.Optional[datetime.datetime] = None) -> bool
 
     if config.SLEEPING_TIME[0] > config.SLEEPING_TIME[1]:
         return timestamp_time >= config.SLEEPING_TIME[0] or timestamp_time <= config.SLEEPING_TIME[1]
-    else:
-        return config.SLEEPING_TIME[0] <= timestamp_time <= config.SLEEPING_TIME[1]
+
+    return config.SLEEPING_TIME[0] <= timestamp_time <= config.SLEEPING_TIME[1]
 
 
 def convert_params_to_date_range(
@@ -249,19 +247,13 @@ def max_timer(max_timedelta: datetime.timedelta, log: typing.Callable = logging.
     return _decorator
 
 
-def get_my_ip() -> str:
-    response = requests.get('https://api.ipify.org')
-    response.raise_for_status()
-    return response.content.decode('utf8')
-
-
 def get_ram_usage() -> float:
     total, used, free = map(int, os.popen('free -t -m').readlines()[1].split()[1:4])
     return 1 - free / total
 
 
 def get_free_disk_space() -> int:
-    return int(os.popen('df / --output=avail -B M |tail -n 1 |tr -d M |awk \'{print $1}\'').readlines()[0])
+    return int(os.popen("df / --output=avail -B M |tail -n 1 |tr -d M |awk '{print $1}'").readlines()[0])
 
 
 @contextmanager

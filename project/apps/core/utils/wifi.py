@@ -1,14 +1,14 @@
 import typing
 from dataclasses import dataclass
 
-from ...common.routers.utils import get_connected_macs_to_router
 from .... import config
+from ...common.routers.utils import get_connected_macs_to_router
 
 
 @dataclass(frozen=True)
 class WifiDevice:
     mac_address: str
-    name: typing.Optional[str] = None
+    name: str | None = None
     is_defining: bool = False
 
 

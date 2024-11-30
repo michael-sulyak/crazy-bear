@@ -2,11 +2,12 @@ import datetime
 
 from libs.messengers.utils import escape_markdown
 from libs.task_queue import TaskPriorities
+
+from ...common import interface
 from ..base import BaseModule, Command
 from ..constants import (
     BotCommands,
 )
-from ...common import interface
 
 
 __all__ = ('Utils',)

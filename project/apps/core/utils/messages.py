@@ -2,20 +2,18 @@ import logging
 
 from libs.messengers.base import MessageInfo
 from libs.messengers.telegram import TelegramMessenger
-from .. import events
-from ..base import Message, Command
+
 from .... import config
+from .. import events
+from ..base import Command, Message
 
 
 def process_telegram_message(message: MessageInfo, *, messanger: TelegramMessenger) -> None:
     if message.user.username != config.TELEGRAM_USERNAME:
-        text = message.text.replace("`", "\\`")
+        text = message.text.replace('`', '\\`')
 
         error_message = (
-            f'User "{message.user.name}" '
-            f'(@{message.user.username}) sent '
-            f'in chat #{message.chat.id}:\n'
-            f'```\n{text}\n```'
+            f'User "{message.user.name}" (@{message.user.username}) sent in chat #{message.chat.id}:\n```\n{text}\n```'
         )
 
         if text == '/start':

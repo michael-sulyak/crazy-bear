@@ -3,13 +3,15 @@ import typing
 
 import sqlalchemy
 from pandas import DataFrame
-from sqlalchemy import ColumnElement, func as sa_func
+from sqlalchemy import ColumnElement
+from sqlalchemy import func as sa_func
 
 from libs.casual_utils.time import get_current_time
+
+from ... import config
 from .. import db
 from ..common.storage import file_storage
 from ..db import get_db_session
-from ... import config
 
 
 class Signal(db.Base):
@@ -35,7 +37,7 @@ class Signal(db.Base):
     )
 
     @classmethod
-    def add(cls, signal_type: str, value: float, *, received_at: typing.Optional[datetime.datetime] = None) -> 'Signal':
+    def add(cls, signal_type: str, value: float, *, received_at: datetime.datetime | None = None) -> 'Signal':
         if received_at is None:
             received_at = get_current_time()
 
@@ -68,7 +70,7 @@ class Signal(db.Base):
         if not query_data:
             return []
 
-        signals: list['Signal'] = (
+        signals: list[Signal] = (
             db.get_db_session()
             .query(  # type: ignore
                 cls.value,
@@ -95,7 +97,7 @@ class Signal(db.Base):
         *,
         aggregate_function: typing.Callable = sa_func.avg,
         datetime_range: tuple[datetime.datetime, datetime.datetime],
-    ) -> typing.List['Signal']:
+    ) -> list['Signal']:
         query_data = cls._get_query_data(
             signal_type=signal_type,
             datetime_range=datetime_range,
@@ -133,7 +135,7 @@ class Signal(db.Base):
         signal_type: str,
         *,
         aggregate_function: typing.Callable = sa_func.avg,
-        datetime_range: typing.Optional[tuple[datetime.datetime, datetime.datetime]] = None,
+        datetime_range: tuple[datetime.datetime, datetime.datetime] | None = None,
         period: datetime.timedelta = datetime.timedelta(minutes=1),
     ) -> typing.Any:
         now = get_current_time()
@@ -236,14 +238,14 @@ class Signal(db.Base):
             if not (0 < i < len(signals) - 1):
                 continue
 
-            cond_1 = signals[i].received_at - last_saved_value.received_at <= approximation_time
+            cond_1 = item.received_at - last_saved_value.received_at <= approximation_time
             cond_2 = abs(item.value - last_saved_value.value) <= approximation_value
             cond_3 = abs(signals[i + 1].value - item.value) <= approximation_value
 
             if cond_1 and cond_2 and cond_3:
                 received_at_to_remove.append(item.received_at)
             else:
-                last_saved_value = signals[i]
+                last_saved_value = item
 
         if received_at_to_remove:
             with db.session_transaction() as session:
@@ -294,7 +296,7 @@ class Signal(db.Base):
             )
 
     @classmethod
-    def backup(cls, datetime_range: typing.Optional[tuple[datetime.datetime, datetime.datetime]] = None) -> None:
+    def backup(cls, datetime_range: tuple[datetime.datetime, datetime.datetime] | None = None) -> None:
         filters: tuple[ColumnElement[bool], ...]
 
         if datetime_range is None:
@@ -353,7 +355,7 @@ class Signal(db.Base):
         signal_type: str,
         *,
         datetime_range: tuple[datetime.datetime, datetime.datetime],
-    ) -> typing.Optional[dict[str, typing.Any]]:
+    ) -> dict[str, typing.Any] | None:
         time_filter = (
             db.get_db_session()
             .query(

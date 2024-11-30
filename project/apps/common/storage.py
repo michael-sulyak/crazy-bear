@@ -9,6 +9,7 @@ from pandas import DataFrame
 
 from libs.casual_utils.parallel_computing import single_synchronized
 from libs.casual_utils.time import get_current_time
+
 from ... import config
 
 

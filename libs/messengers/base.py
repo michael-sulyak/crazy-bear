@@ -11,7 +11,7 @@ class BaseMessenger(mixins.BaseCVMixin, abc.ABC):
 
     @property
     @abc.abstractmethod
-    def last_sent_at(self) -> typing.Optional[datetime.datetime]:
+    def last_sent_at(self) -> datetime.datetime | None:
         pass
 
     @abc.abstractmethod
@@ -19,7 +19,7 @@ class BaseMessenger(mixins.BaseCVMixin, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def send_image(self, image: typing.Any, *, caption: typing.Optional[str] = None) -> None:
+    def send_image(self, image: typing.Any, *, caption: str | None = None) -> None:
         pass
 
     @abc.abstractmethod
@@ -27,7 +27,7 @@ class BaseMessenger(mixins.BaseCVMixin, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def send_file(self, file: typing.Any, *, caption: typing.Optional[str] = None) -> None:
+    def send_file(self, file: typing.Any, *, caption: str | None = None) -> None:
         pass
 
     @abc.abstractmethod
@@ -52,8 +52,8 @@ class BaseMessenger(mixins.BaseCVMixin, abc.ABC):
 
 @dataclass
 class UserInfo:
-    username: typing.Optional[str]
-    name: typing.Optional[str]
+    username: str | None
+    name: str | None
 
 
 @dataclass

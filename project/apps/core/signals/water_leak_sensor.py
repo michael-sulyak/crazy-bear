@@ -3,9 +3,10 @@ from functools import partial
 
 from libs.zigbee.water_leak_sensor.aqara import AqaraWaterLeakSensor
 from project.config import SmartDeviceNames
+
+from ...signals.models import Signal
 from .base import BaseSignalHandler
 from .utils import get_default_signal_compress_datetime_range
-from ...signals.models import Signal
 
 
 __all__ = ('WaterLeakSensorHandler',)
@@ -18,7 +19,7 @@ class WaterLeakSensorHandler(BaseSignalHandler):
         super().__init__(*args, **kwargs)
 
         for device_name in self.device_names:
-            sensor: AqaraWaterLeakSensor = self._context.smart_devices_map[device_name]  # noqa
+            sensor: AqaraWaterLeakSensor = self._context.smart_devices_map[device_name]
             sensor.subscribe_on_update(partial(self._process_update, device_name=device_name))
 
     def compress(self) -> None:
@@ -36,7 +37,7 @@ class WaterLeakSensorHandler(BaseSignalHandler):
 
     def disable(self) -> None:
         for device_name in self.device_names:
-            sensor: AqaraWaterLeakSensor = self._context.smart_devices_map[device_name]  # noqa
+            sensor: AqaraWaterLeakSensor = self._context.smart_devices_map[device_name]
             sensor.unsubscribe()
 
     def _process_update(self, state: dict, *, device_name: str) -> None:

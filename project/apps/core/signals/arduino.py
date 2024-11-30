@@ -5,14 +5,15 @@ import typing
 from collections import defaultdict
 
 from libs.casual_utils.parallel_computing import synchronized_method
-from .base import BaseSignalHandler
-from .utils import get_default_signal_compress_datetime_range
-from .. import events
+
 from ...arduino.constants import ArduinoSensorTypes
 from ...common.events import Receiver
 from ...common.utils import create_plot
 from ...core import constants
 from ...signals.models import Signal
+from .. import events
+from .base import BaseSignalHandler
+from .utils import get_default_signal_compress_datetime_range
 
 
 class ArduinoHandler(BaseSignalHandler):
@@ -72,7 +73,7 @@ class ArduinoHandler(BaseSignalHandler):
         *,
         date_range: tuple[datetime.datetime, datetime.datetime],
         components: set[str],
-    ) -> typing.Optional[typing.Sequence[io.BytesIO]]:
+    ) -> typing.Sequence[io.BytesIO] | None:
         if 'arduino' not in components:
             return None
 
@@ -199,11 +200,7 @@ class ArduinoHandler(BaseSignalHandler):
 
     def _can_send_warning(self, name: str, timedelta_for_sending: datetime.timedelta) -> bool:
         now = datetime.datetime.now()
-
-        if now - self._last_sent_at_map[name] <= timedelta_for_sending:
-            return False
-
-        return True
+        return now - self._last_sent_at_map[name] > timedelta_for_sending
 
     def _mark_as_sent(self, name: str) -> None:
         now = datetime.datetime.now()

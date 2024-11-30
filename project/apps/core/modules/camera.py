@@ -11,8 +11,8 @@ from libs.camera.base import VideoCamera
 from libs.casual_utils.parallel_computing import synchronized_method
 from libs.image_processing.utils import add_timestamp_in_frame
 from libs.task_queue import IntervalTask
-from ..base import BaseModule
-from ..constants import BotCommands, MotionTypeSources
+
+from .... import config
 from ...common import interface
 from ...common.constants import OFF, ON
 from ...common.exceptions import Shutdown
@@ -31,7 +31,8 @@ from ...core.constants import (
     VIDEO_SECURITY_IS_ENABLED,
 )
 from ...guard.video_guard import VideoGuard
-from .... import config
+from ..base import BaseModule
+from ..constants import BotCommands, MotionTypeSources
 
 
 __all__ = ('Camera',)
@@ -42,15 +43,15 @@ __all__ = ('Camera',)
     description=('The module provides integration with a camera.'),
 )
 class Camera(BaseModule):
-    initial_state = {
+    initial_state: typing.ClassVar = {
         VIDEO_SECURITY_IS_ENABLED: None,
         USE_CAMERA: False,
         CAMERA_IS_AVAILABLE: True,
         CURRENT_FPS: None,
         VIDEO_RECORDING_IS_ENABLED: False,
     }
-    _video_stream: typing.Optional[VideoStream] = None
-    _video_camera: typing.Optional[VideoCamera] = None
+    _video_stream: VideoStream | None = None
+    _video_camera: VideoCamera | None = None
     _camera_is_available: bool = True
     _video_frames: list
 
@@ -96,7 +97,7 @@ class Camera(BaseModule):
 
     @synchronized_method
     def check(self) -> None:
-        video_guard: typing.Optional[VideoGuard] = self.state[VIDEO_SECURITY_IS_ENABLED]
+        video_guard: VideoGuard | None = self.state[VIDEO_SECURITY_IS_ENABLED]
         use_camera: bool = self.state[USE_CAMERA]
         security_is_enabled: bool = self.state[SECURITY_IS_ENABLED]
 
@@ -337,7 +338,7 @@ class Camera(BaseModule):
                 raise
             except Exception as e:
                 logging.exception(e)
-                self.messenger.send_message('Can\'t process the frame')
+                self.messenger.send_message("Can't process the frame")
                 self._disable_camera()
 
         if self.state[VIDEO_RECORDING_IS_ENABLED]:

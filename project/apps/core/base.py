@@ -5,16 +5,17 @@ import typing
 from dataclasses import dataclass, field
 
 from libs.casual_utils.caching import memoized_method
-from libs.smart_devices.base import BaseSmartDevice
 from libs.messengers.base import BaseMessenger
+from libs.smart_devices.base import BaseSmartDevice
 from libs.task_queue import BaseTaskQueue
 from libs.task_queue.dto import RepeatableTask, ScheduledTask
 from libs.zigbee.base import ZigBee
-from . import constants, events
+
 from ..common import interface
 from ..common.base import BaseReceiver
 from ..common.state import State
 from ..common.types import FrozenDict
+from . import constants, events
 
 
 @dataclass
@@ -113,7 +114,7 @@ class Command:
     )
 
     def __repr__(self) -> str:
-        return f'{self.__class__.__name__}(\'{self.name}\', args={self.args}, kwargs={self.kwargs})'
+        return f"{self.__class__.__name__}('{self.name}', args={self.args}, kwargs={self.kwargs})"
 
     @property
     def first_arg(self) -> typing.Any:
@@ -149,11 +150,11 @@ class Command:
 
     @memoized_method(maxsize=1)
     def get_flags(self) -> set[str]:
-        return set(arg for arg in self.args if arg.startswith('-'))
+        return {arg for arg in self.args if arg.startswith('-')}
 
     @memoized_method(maxsize=1)
     def get_cleaned_flags(self) -> set[str]:
-        return set(arg[1:] for arg in self.get_flags())
+        return {arg[1:] for arg in self.get_flags()}
 
     @memoized_method(maxsize=1)
     def get_cleaned_args(self) -> tuple[str, ...]:
@@ -170,7 +171,7 @@ class Command:
         command_args = []
         command_kwargs = {}
 
-        for i, command_param in enumerate(command_params):
+        for command_param in command_params:
             if '=' in command_param:
                 name, value = command_param.split('=', 1)
                 command_kwargs[name] = value
@@ -186,7 +187,7 @@ class Command:
 
 @dataclass
 class Message:
-    chat_id: typing.Optional[int] = None
-    username: typing.Optional[str] = None
-    text: typing.Optional[str] = None
-    command: typing.Optional[Command] = None
+    chat_id: int | None = None
+    username: str | None = None
+    text: str | None = None
+    command: Command | None = None

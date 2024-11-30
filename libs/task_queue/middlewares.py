@@ -3,8 +3,9 @@ import datetime
 import logging
 import typing
 
-from . import BaseTaskQueue, Task, constants, exceptions as task_exceptions
 from ..casual_utils.logging import log_performance
+from . import BaseTaskQueue, Task, constants
+from . import exceptions as task_exceptions
 
 
 class BaseMiddleware(abc.ABC):
@@ -32,10 +33,10 @@ class ConcreteRetries(BaseMiddleware):
     """
 
     max_retries: float
-    exceptions: tuple[typing.Type[Exception], ...]
+    exceptions: tuple[type[Exception], ...]
 
     def __init__(
-        self, *, max_retries: float = 3, exceptions: tuple[typing.Type[Exception], ...] = (Exception,)
+        self, *, max_retries: float = 3, exceptions: tuple[type[Exception], ...] = (Exception,)
     ) -> None:
         super().__init__()
 
@@ -57,7 +58,7 @@ class ConcreteRetries(BaseMiddleware):
 
                 if retries <= self.max_retries:
                     logging.debug('Retry policy for %s', task)
-                    raise task_exceptions.RepeatTask(delay=self._get_retry_delay(retries))
+                    raise task_exceptions.RepeatTask(delay=self._get_retry_delay(retries)) from e
 
                 task.error = e
                 task.status = constants.TaskStatuses.FAILED
@@ -70,10 +71,7 @@ class ConcreteRetries(BaseMiddleware):
     @staticmethod
     def _get_retry_delay(retries: int) -> datetime.timedelta:
         delay = datetime.timedelta(seconds=retries**4 + 10)
-
-        if delay > datetime.timedelta(minutes=30):
-            delay = datetime.timedelta(minutes=30)
-
+        delay = min(delay, datetime.timedelta(minutes=30))
         return delay
 
 

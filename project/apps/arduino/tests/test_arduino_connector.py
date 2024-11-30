@@ -1,6 +1,6 @@
+from ...signals.models import Signal
 from ..base import ArduinoConnector
 from ..constants import ArduinoSensorTypes
-from ...signals.models import Signal
 
 
 class TestMessenger:

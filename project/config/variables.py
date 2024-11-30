@@ -15,7 +15,7 @@ ROOT_DIR = Path(dirname(__file__)) / '..' / '..'
 PROJECT_DIR = ROOT_DIR / 'project'
 APPS_DIR = PROJECT_DIR / 'apps'
 
-with open(os.path.join(ROOT_DIR, os.environ['CONFIG_PATH']), 'r') as config_file:
+with open(os.path.join(ROOT_DIR, os.environ['CONFIG_PATH'])) as config_file:
     json_config = json.load(config_file)
 
 # Version

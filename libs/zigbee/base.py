@@ -12,11 +12,11 @@ from collections import defaultdict
 from paho.mqtt.client import Client, MQTTMessage, MQTTMessageInfo, MQTTv5
 from paho.mqtt.enums import CallbackAPIVersion
 
-from . import exceptions
-from .constants import COORDINATOR_FRIENDLY_NAME, ZigBeePowerSources
 from ..casual_utils.parallel_computing import synchronized_method
 from ..smart_devices.base import BaseSmartDevice
 from ..smart_devices.constants import SmartDeviceType
+from . import exceptions
+from .constants import COORDINATOR_FRIENDLY_NAME, ZigBeePowerSources
 
 
 @dataclasses.dataclass
@@ -202,7 +202,7 @@ class ZigBee:
     @synchronized_method
     def close(self) -> None:
         if self._mq is None:
-            logging.warning('MQ wasn\'t created.')
+            logging.warning("MQ wasn't created.")
             return
 
         self.mq.loop_stop()

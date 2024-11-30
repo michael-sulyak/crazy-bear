@@ -6,23 +6,24 @@ import numpy as np
 from libs import task_queue as tq
 from libs.image_processing.motion_detector import MotionDetector
 from libs.messengers.base import BaseMessenger
-from ..common.storage import file_storage
+
 from ... import config
+from ..common.storage import file_storage
 
 
 class VideoGuard:
     motion_detector: MotionDetector
     messenger: BaseMessenger
     task_queue: tq.BaseTaskQueue
-    motion_detected_callback: typing.Optional[typing.Callable] = None
-    process_frame: typing.Optional[typing.Generator] = None
+    motion_detected_callback: typing.Callable | None = None
+    process_frame: typing.Generator | None = None
 
     def __init__(
         self,
         *,
         messenger: BaseMessenger,
         task_queue: tq.BaseTaskQueue,
-        motion_detected_callback: typing.Optional[typing.Callable] = None,
+        motion_detected_callback: typing.Callable | None = None,
     ) -> None:
         self.motion_detector = MotionDetector(show_frames=config.IMSHOW, max_fps=config.FPS)
         self.messenger = messenger
@@ -122,7 +123,7 @@ class VideoGuard:
             priority=tq.TaskPriorities.HIGH,
         )
 
-    def _send_video_to_messenger(self, frames: typing.List[np.ndarray], caption: str) -> None:
+    def _send_video_to_messenger(self, frames: list[np.ndarray], caption: str) -> None:
         self.task_queue.put(
             self.messenger.send_frames_as_video,
             args=(frames,),

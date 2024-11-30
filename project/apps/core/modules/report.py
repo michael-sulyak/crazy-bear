@@ -10,9 +10,7 @@ from sqlalchemy import text
 from libs.casual_utils.time import get_current_time
 from libs.messengers.utils import ProgressBar, escape_markdown
 from libs.task_queue import IntervalTask, TaskPriorities
-from .. import events
-from ..base import BaseModule, Command
-from ..utils.reports import ShortTextReport
+
 from ... import db
 from ...common import interface
 from ...common.exceptions import Shutdown
@@ -23,6 +21,9 @@ from ...common.utils import (
 )
 from ...core import constants
 from ...signals.models import Signal
+from .. import events
+from ..base import BaseModule, Command
+from ..utils.reports import ShortTextReport
 
 
 @interface.module(
@@ -30,7 +31,7 @@ from ...signals.models import Signal
     description='The module provides a short report with needed data.',
 )
 class Report(BaseModule):
-    _stats_flags_map = {
+    _stats_flags_map: typing.ClassVar = {
         'a': 'arduino',
         'e': 'extra_data',
         'i': 'inner_stats',
@@ -133,13 +134,7 @@ class Report(BaseModule):
                     continue
 
                 if result is not None:
-                    if isinstance(
-                        result,
-                        (
-                            tuple,
-                            list,
-                        ),
-                    ):
+                    if isinstance(result, tuple | list):
                         plots.extend(result)
                     else:
                         plots.append(result)
@@ -190,7 +185,7 @@ class Report(BaseModule):
         weather = f'{emojize(":thermometer:")} ️The weather in {weather_data["name"]}: *{weather_data["main"]["temp"]}℃*'
         weather += (
             f' ({weather_data["main"]["temp_min"]} \\.\\. {weather_data["main"]["temp_max"]}), '
-            if weather_data["main"]["temp_min"] != weather_data["main"]["temp_max"]
+            if weather_data['main']['temp_min'] != weather_data['main']['temp_max']
             else ', '
         )
         weather += f'{weather_data["weather"][0]["description"]}\\.'

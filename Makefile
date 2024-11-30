@@ -23,8 +23,7 @@ test:
 	poetry run pytest ./libs ./project
 
 format:
-	autoflake --remove-all-unused-imports --recursive --remove-unused-variables --in-place --exclude=__init__.py libs project
-	black --skip-string-normalization -t py311 --line-length=120 libs project
+	ruff check --fix
 
 full_check: mypy test
 

@@ -2,12 +2,13 @@ import logging
 import typing
 
 from libs.messengers.utils import escape_markdown
-from ..base import BaseModule
-from ..utils.wifi import check_if_host_is_at_home
+
 from ...common import interface
 from ...common.exceptions import Shutdown
 from ...common.routers.tplink import tplink_router
 from ...core import constants, events
+from ..base import BaseModule
+from ..utils.wifi import check_if_host_is_at_home
 
 
 __all__ = ('Router',)

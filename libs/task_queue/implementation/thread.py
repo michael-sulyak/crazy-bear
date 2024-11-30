@@ -31,7 +31,7 @@ class MemTaskQueue(BaseTaskQueue):
         logging.debug('Put %s to MemTaskQueue', task)
         self._tasks.put(task)
 
-    def get(self) -> typing.Optional[Task]:
+    def get(self) -> Task | None:
         try:
             return self._tasks.get(block=False)
         except queue.Empty:
@@ -40,19 +40,19 @@ class MemTaskQueue(BaseTaskQueue):
 
 class ThreadWorker(BaseWorker):
     task_queue: BaseTaskQueue
-    middlewares: typing.Tuple[BaseMiddleware, ...]
+    middlewares: tuple[BaseMiddleware, ...]
     _middleware_chain: typing.Callable
     _is_run: threading.Event
     _threads: tuple[threading.Thread, ...]
-    _on_close: typing.Optional[typing.Callable]
+    _on_close: typing.Callable | None
     _getting_delay: float = 0.1
 
     def __init__(
         self,
         *,
         task_queue: BaseTaskQueue,
-        on_close: typing.Optional[typing.Callable] = None,
-        middlewares: typing.Tuple[BaseMiddleware, ...],
+        on_close: typing.Callable | None = None,
+        middlewares: tuple[BaseMiddleware, ...],
         count: int = 1,
     ) -> None:
         self.task_queue = task_queue

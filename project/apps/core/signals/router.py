@@ -6,13 +6,14 @@ import typing
 from requests import ReadTimeout
 
 from libs import task_queue
-from .base import BaseSignalHandler, IntervalNotificationCheckMixin
-from .utils import get_default_signal_compress_datetime_range
-from .. import constants
-from ..utils.wifi import check_if_host_is_at_home
+
 from ...common.exceptions import Shutdown
 from ...common.utils import create_plot, is_sleep_hours
 from ...signals.models import Signal
+from .. import constants
+from ..utils.wifi import check_if_host_is_at_home
+from .base import BaseSignalHandler, IntervalNotificationCheckMixin
+from .utils import get_default_signal_compress_datetime_range
 
 
 class RouterHandler(IntervalNotificationCheckMixin, BaseSignalHandler):
@@ -44,8 +45,8 @@ class RouterHandler(IntervalNotificationCheckMixin, BaseSignalHandler):
             logging.warning(e)
             is_connected = False
             self._errors_count += 1
-        except Exception as e:
-            logging.exception(e)
+        except Exception:
+            logging.exception('Unexpected exception in "RouterHandler.process"')
             is_connected = False
             self._errors_count += 1
         else:
@@ -57,8 +58,7 @@ class RouterHandler(IntervalNotificationCheckMixin, BaseSignalHandler):
             )
             max_delta = datetime.timedelta(minutes=10) * date_coefficient
 
-            if delta > max_delta:
-                delta = max_delta
+            delta = min(delta, max_delta)
 
             self._check_after = now + delta
         else:
@@ -91,8 +91,7 @@ class RouterHandler(IntervalNotificationCheckMixin, BaseSignalHandler):
         *,
         date_range: tuple[datetime.datetime, datetime.datetime],
         components: set[str],
-    ) -> typing.Optional[typing.Sequence[io.BytesIO]]:
-
+    ) -> typing.Sequence[io.BytesIO] | None:
         if 'router_usage' not in components:
             return None
 

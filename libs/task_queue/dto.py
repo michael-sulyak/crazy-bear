@@ -7,16 +7,16 @@ from dataclasses import dataclass, field
 
 from crontab import CronTab
 
-from . import constants, exceptions
 from ..casual_utils.parallel_computing import synchronized_method
+from . import constants, exceptions
 
 
 __all__ = (
-    'Task',
+    'DelayedTask',
     'IntervalTask',
     'RepeatableTask',
-    'DelayedTask',
     'ScheduledTask',
+    'Task',
 )
 
 
@@ -27,7 +27,7 @@ class Task:
     args: tuple = field(
         default_factory=tuple,
     )
-    kwargs: typing.Dict[str, typing.Any] = field(
+    kwargs: dict[str, typing.Any] = field(
         default_factory=dict,
     )
     run_after: datetime.datetime = field(
@@ -36,10 +36,10 @@ class Task:
     result: typing.Any = field(
         default=None,
     )
-    error: typing.Optional[Exception] = field(
+    error: Exception | None = field(
         default=None,
     )
-    options: typing.Dict[str, typing.Any] = field(
+    options: dict[str, typing.Any] = field(
         default_factory=dict,
     )
     _status: str = field(
@@ -63,12 +63,12 @@ class Task:
     def create(
         cls,
         target: typing.Callable,
-        args: typing.Optional[tuple] = None,
-        kwargs: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        args: tuple | None = None,
+        kwargs: dict[str, typing.Any] | None = None,
         **params,
     ) -> 'Task':
         if args is None:
-            args = tuple()
+            args = ()
 
         if kwargs is None:
             kwargs = {}

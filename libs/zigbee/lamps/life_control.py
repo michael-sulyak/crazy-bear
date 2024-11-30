@@ -4,8 +4,8 @@ import threading
 import typing
 from time import sleep
 
-from ..base import BaseZigBeeDevice
 from ...casual_utils.parallel_computing import synchronized_method
+from ..base import BaseZigBeeDevice
 
 
 __all__ = ('LCSmartLamp',)
@@ -41,13 +41,13 @@ class LCSmartLamp(BaseZigBeeDevice):
         'neutral',
         'warm',
     )
-    color_temps_map = {
+    color_temps_map: typing.ClassVar = {
         'coolest': 250,
         'cool': 250,
         'neutral': 350,
         'warm': 150,
     }
-    colors_map = {
+    colors_map: typing.ClassVar = {
         'yellow': (
             249,
             215,
@@ -129,13 +129,13 @@ class LCSmartLamp(BaseZigBeeDevice):
 
     @synchronized_method
     @method_with_transition
-    def set_color_temp(self, value: typing.Union[str, int], *, transition: int = 0) -> None:
+    def set_color_temp(self, value: str | int, *, transition: int = 0) -> None:
         assert not isinstance(value, str) or value in self.color_temps
         assert not isinstance(value, int) or 150 <= value <= 500
         self.zig_bee.set(self.friendly_name, {'color_temp': value, 'transition': transition})
 
     @synchronized_method
-    def set_color_temp_startup(self, value: typing.Union[str, int]) -> None:
+    def set_color_temp_startup(self, value: str | int) -> None:
         assert not isinstance(value, str) or value in self.color_temps
         assert not isinstance(value, int) or 150 <= value <= 500
         self.zig_bee.set(self.friendly_name, {'color_temp_startup': value})

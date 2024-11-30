@@ -1,3 +1,6 @@
+import typing
+
+
 class ArduinoResponseTypes:
     SENSORS = 'sensors'
 
@@ -7,7 +10,7 @@ class ArduinoSensorTypes:
     HUMIDITY = 'humidity'
     TEMPERATURE = 'temperature'
 
-    ALL = {
+    ALL: typing.ClassVar = {
         PIR_SENSOR,
         HUMIDITY,
         TEMPERATURE,

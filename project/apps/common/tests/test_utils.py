@@ -6,7 +6,7 @@ from .. import utils
 
 class UtilsTestCase(unittest.TestCase):
     def test_is_sleep_hours(self):
-        timestamp_tpl = dict(year=2020, month=1, day=1)
+        timestamp_tpl = {'year': 2020, 'month': 1, 'day': 1}
 
         with utils.mock_var(
             utils.config,

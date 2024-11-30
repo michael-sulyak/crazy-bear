@@ -9,12 +9,12 @@ from ... import config
 
 __all__ = (
     'Base',
+    'close_db_session',
     'db_engine',
     'get_db_session',
-    'close_db_session',
-    'vacuum',
     'session_transaction',
     'transaction',
+    'vacuum',
 )
 
 Base = declarative_base()
@@ -42,18 +42,13 @@ def session_transaction() -> typing.Generator:
 @contextlib.contextmanager
 def transaction(session) -> typing.Generator:
     with session.begin_nested():
-        try:
-            yield
-        except Exception as e:
-            raise e
-        else:
-            session.commit()
+        yield
+        session.commit()
 
 
 close_db_session = MySession.remove
 
 
 def vacuum() -> None:
-    with db_engine.connect() as connection:
-        with connection.execution_options(isolation_level='AUTOCOMMIT'):
+    with db_engine.connect() as connection, connection.execution_options(isolation_level='AUTOCOMMIT'):
             connection.execute(text('VACUUM FULL;'))

@@ -10,12 +10,13 @@ from libs.task_queue import ScheduledTask, TaskPriorities
 from libs.zigbee.exceptions import ZigBeeTimeoutError
 from libs.zigbee.lamps.life_control import LCSmartLamp
 from project import config
-from . import constants
-from ..base import BaseModule, Command
-from ..constants import BotCommands
+
 from ...common import interface
 from ...common.constants import OFF, ON
 from ...common.utils import get_sunrise_time
+from ..base import BaseModule, Command
+from ..constants import BotCommands
+from . import constants
 
 
 __all__ = ('LampControllerInBedroom',)
@@ -24,7 +25,7 @@ __all__ = ('LampControllerInBedroom',)
 @interface.module(
     title='LampControllerInBedroom',
     description=(
-        'The module provides an interface for working with the smart lamp. Also, it\'s a part of the smart home.'
+        "The module provides an interface for working with the smart lamp. Also, it's a part of the smart home."
     ),
     commands=(
         interface.Command(constants.BotCommands.LAMP, interface.Choices(ON, OFF)),
@@ -43,8 +44,8 @@ __all__ = ('LampControllerInBedroom',)
 class LampControllerInBedroom(BaseModule):
     smart_lamp: LCSmartLamp
     _lock: threading.RLock
-    _last_manual_action: typing.Optional[datetime.datetime] = None
-    _last_artificial_sunrise_time: typing.Optional[datetime.datetime] = None
+    _last_manual_action: datetime.datetime | None = None
+    _last_artificial_sunrise_time: datetime.datetime | None = None
     _default_transition: float = 0.5
 
     def __init__(self, *args, **kwargs) -> None:
@@ -107,10 +108,10 @@ class LampControllerInBedroom(BaseModule):
                         self._last_manual_action = get_current_time()
                         self.messenger.send_message('Done')
                         return True
-                    else:
-                        return False
                 except ZigBeeTimeoutError:
-                    self.messenger.send_message('Can\'t connect')
+                    self.messenger.send_message("Can't connect")
+                else:
+                    return False
 
         return False
 

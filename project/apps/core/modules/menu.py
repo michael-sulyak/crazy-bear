@@ -1,14 +1,13 @@
 import abc
-import typing
 
 from emoji.core import emojize
 from telegram import KeyboardButton, ReplyKeyboardMarkup
 
-from .. import constants
-from ..base import BaseModule, Command
 from ...common import interface
 from ...common.constants import OFF, ON
 from ...common.state import State
+from .. import constants
+from ..base import BaseModule, Command
 
 
 __all__ = (
@@ -21,14 +20,14 @@ class TelegramMenu:
     menu_state_name = 'menu'
     home_page_code: str
     state: State
-    _last_result: typing.Optional[ReplyKeyboardMarkup] = None
+    _last_result: ReplyKeyboardMarkup | None = None
 
     def __init__(self, state: State) -> None:
         self.state = state
         self.home_page_code = MainPage.code
         self.state.create(self.menu_state_name, [self.home_page_code])
 
-        pages: tuple[typing.Type[BasePage], ...] = (
+        pages: tuple[type[BasePage], ...] = (
             MainPage,
             AllFuncsPage,
             LampPage,
@@ -36,7 +35,7 @@ class TelegramMenu:
 
         self.pages_map = {page.code: page(state=state) for page in pages}
 
-    def __call__(self, *args, **kwargs) -> typing.Optional[ReplyKeyboardMarkup]:
+    def __call__(self, *args, **kwargs) -> ReplyKeyboardMarkup | None:
         with self.state.lock(self.menu_state_name):
             if not self.state[self.menu_state_name]:
                 page_code = self.home_page_code
@@ -162,7 +161,10 @@ class AllFuncsPage(BasePage):
             camera_line.append(KeyboardButton(text=f'{constants.BotCommands.CAMERA} photo'))
             camera_line.append(
                 KeyboardButton(
-                    text=f'{constants.BotCommands.CAMERA} record {OFF if self.state[constants.VIDEO_RECORDING_IS_ENABLED] else ON}'
+                    text=(
+                        f'{constants.BotCommands.CAMERA} record '
+                        f'{OFF if self.state[constants.VIDEO_RECORDING_IS_ENABLED] else ON}'
+                    ),
                 ),
             )
 
