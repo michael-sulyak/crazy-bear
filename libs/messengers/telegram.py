@@ -70,7 +70,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
     _message_handler: typing.Callable
 
     def __init__(
-        self, *, message_handler: typing.Callable, default_reply_markup: typing.Callable | None = None
+        self, *, message_handler: typing.Callable, default_reply_markup: typing.Callable | None = None,
     ) -> None:
         self.default_reply_markup = default_reply_markup
         self._bot = telegram.Bot(token=config.TELEGRAM_TOKEN)

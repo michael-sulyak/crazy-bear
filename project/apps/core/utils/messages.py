@@ -30,5 +30,5 @@ def process_telegram_message(message: MessageInfo, *, messanger: TelegramMesseng
             chat_id=message.chat.id,
             text=message.text,
             command=Command.from_string(message.text),
-        )
+        ),
     )

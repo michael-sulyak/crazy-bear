@@ -106,7 +106,7 @@ def create_plot(
     x_is_date = isinstance(
         x[0],
 
-            datetime.date| datetime.datetime
+            datetime.date| datetime.datetime,
     )
 
     fig, ax = mpl.plt.subplots(
@@ -214,7 +214,7 @@ def is_sleep_hours(timestamp: datetime.datetime | None = None) -> bool:
 
 
 def convert_params_to_date_range(
-    delta_value: int = 24, delta_type: str = 'hours'
+    delta_value: int = 24, delta_type: str = 'hours',
 ) -> tuple[datetime.datetime, datetime.datetime]:
     now = get_current_time()
     return now - datetime.timedelta(**{delta_type: delta_value}), now

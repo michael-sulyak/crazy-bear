@@ -15,7 +15,7 @@ class BaseCVMixin(abc.ABC):
 
     @abc.abstractmethod
     def send_frames_as_video(
-        self, frames: list[np.ndarray], *, fps: int, caption: str | None = None
+        self, frames: list[np.ndarray], *, fps: int, caption: str | None = None,
     ) -> None:
         pass
 
@@ -34,7 +34,7 @@ class CVMixin(BaseCVMixin):
         )
 
     def send_frames_as_video(
-        self, frames: list[np.ndarray], *, fps: int, caption: str | None = None
+        self, frames: list[np.ndarray], *, fps: int, caption: str | None = None,
     ) -> None:
         if not frames:
             return

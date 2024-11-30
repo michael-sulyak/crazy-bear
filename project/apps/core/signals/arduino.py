@@ -124,7 +124,7 @@ class ArduinoHandler(BaseSignalHandler):
                         if weather_temperature
                         else None
                     ),
-                )
+                ),
             )
 
         if humidity_stats:
@@ -147,7 +147,7 @@ class ArduinoHandler(BaseSignalHandler):
                         if weather_humidity
                         else None
                     ),
-                )
+                ),
             )
 
         pir_stats = Signal.get(ArduinoSensorTypes.PIR_SENSOR, datetime_range=date_range)

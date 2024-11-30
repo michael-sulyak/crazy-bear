@@ -49,7 +49,7 @@ class Commander:
                     exceptions=(
                         ConnectionError,
                         NetworkError,
-                    )
+                    ),
                 ),
                 SupportOfRetries(),
             ),

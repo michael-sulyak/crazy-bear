@@ -210,7 +210,7 @@ def command(
                 flags=flags,
                 method_name=func.__name__,
                 need_to_pass_command='command' in func.__code__.co_varnames,
-            )
+            ),
         )
 
         return func

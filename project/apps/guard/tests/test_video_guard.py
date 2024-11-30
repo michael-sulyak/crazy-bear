@@ -19,5 +19,5 @@ def test_video_guard():
         (
             cv2.imread(str(config.APPS_DIR / 'guard/tests/resources/frame_1.png')),
             1,
-        )
+        ),
     )

@@ -36,7 +36,7 @@ class ConcreteRetries(BaseMiddleware):
     exceptions: tuple[type[Exception], ...]
 
     def __init__(
-        self, *, max_retries: float = 3, exceptions: tuple[type[Exception], ...] = (Exception,)
+        self, *, max_retries: float = 3, exceptions: tuple[type[Exception], ...] = (Exception,),
     ) -> None:
         super().__init__()
 

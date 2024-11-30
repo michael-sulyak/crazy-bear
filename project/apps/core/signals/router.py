@@ -54,7 +54,7 @@ class RouterHandler(IntervalNotificationCheckMixin, BaseSignalHandler):
 
         if self._errors_count > 0:
             delta = self._timedelta_for_checking * date_coefficient + datetime.timedelta(
-                seconds=self._errors_count * 10
+                seconds=self._errors_count * 10,
             )
             max_delta = datetime.timedelta(minutes=10) * date_coefficient
 

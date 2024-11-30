@@ -332,7 +332,7 @@ class Camera(BaseModule):
                     (
                         frame,
                         fps,
-                    )
+                    ),
                 )
             except Shutdown:
                 raise

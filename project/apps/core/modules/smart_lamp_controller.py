@@ -88,7 +88,7 @@ class LampControllerInBedroom(BaseModule):
             'test': self._test_lamp,
             'color': lambda: self.smart_lamp.set_color_by_name(command.second_arg, transition=self._default_transition),
             'brightness': lambda: self.smart_lamp.set_brightness(
-                int(command.second_arg), transition=self._default_transition
+                int(command.second_arg), transition=self._default_transition,
             ),
             'color_temp': lambda: self.smart_lamp.set_color_temp(int(command.second_arg)),
             'increase_brightness': lambda: self.smart_lamp.step_brightness(50, transition=self._default_transition),

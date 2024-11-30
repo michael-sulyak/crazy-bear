@@ -14,13 +14,13 @@ request_for_statistics = Event(
     providing_kwargs=(
         'date_range',
         'components',
-    )
+    ),
 )
 frame_from_video_camera = Event(
     providing_kwargs=(
         'frame',
         'fps',
-    )
+    ),
 )
 getting_doc = Event()
 input_command = Event(providing_kwargs=('command',))
