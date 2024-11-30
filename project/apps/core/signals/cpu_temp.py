@@ -2,14 +2,14 @@ import datetime
 import io
 import typing
 
-from .base import BaseAdvancedSignalHandler, NotificationParams
+from .base import BaseSimpleSignalHandler, NotificationParams
 from .. import constants
 from ...common import utils
 from ...signals.models import Signal
 from ...common.constants import NOTHING
 
 
-class CpuTempHandler(BaseAdvancedSignalHandler):
+class CpuTempHandler(BaseSimpleSignalHandler):
     signal_type = constants.CPU_TEMPERATURE
     task_interval = datetime.timedelta(seconds=10)
     compress_by_time = True
@@ -33,7 +33,7 @@ class CpuTempHandler(BaseAdvancedSignalHandler):
             return NOTHING
 
     def generate_plots(
-        self, *, date_range: tuple[datetime.datetime, datetime.datetime], components: typing.Set[str]
+        self, *, date_range: tuple[datetime.datetime, datetime.datetime], components: set[str],
     ) -> typing.Optional[typing.Sequence[io.BytesIO]]:
         if 'inner_stats' not in components:
             return None

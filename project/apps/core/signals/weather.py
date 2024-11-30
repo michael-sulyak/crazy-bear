@@ -1,13 +1,14 @@
 import datetime
 
 from libs.casual_utils.time import get_current_time
-from .base import BaseSignalHandler
+from .base import BaseSignalHandler, IntervalNotificationCheckMixin
+from .utils import get_default_signal_compress_datetime_range
 from .. import constants
 from ...common import utils
 from ...signals.models import Signal
 
 
-class WeatherHandler(BaseSignalHandler):
+class WeatherHandler(IntervalNotificationCheckMixin, BaseSignalHandler):
     task_interval = datetime.timedelta(minutes=10)  # Note: See recommendation from https://openweathermap.org/faq
 
     def process(self) -> None:
@@ -18,7 +19,7 @@ class WeatherHandler(BaseSignalHandler):
             (
                 Signal(type=constants.WEATHER_TEMPERATURE, value=weather['main']['temp'], received_at=now),
                 Signal(type=constants.WEATHER_HUMIDITY, value=weather['main']['humidity'], received_at=now),
-            )
+            ),
         )
 
     def compress(self) -> None:
@@ -28,12 +29,7 @@ class WeatherHandler(BaseSignalHandler):
         )
         Signal.clear(signal_types)
 
-        now = get_current_time()
-
-        datetime_range = (
-            now - datetime.timedelta(hours=3),
-            now - datetime.timedelta(minutes=5),
-        )
+        datetime_range = get_default_signal_compress_datetime_range()
 
         for signal_type in signal_types:
             Signal.compress_by_time(

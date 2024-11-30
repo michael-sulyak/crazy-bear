@@ -77,6 +77,10 @@ class Signals(BaseModule):
             *self._supreme_signal_handler.get_signals(),
         )
 
+    def disable(self) -> None:
+        super().disable()
+        self._supreme_signal_handler.disable()
+
     @interface.command(constants.BotCommands.COMPRESS_DB)
     def _compress_db_with_progress_bar(self) -> typing.Any:
         with ProgressBar(self.messenger, title='Checking DB\\.\\.\\.') as progress_bar:
@@ -101,7 +105,7 @@ class Signals(BaseModule):
 
     @staticmethod
     def _create_task_queue_stats(
-        date_range: tuple[datetime.datetime, datetime.datetime], components: typing.Set[str]
+        date_range: tuple[datetime.datetime, datetime.datetime], components: set[str],
     ) -> typing.Optional[io.BytesIO]:
         if 'inner_stats' not in components:
             return None

@@ -4,10 +4,9 @@ import threading
 import typing
 from collections import defaultdict
 
-from libs import task_queue
 from libs.casual_utils.parallel_computing import synchronized_method
-from libs.casual_utils.time import get_current_time
 from .base import BaseSignalHandler
+from .utils import get_default_signal_compress_datetime_range
 from .. import events
 from ...arduino.constants import ArduinoSensorTypes
 from ...common.events import Receiver
@@ -17,7 +16,6 @@ from ...signals.models import Signal
 
 
 class ArduinoHandler(BaseSignalHandler):
-    task_interval = datetime.timedelta(minutes=5)
     _lock: threading.RLock
     _last_sent_at_map: dict[str, datetime.datetime]
 
@@ -27,17 +25,11 @@ class ArduinoHandler(BaseSignalHandler):
         self._lock = threading.RLock()
         self._last_sent_at_map = defaultdict(lambda: datetime.datetime.min)
 
-    def get_tasks(self) -> tuple[task_queue.Task, ...]:
-        return ()
-
     def get_signals(self) -> tuple[Receiver, ...]:
         return (
             *super().get_signals(),
             events.new_arduino_data.connect(self.process_arduino_signals),
         )
-
-    def process(self) -> None:
-        pass
 
     def process_arduino_signals(self, signals: typing.Sequence[Signal]) -> None:
         Signal.bulk_add(signals)
@@ -52,12 +44,7 @@ class ArduinoHandler(BaseSignalHandler):
 
         Signal.clear(signal_types)
 
-        now = get_current_time()
-
-        datetime_range = (
-            now - datetime.timedelta(hours=3),
-            now - datetime.timedelta(minutes=5),
-        )
+        datetime_range = get_default_signal_compress_datetime_range()
 
         for signal_type in signal_types:
             if signal_type == ArduinoSensorTypes.PIR_SENSOR:
@@ -81,7 +68,7 @@ class ArduinoHandler(BaseSignalHandler):
             )
 
     def generate_plots(
-        self, *, date_range: tuple[datetime.datetime, datetime.datetime], components: typing.Set[str]
+        self, *, date_range: tuple[datetime.datetime, datetime.datetime], components: set[str],
     ) -> typing.Optional[typing.Sequence[io.BytesIO]]:
         if 'arduino' not in components:
             return None

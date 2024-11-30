@@ -1,5 +1,6 @@
 import abc
 import dataclasses
+import datetime
 import itertools
 import json
 import logging
@@ -7,7 +8,6 @@ import re
 import threading
 import typing
 from collections import defaultdict
-import datetime
 
 from paho.mqtt.client import Client, MQTTMessage, MQTTMessageInfo, MQTTv5
 from paho.mqtt.enums import CallbackAPIVersion
@@ -149,6 +149,32 @@ class ZigBee:
             self.mq.subscribe(topic)
 
         logging.info(f'ZigBee: "{func}" subscribes on "{topic}".')
+
+    @synchronized_method
+    def subscribe_on_state(self, friendly_name: str, func: typing.Callable) -> None:
+        self.subscribe_on_topic(f'{self.base_topic}/{friendly_name}', func)
+
+    @synchronized_method
+    def unsubscribe_from_topic(self, topic: str) -> None:
+        has_topic = topic in self._permanent_subscribers_map
+
+        if not has_topic:
+            return
+
+        if self._is_opened:
+            try:
+                self.mq.unsubscribe(topic)
+            except ValueError:
+                logging.exception('Has an exception in "unsubscribe_from_topic"')
+
+        del self._permanent_subscribers_map[topic]
+
+        if '+' in topic:
+            del self._permanent_subscriber_key_regexps_map[re.compile(topic.replace('+', '.*'))]
+
+    @synchronized_method
+    def unsubscribe_from_state(self, friendly_name: str) -> None:
+        self.unsubscribe_from_topic(f'{self.base_topic}/{friendly_name}')
 
     @synchronized_method
     def open(self) -> None:

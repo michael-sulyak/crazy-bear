@@ -2,16 +2,16 @@ import datetime
 import io
 import typing
 
-from .base import BaseAdvancedSignalHandler, NotificationParams
+from .base import BaseSimpleSignalHandler, NotificationParams
 from .. import constants
 from ...common import utils
 from ...signals.models import Signal
 
 
-class FreeDiskSpaceHandler(BaseAdvancedSignalHandler):
+class FreeDiskSpaceHandler(BaseSimpleSignalHandler):
     signal_type = constants.FREE_DISK_SPACE
     task_interval = datetime.timedelta(minutes=1)
-    compress_by_time = True
+    compress_by_time = False
     list_of_notification_params = (
         NotificationParams(
             condition=lambda x: x < 256,
@@ -29,7 +29,7 @@ class FreeDiskSpaceHandler(BaseAdvancedSignalHandler):
         return utils.get_free_disk_space()
 
     def generate_plots(
-        self, *, date_range: tuple[datetime.datetime, datetime.datetime], components: typing.Set[str]
+        self, *, date_range: tuple[datetime.datetime, datetime.datetime], components: set[str],
     ) -> typing.Optional[typing.Sequence[io.BytesIO]]:
         if 'inner_stats' not in components:
             return None

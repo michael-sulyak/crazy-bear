@@ -18,4 +18,8 @@ class AqaraWaterLeakSensor(BaseZigBeeDevice):
 
     @synchronized_method
     def subscribe_on_update(self, func: typing.Callable) -> None:
-        self.zig_bee.subscribe_on_topic(f'{self.zig_bee.base_topic}/{self.friendly_name}', lambda name, state: func(state))
+        self.zig_bee.subscribe_on_state(self.friendly_name, lambda name, state: func(state))
+
+    @synchronized_method
+    def unsubscribe(self) -> None:
+        self.zig_bee.unsubscribe_from_state(self.friendly_name)

@@ -52,3 +52,7 @@ class SupremeSignalHandler:
         for i, handler in enumerate(self._inited_handlers, 1):
             handler.compress()
             yield i / self.count_of_handlers
+
+    def disable(self) -> None:
+        for handler in self._inited_handlers:
+            handler.disable()

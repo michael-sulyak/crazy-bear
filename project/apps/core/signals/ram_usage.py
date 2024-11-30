@@ -2,13 +2,13 @@ import datetime
 import io
 import typing
 
-from .base import BaseAdvancedSignalHandler, NotificationParams
+from .base import BaseSimpleSignalHandler, NotificationParams
 from .. import constants
 from ...common import utils
 from ...signals.models import Signal
 
 
-class RamUsageHandler(BaseAdvancedSignalHandler):
+class RamUsageHandler(BaseSimpleSignalHandler):
     signal_type = constants.RAM_USAGE
     task_interval = datetime.timedelta(seconds=10)
     compress_by_time = True
@@ -29,7 +29,7 @@ class RamUsageHandler(BaseAdvancedSignalHandler):
         return round(utils.get_ram_usage() * 100, 2)
 
     def generate_plots(
-        self, *, date_range: tuple[datetime.datetime, datetime.datetime], components: typing.Set[str]
+        self, *, date_range: tuple[datetime.datetime, datetime.datetime], components: set[str],
     ) -> typing.Optional[typing.Sequence[io.BytesIO]]:
         if 'inner_stats' not in components:
             return None

@@ -148,11 +148,11 @@ class Command:
         return args[index]
 
     @memoized_method(maxsize=1)
-    def get_flags(self) -> typing.Set[str]:
+    def get_flags(self) -> set[str]:
         return set(arg for arg in self.args if arg.startswith('-'))
 
     @memoized_method(maxsize=1)
-    def get_cleaned_flags(self) -> typing.Set[str]:
+    def get_cleaned_flags(self) -> set[str]:
         return set(arg[1:] for arg in self.get_flags())
 
     @memoized_method(maxsize=1)

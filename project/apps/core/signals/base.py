@@ -5,8 +5,8 @@ import io
 import typing
 
 from libs import task_queue
-from libs.casual_utils.time import get_current_time
 from libs.messengers.base import BaseMessenger
+from .utils import get_default_signal_compress_datetime_range
 from .. import events
 from ..base import ModuleContext
 from ...common.constants import NOTHING
@@ -23,10 +23,6 @@ class NotificationParams:
 
 
 class BaseSignalHandler(abc.ABC):
-    # TODO: Add method `disable`
-    # TODO: Refactor `BaseSignalHandler`
-    task_interval: datetime.timedelta | None
-    priority = task_queue.TaskPriorities.LOW
     _messenger: BaseMessenger
     _state: State
 
@@ -36,33 +32,47 @@ class BaseSignalHandler(abc.ABC):
         self._state = context.state
 
     def get_tasks(self) -> tuple[task_queue.Task, ...]:
-        if self.task_interval is None:
-            return ()
-        else:
-            return (
-                task_queue.IntervalTask(
-                    target=self.process,
-                    priority=self.priority,
-                    interval=self.task_interval,
-                    run_after=datetime.datetime.now() + datetime.timedelta(seconds=10),
-                ),
-            )
+        return ()
 
     def get_signals(self) -> tuple[Receiver, ...]:
         return (events.request_for_statistics.connect(self.generate_plots),)
-
-    @abc.abstractmethod
-    def process(self) -> None:
-        pass
 
     @abc.abstractmethod
     def compress(self) -> None:
         pass
 
     def generate_plots(
-        self, *, date_range: tuple[datetime.datetime, datetime.datetime], components: typing.Set[str]
+        self, *, date_range: tuple[datetime.datetime, datetime.datetime], components: set[str],
+    ) -> typing.Sequence[io.BytesIO] | None:
+        return None
+
+    def disable(self) -> None:
+        pass
+
+
+class IntervalNotificationCheckMixin(abc.ABC):
+    task_interval: datetime.timedelta
+    priority = task_queue.TaskPriorities.LOW
+
+    def get_tasks(self) -> tuple[task_queue.Task, ...]:
+        return (
+            task_queue.IntervalTask(
+                target=self.process,
+                priority=self.priority,
+                interval=self.task_interval,
+                run_after=datetime.datetime.now() + datetime.timedelta(seconds=10),
+            ),
+        )
+
+    @abc.abstractmethod
+    def process(self) -> None:
+        pass
+
+    def generate_plots(
+        self, *, date_range: tuple[datetime.datetime, datetime.datetime], components: set[str],
     ) -> typing.Optional[typing.Sequence[io.BytesIO]]:
         return None
+
 
 class SignalNotificationMixin(abc.ABC):
     list_of_notification_params: tuple[NotificationParams, ...] = ()
@@ -82,7 +92,7 @@ class SignalNotificationMixin(abc.ABC):
             break
 
 
-class BaseAdvancedSignalHandler(SignalNotificationMixin, BaseSignalHandler, abc.ABC):
+class BaseSimpleSignalHandler(SignalNotificationMixin, IntervalNotificationCheckMixin, BaseSignalHandler, abc.ABC):
     signal_type: str
     compress_by_time: bool
     approximation_value: float = 0
@@ -103,12 +113,7 @@ class BaseAdvancedSignalHandler(SignalNotificationMixin, BaseSignalHandler, abc.
     def compress(self) -> None:
         Signal.clear((self.signal_type,))
 
-        now = get_current_time()
-
-        datetime_range = (
-            now - datetime.timedelta(hours=3),
-            now - datetime.timedelta(minutes=5),
-        )
+        datetime_range = get_default_signal_compress_datetime_range()
 
         if self.compress_by_time:
             Signal.compress_by_time(

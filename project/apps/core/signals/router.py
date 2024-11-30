@@ -1,14 +1,13 @@
 import datetime
 import io
 import logging
-import threading
 import typing
 
 from requests import ReadTimeout
 
 from libs import task_queue
-from libs.casual_utils.parallel_computing import synchronized_method
-from .base import BaseAdvancedSignalHandler
+from .base import BaseSignalHandler, IntervalNotificationCheckMixin
+from .utils import get_default_signal_compress_datetime_range
 from .. import constants
 from ..utils.wifi import check_if_host_is_at_home
 from ...common.exceptions import Shutdown
@@ -16,27 +15,15 @@ from ...common.utils import create_plot, is_sleep_hours
 from ...signals.models import Signal
 
 
-class RouterHandler(BaseAdvancedSignalHandler):
+class RouterHandler(IntervalNotificationCheckMixin, BaseSignalHandler):
     task_interval = datetime.timedelta(seconds=10)
     priority = task_queue.TaskPriorities.HIGH
-    signal_type = constants.USER_IS_CONNECTED_TO_ROUTER
-    compress_by_time = False
-    _lock: threading.RLock
     _check_after: datetime.datetime = datetime.datetime.min
     _errors_count: int = 0
     _timedelta_for_checking: datetime.timedelta = datetime.timedelta(seconds=30)
     _timedelta_for_connection: datetime.timedelta = datetime.timedelta(minutes=2)
     _last_connected_at: datetime.datetime = datetime.datetime.min
 
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-
-        self._lock = threading.RLock()
-
-    def get_value(self) -> typing.Any:
-        pass
-
-    @synchronized_method
     def process(self) -> None:
         now = datetime.datetime.now()
         date_coefficient = 2 if is_sleep_hours() else 1
@@ -96,13 +83,13 @@ class RouterHandler(BaseAdvancedSignalHandler):
 
                     if device_can_sleep:
                         self._messenger.send_message(
-                            'Owner is not connected to the router, but we do not change his home presence status',
+                            'Owner is not connected to the router, but the home presence status has not been changed',
                         )
                     else:
                         self._state[constants.USER_IS_AT_HOME] = False
 
     def generate_plots(
-        self, *, date_range: tuple[datetime.datetime, datetime.datetime], components: typing.Set[str]
+        self, *, date_range: tuple[datetime.datetime, datetime.datetime], components: set[str],
     ) -> typing.Optional[typing.Sequence[io.BytesIO]]:
 
         if 'router_usage' not in components:
@@ -118,9 +105,21 @@ class RouterHandler(BaseAdvancedSignalHandler):
 
         return (
             create_plot(
-                title='User is connected to router',
+                title='Owner is connected to the router',
                 x_attr='received_at',
                 y_attr='value',
                 stats=stats,
             ),
+        )
+
+    def compress(self) -> None:
+        signal = constants.USER_IS_CONNECTED_TO_ROUTER
+
+        Signal.clear((signal,))
+
+        Signal.compress(
+            signal,
+            datetime_range=get_default_signal_compress_datetime_range(),
+            approximation_value=0,
+            approximation_time=datetime.timedelta(hours=1),
         )

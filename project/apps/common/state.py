@@ -14,7 +14,7 @@ class StateException(Exception):
 class State:
     _state: dict
     _lock: threading.RLock
-    _subscribers_map: dict[str, typing.Set[typing.Callable]]
+    _subscribers_map: dict[str, set[typing.Callable]]
     _subscriber_locks_map: dict[str, threading.RLock]
 
     def __init__(self, init_state: typing.Optional[dict] = None) -> None:
