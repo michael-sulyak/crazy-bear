@@ -105,7 +105,8 @@ class Signals(BaseModule):
 
     @staticmethod
     def _create_task_queue_stats(
-        date_range: tuple[datetime.datetime, datetime.datetime], components: set[str],
+        date_range: tuple[datetime.datetime, datetime.datetime],
+        components: set[str],
     ) -> typing.Optional[io.BytesIO]:
         if 'inner_stats' not in components:
             return None

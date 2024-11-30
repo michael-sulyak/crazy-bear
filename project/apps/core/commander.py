@@ -30,7 +30,8 @@ class Commander:
     _receivers: tuple[BaseReceiver, ...]
 
     def __init__(
-        self, *,
+        self,
+        *,
         messenger: BaseMessenger,
         module_classes: tuple[typing.Type[BaseModule], ...],
         state: State,

@@ -53,7 +53,8 @@ class RouterHandler(IntervalNotificationCheckMixin, BaseSignalHandler):
 
         if self._errors_count > 0:
             delta = self._timedelta_for_checking * date_coefficient + datetime.timedelta(
-                seconds=self._errors_count * 10)
+                seconds=self._errors_count * 10
+            )
             max_delta = datetime.timedelta(minutes=10) * date_coefficient
 
             if delta > max_delta:
@@ -76,10 +77,7 @@ class RouterHandler(IntervalNotificationCheckMixin, BaseSignalHandler):
                 self._state[constants.USER_IS_CONNECTED_TO_ROUTER] = False
 
                 if self._state[constants.USER_IS_AT_HOME]:
-                    device_can_sleep = (
-                        is_sleep_hours()
-                        and now - self._last_connected_at <= datetime.timedelta(hours=8)
-                    )
+                    device_can_sleep = is_sleep_hours() and now - self._last_connected_at <= datetime.timedelta(hours=8)
 
                     if device_can_sleep:
                         self._messenger.send_message(
@@ -89,7 +87,10 @@ class RouterHandler(IntervalNotificationCheckMixin, BaseSignalHandler):
                         self._state[constants.USER_IS_AT_HOME] = False
 
     def generate_plots(
-        self, *, date_range: tuple[datetime.datetime, datetime.datetime], components: set[str],
+        self,
+        *,
+        date_range: tuple[datetime.datetime, datetime.datetime],
+        components: set[str],
     ) -> typing.Optional[typing.Sequence[io.BytesIO]]:
 
         if 'router_usage' not in components:

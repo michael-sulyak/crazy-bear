@@ -33,7 +33,10 @@ class CpuTempHandler(BaseSimpleSignalHandler):
             return NOTHING
 
     def generate_plots(
-        self, *, date_range: tuple[datetime.datetime, datetime.datetime], components: set[str],
+        self,
+        *,
+        date_range: tuple[datetime.datetime, datetime.datetime],
+        components: set[str],
     ) -> typing.Optional[typing.Sequence[io.BytesIO]]:
         if 'inner_stats' not in components:
             return None

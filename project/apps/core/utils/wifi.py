@@ -12,10 +12,7 @@ class WifiDevice:
     is_defining: bool = False
 
 
-WIFI_DEVICES_MAP = {
-    item['mac_address']: WifiDevice(**item)
-    for item in config.WIFI_DEVICES
-}
+WIFI_DEVICES_MAP = {item['mac_address']: WifiDevice(**item) for item in config.WIFI_DEVICES}
 
 
 def get_connected_devices_to_router() -> typing.Generator[WifiDevice, None, None]:

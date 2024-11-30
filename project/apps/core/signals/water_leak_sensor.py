@@ -12,9 +12,7 @@ __all__ = ('WaterLeakSensorHandler',)
 
 
 class WaterLeakSensorHandler(BaseSignalHandler):
-    device_names = (
-        SmartDeviceNames.WATER_LEAK_SENSOR_WC_OPEN,
-    )
+    device_names = (SmartDeviceNames.WATER_LEAK_SENSOR_WC_OPEN,)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)

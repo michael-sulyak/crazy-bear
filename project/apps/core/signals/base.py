@@ -42,7 +42,10 @@ class BaseSignalHandler(abc.ABC):
         pass
 
     def generate_plots(
-        self, *, date_range: tuple[datetime.datetime, datetime.datetime], components: set[str],
+        self,
+        *,
+        date_range: tuple[datetime.datetime, datetime.datetime],
+        components: set[str],
     ) -> typing.Sequence[io.BytesIO] | None:
         return None
 
@@ -69,7 +72,10 @@ class IntervalNotificationCheckMixin(abc.ABC):
         pass
 
     def generate_plots(
-        self, *, date_range: tuple[datetime.datetime, datetime.datetime], components: set[str],
+        self,
+        *,
+        date_range: tuple[datetime.datetime, datetime.datetime],
+        components: set[str],
     ) -> typing.Optional[typing.Sequence[io.BytesIO]]:
         return None
 

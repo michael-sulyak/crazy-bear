@@ -10,7 +10,8 @@ from ..constants import (
     BotCommands,
     CAMERA_IS_AVAILABLE,
     SECURITY_IS_ENABLED,
-    USER_IS_AT_HOME, USE_CAMERA,
+    USER_IS_AT_HOME,
+    USE_CAMERA,
 )
 from ...common import interface
 from ...common.constants import AUTO, OFF, ON
@@ -123,11 +124,7 @@ class Security(BaseModule):
     def _update_last_movement_at(self, source: str) -> None:
         self._last_movement_at = datetime.datetime.now()
 
-        if (
-            not self.state[USER_IS_AT_HOME]
-            and not self.state[USE_CAMERA]
-            and self.state[CAMERA_IS_AVAILABLE]
-        ):
+        if not self.state[USER_IS_AT_HOME] and not self.state[USE_CAMERA] and self.state[CAMERA_IS_AVAILABLE]:
             self._camera_was_not_used = True
             self._run_command(BotCommands.CAMERA, ON)
 
