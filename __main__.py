@@ -12,6 +12,8 @@ from libs.messengers.telegram import TelegramMessenger
 from libs.task_queue import DelayedTask, ScheduledTask, TaskPriorities
 from libs.zigbee.base import ZigBee
 from libs.zigbee.lamps.life_control import LCSmartLamp
+from libs.zigbee.motion_sensors.tuya import TuyaMotionSensor
+from libs.zigbee.temperature_sensor.tuya import TuyaTemperatureHumiditySensor
 from libs.zigbee.water_leak_sensor.aqara import AqaraWaterLeakSensor
 from project import config
 from project.apps import db
@@ -28,8 +30,9 @@ from project.apps.core.modules import TelegramMenu
 from project.apps.core.utils.messages import process_telegram_message
 
 
+log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 logging_level = logging.DEBUG if config.DEBUG else logging.INFO
-logging.basicConfig(level=logging_level)
+logging.basicConfig(level=logging_level, format=log_format)
 logging.getLogger('https').setLevel(logging.WARNING)
 
 
@@ -115,7 +118,6 @@ def main() -> None:
         state=state,
         module_classes=(
             modules.Camera,
-            modules.Arduino,
             modules.Menu,
             modules.Report,
             modules.Security,
@@ -128,6 +130,8 @@ def main() -> None:
         smart_devices=(
             LCSmartLamp(config.SmartDeviceNames.MAIN_SMART_LAMP, zig_bee=zig_bee),
             AqaraWaterLeakSensor(config.SmartDeviceNames.WATER_LEAK_SENSOR_WC_OPEN, zig_bee=zig_bee),
+            TuyaTemperatureHumiditySensor(config.SmartDeviceNames.TEMP_HUM_SENSOR_WORK_ROOM, zig_bee=zig_bee),
+            TuyaMotionSensor(config.SmartDeviceNames.MOTION_SENSOR_HALLWAY, zig_bee=zig_bee),
         ),
     )
 
@@ -148,7 +152,6 @@ def main() -> None:
         commander.task_queue.put_task(initial_task)
 
     initial_commands = (
-        Command(name=BotCommands.ARDUINO, args=(ON,)),
         Command(
             name=BotCommands.SECURITY,
             args=(

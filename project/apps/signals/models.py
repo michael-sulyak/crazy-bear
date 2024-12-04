@@ -70,11 +70,11 @@ class Signal(db.Base):
         if not query_data:
             return []
 
-        signals: list[Signal] = (
+        signals: list[Signal] = (  # type: ignore
             db.get_db_session()
-            .query(  # type: ignore
+            .query(
                 cls.value,
-                cls.received_at.label('received_at'),
+                cls.received_at,
             )
             .filter(
                 cls.received_at >= query_data['start_time'],

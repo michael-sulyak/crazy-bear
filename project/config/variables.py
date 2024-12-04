@@ -92,3 +92,5 @@ ARTIFICIAL_SUNRISE_SCHEDULES = tuple(CronTab(schedule) for schedule in json_conf
 class SmartDeviceNames:
     MAIN_SMART_LAMP = 'lamp:main_room'
     WATER_LEAK_SENSOR_WC_OPEN = 'water_leak_sensor:wc_open'
+    TEMP_HUM_SENSOR_WORK_ROOM = 'temp_hum_sensor:work_room'
+    MOTION_SENSOR_HALLWAY = 'motion_sensor:hallway'

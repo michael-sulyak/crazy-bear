@@ -60,26 +60,6 @@ fast_compile_arduino:
 	@$(MAKE) --no-print-directory rewrite
 	@$(MAKE) --no-print-directory compile_arduino_on_server
 
-compile_arduino_on_server: CMD := "\
-	export PATH='$$PATH:/home/ubuntu/bin' && \
-	echo 'Compiling...' && \
-	arduino-cli compile ~/crazy_bear/hardware/arduino/core --port $(REMOTE_ARDUINO_PORT) --fqbn arduino:avr:nano:cpu=atmega328old --verify && \
-	echo 'Uploading...' && \
-	arduino-cli upload ~/crazy_bear/hardware/arduino/core --port $(REMOTE_ARDUINO_PORT) --fqbn arduino:avr:nano:cpu=atmega328old --verify && \
-	echo 'Done.'\
-"
-compile_arduino_on_server: _run_remote_cmd
-
-arduino_monitor_on_server: CMD := "\
-	export PATH='$$PATH:/home/ubuntu/bin' && \
-	echo 'Compiling...' && \
-	arduino-cli compile ~/crazy_bear/hardware/arduino/core --port $(REMOTE_ARDUINO_PORT) --fqbn arduino:avr:nano:cpu=atmega328old --verify && \
-	echo 'Uploading...' && \
-	arduino-cli upload ~/crazy_bear/hardware/arduino/core --port $(REMOTE_ARDUINO_PORT) --fqbn arduino:avr:nano:cpu=atmega328old --verify && \
-	echo 'Done.'\
-"
-arduino_monitor_on_server: _run_remote_cmd
-
 rewrite: CMD := "\
 	sudo rm ./crazy_bear -r && \
 	mkdir crazy_bear && \
@@ -115,28 +95,6 @@ scp:
 _run_remote_cmd:
 	@echo "RUN:" $(CMD)
 	@ssh pi $(CMD)
-
-
-# Arduino
-
-arduino_list:
-	arduino-cli board list
-
-arduino_compile:
-	echo "Compiling..."
-	arduino-cli compile ./hardware/arduino/viewer --port $(LOCAL_ARDUINO_PORT) --fqbn arduino:avr:nano:cpu=atmega328old --verify
-	echo "Done."
-
-arduino_build:
-	echo "Compiling..."
-	arduino-cli compile ./hardware/arduino/viewer --port $(LOCAL_ARDUINO_PORT) --fqbn arduino:avr:nano:cpu=atmega328old --verify
-	echo "Uploading..."
-	arduino-cli upload ./hardware/arduino/viewer --port $(LOCAL_ARDUINO_PORT) --fqbn arduino:avr:nano:cpu=atmega328old --verify
-	echo "Done."
-
-arduino_monitor:
-	arduino-cli monitor --port $(LOCAL_ARDUINO_PORT) --fqbn arduino:avr:nano:cpu=atmega328old
-
 
 # Other
 

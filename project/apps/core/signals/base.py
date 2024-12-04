@@ -35,6 +35,9 @@ class BaseSignalHandler(abc.ABC):
     def get_tasks(self) -> tuple[task_queue.Task, ...]:
         return ()
 
+    def get_initial_state(self) -> dict[str, typing.Any]:
+        return {}
+
     def get_signals(self) -> tuple[Receiver, ...]:
         return (events.request_for_statistics.connect(self.generate_plots),)
 
@@ -71,14 +74,6 @@ class IntervalNotificationCheckMixin(abc.ABC):
     @abc.abstractmethod
     def process(self) -> None:
         pass
-
-    def generate_plots(
-        self,
-        *,
-        date_range: tuple[datetime.datetime, datetime.datetime],
-        components: set[str],
-    ) -> typing.Sequence[io.BytesIO] | None:
-        return None
 
 
 class SignalNotificationMixin(abc.ABC):

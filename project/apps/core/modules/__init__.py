@@ -1,4 +1,3 @@
-from .arduino import *
 from .camera import *
 from .menu import *
 from .report import *

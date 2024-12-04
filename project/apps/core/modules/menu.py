@@ -171,11 +171,6 @@ class AllFuncsPage(BasePage):
         return [
             camera_line,
             [
-                KeyboardButton(
-                    f'{constants.BotCommands.ARDUINO} {OFF if self.state[constants.ARDUINO_IS_ENABLED] else ON}',
-                ),
-            ],
-            [
                 KeyboardButton(constants.BotCommands.STATS),
                 KeyboardButton(constants.BotCommands.DB_STATS),
                 KeyboardButton(constants.BotCommands.COMPRESS_DB),

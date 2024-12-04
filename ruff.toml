@@ -71,7 +71,6 @@ select = [
     "SLF",
     "T10",
     "T20",
-    "T20",
     "TRY",
     "UP",
     "W",
@@ -99,6 +98,7 @@ ignore = [
     "PLR2004",
     "PLW0603",
     "PT009",  # TODO: Fix
+    "PYI024",
     "Q003",
     "Q004",
     "RET504",

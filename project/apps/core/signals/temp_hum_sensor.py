@@ -1,22 +1,30 @@
 import datetime
 import io
+import logging
 import threading
 import typing
 from collections import defaultdict
+from functools import partial
 
 from libs.casual_utils.parallel_computing import synchronized_method
+from libs.casual_utils.time import get_current_time
+from libs.zigbee.temperature_sensor.tuya import TuyaTemperatureHumiditySensor
+from project.config import SmartDeviceNames
 
-from ...arduino.constants import ArduinoSensorTypes
-from ...common.events import Receiver
 from ...common.utils import create_plot
 from ...core import constants
 from ...signals.models import Signal
-from .. import events
 from .base import BaseSignalHandler
 from .utils import get_default_signal_compress_datetime_range
 
 
-class ArduinoHandler(BaseSignalHandler):
+__all__ = ('TemperatureHumiditySensorHandler',)
+
+HUMIDITY = 'humidity'
+TEMPERATURE = 'temperature'
+
+class TemperatureHumiditySensorHandler(BaseSignalHandler):
+    device_names = (SmartDeviceNames.TEMP_HUM_SENSOR_WORK_ROOM,)
     _lock: threading.RLock
     _last_sent_at_map: dict[str, datetime.datetime]
 
@@ -26,37 +34,17 @@ class ArduinoHandler(BaseSignalHandler):
         self._lock = threading.RLock()
         self._last_sent_at_map = defaultdict(lambda: datetime.datetime.min)
 
-    def get_signals(self) -> tuple[Receiver, ...]:
-        return (
-            *super().get_signals(),
-            events.new_arduino_data.connect(self.process_arduino_signals),
-        )
-
-    def process_arduino_signals(self, signals: typing.Sequence[Signal]) -> None:
-        Signal.bulk_add(signals)
-        self._process_new_arduino_logs(signals)
+        for device_name in self.device_names:
+            sensor: TuyaTemperatureHumiditySensor = self._context.smart_devices_map[device_name]
+            sensor.subscribe_on_update(partial(self._process_update, device_name=device_name))
 
     def compress(self) -> None:
-        signal_types = (
-            ArduinoSensorTypes.TEMPERATURE,
-            ArduinoSensorTypes.HUMIDITY,
-            ArduinoSensorTypes.PIR_SENSOR,
-        )
-
+        signal_types = self.device_names
         Signal.clear(signal_types)
 
         datetime_range = get_default_signal_compress_datetime_range()
 
         for signal_type in signal_types:
-            if signal_type == ArduinoSensorTypes.PIR_SENSOR:
-                Signal.compress(
-                    signal_type,
-                    datetime_range=datetime_range,
-                    approximation_value=20,
-                    approximation_time=datetime.timedelta(minutes=10),
-                )
-                continue
-
             Signal.compress_by_time(
                 signal_type,
                 datetime_range=datetime_range,
@@ -77,8 +65,8 @@ class ArduinoHandler(BaseSignalHandler):
         if 'arduino' not in components:
             return None
 
-        humidity_stats = Signal.get_aggregated(ArduinoSensorTypes.HUMIDITY, datetime_range=date_range)
-        temperature_stats = Signal.get_aggregated(ArduinoSensorTypes.TEMPERATURE, datetime_range=date_range)
+        humidity_stats = Signal.get(HUMIDITY, datetime_range=date_range)
+        temperature_stats = Signal.get(TEMPERATURE, datetime_range=date_range)
 
         weather_temperature = None
         weather_humidity = None
@@ -88,8 +76,8 @@ class ArduinoHandler(BaseSignalHandler):
                 weather_humidity = Signal.get_aggregated(
                     signal_type=constants.WEATHER_HUMIDITY,
                     datetime_range=(
-                        humidity_stats[0].aggregated_time,
-                        humidity_stats[-1].aggregated_time,
+                        humidity_stats[0].received_at,
+                        humidity_stats[-1].received_at,
                     ),
                 )
 
@@ -97,8 +85,8 @@ class ArduinoHandler(BaseSignalHandler):
                 weather_temperature = Signal.get_aggregated(
                     signal_type=constants.WEATHER_TEMPERATURE,
                     datetime_range=(
-                        temperature_stats[0].aggregated_time,
-                        temperature_stats[-1].aggregated_time,
+                        temperature_stats[0].received_at,
+                        temperature_stats[-1].received_at,
                     ),
                 )
 
@@ -108,7 +96,7 @@ class ArduinoHandler(BaseSignalHandler):
             plots.append(
                 create_plot(
                     title='Temperature',
-                    x_attr='aggregated_time',
+                    x_attr='received_at',
                     y_attr='value',
                     stats=temperature_stats,
                     additional_plots=(
@@ -131,7 +119,7 @@ class ArduinoHandler(BaseSignalHandler):
             plots.append(
                 create_plot(
                     title='Humidity',
-                    x_attr='aggregated_time',
+                    x_attr='received_at',
                     y_attr='value',
                     stats=humidity_stats,
                     additional_plots=(
@@ -150,53 +138,50 @@ class ArduinoHandler(BaseSignalHandler):
                 ),
             )
 
-        pir_stats = Signal.get(ArduinoSensorTypes.PIR_SENSOR, datetime_range=date_range)
-
-        if pir_stats:
-            plots.append(create_plot(title='PIR Sensor', x_attr='received_at', y_attr='value', stats=pir_stats))
-
         return plots
 
+    def disable(self) -> None:
+        for device_name in self.device_names:
+            sensor: TuyaTemperatureHumiditySensor = self._context.smart_devices_map[device_name]
+            sensor.unsubscribe()
+
     @synchronized_method
-    def _process_new_arduino_logs(self, signals: list[Signal]) -> None:
-        last_signal_data: dict[str, typing.Any] = {}
+    def _process_update(self, state: dict, *, device_name: str) -> None:
+        logging.info(f'>>> TEMP_HUM {state}')
 
-        for signal in reversed(signals):
-            if signal.value is None:
-                continue
+        if device_name == SmartDeviceNames.TEMP_HUM_SENSOR_WORK_ROOM:
+            now = get_current_time()
 
-            if signal.type in last_signal_data:
-                if last_signal_data.keys() >= {ArduinoSensorTypes.HUMIDITY, ArduinoSensorTypes.TEMPERATURE}:
-                    break
+            Signal.bulk_add((
+                Signal(type=TEMPERATURE, value=state['temperature'], received_at=now),
+                Signal(type=HUMIDITY, value=state['humidity'], received_at=now),
+            ))
 
-                continue
+            self._process_main_sensor(state)
 
-            last_signal_data[signal.type] = signal.value  # type: ignore
+    def _process_main_sensor(self, state: dict) -> None:
+        temperature = state['temperature']
+        humidity = state['humidity']
 
-        humidity = last_signal_data.get(ArduinoSensorTypes.HUMIDITY)
-        temperature = last_signal_data.get(ArduinoSensorTypes.TEMPERATURE)
+        can_send_warning = self._can_send_warning('humidity', datetime.timedelta(hours=3))
 
-        if humidity is not None:
-            can_send_warning = self._can_send_warning('humidity', datetime.timedelta(hours=3))
+        if humidity < 30 and can_send_warning:
+            self._messenger.send_message(f'There is low humidity in the room ({humidity}%)!')
+            self._mark_as_sent('humidity')
 
-            if humidity < 30 and can_send_warning:
-                self._messenger.send_message(f'There is low humidity in the room ({humidity}%)!')
-                self._mark_as_sent('humidity')
+        if humidity > 70 and can_send_warning:
+            self._messenger.send_message(f'There is high humidity in the room ({humidity}%)!')
+            self._mark_as_sent('humidity')
 
-            if humidity > 70 and can_send_warning:
-                self._messenger.send_message(f'There is high humidity in the room ({humidity}%)!')
-                self._mark_as_sent('humidity')
+        can_send_warning = self._can_send_warning('temperature', datetime.timedelta(hours=3))
 
-        if temperature is not None:
-            can_send_warning = self._can_send_warning('temperature', datetime.timedelta(hours=3))
+        if temperature < 18 and can_send_warning:
+            self._messenger.send_message(f'There is a low temperature in the room ({temperature})!')
+            self._mark_as_sent('temperature')
 
-            if temperature < 18 and can_send_warning:
-                self._messenger.send_message(f'There is a low temperature in the room ({temperature})!')
-                self._mark_as_sent('temperature')
-
-            if temperature > 28 and can_send_warning:
-                self._messenger.send_message(f'There is a high temperature in the room ({temperature})!')
-                self._mark_as_sent('temperature')
+        if temperature > 28 and can_send_warning:
+            self._messenger.send_message(f'There is a high temperature in the room ({temperature})!')
+            self._mark_as_sent('temperature')
 
     def _can_send_warning(self, name: str, timedelta_for_sending: datetime.timedelta) -> bool:
         now = datetime.datetime.now()

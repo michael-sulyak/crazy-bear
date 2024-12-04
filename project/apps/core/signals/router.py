@@ -7,7 +7,6 @@ from requests import ReadTimeout
 
 from libs import task_queue
 
-from ...common.exceptions import Shutdown
 from ...common.utils import create_plot, is_sleep_hours
 from ...signals.models import Signal
 from .. import constants
@@ -36,8 +35,6 @@ class RouterHandler(IntervalNotificationCheckMixin, BaseSignalHandler):
 
         try:
             is_connected = check_if_host_is_at_home()
-        except Shutdown:
-            raise
         except (
             ConnectionError,
             ReadTimeout,

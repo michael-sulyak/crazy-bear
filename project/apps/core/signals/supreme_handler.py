@@ -4,12 +4,13 @@ from libs import task_queue
 
 from ...common.events import Receiver
 from ..base import ModuleContext
-from .arduino import ArduinoHandler
 from .base import BaseSignalHandler
 from .cpu_temp import CpuTempHandler
 from .free_disk_space import FreeDiskSpaceHandler
+from .motion_sensor import MotionSensorHandler
 from .ram_usage import RamUsageHandler
 from .router import RouterHandler
+from .temp_hum_sensor import TemperatureHumiditySensorHandler
 from .water_leak_sensor import WaterLeakSensorHandler
 from .weather import WeatherHandler
 
@@ -20,9 +21,10 @@ class SupremeSignalHandler:
         WeatherHandler,
         RamUsageHandler,
         FreeDiskSpaceHandler,
-        ArduinoHandler,
         RouterHandler,
         WaterLeakSensorHandler,
+        TemperatureHumiditySensorHandler,
+        MotionSensorHandler,
     )
     _inited_handlers: tuple[BaseSignalHandler, ...]
 
@@ -40,6 +42,14 @@ class SupremeSignalHandler:
             tasks.extend(handler.get_tasks())
 
         return tuple(tasks)
+
+    def get_initial_state(self) -> dict[str, typing.Any]:
+        initial_state = {}
+
+        for handler in self._inited_handlers:
+            initial_state.update(handler.get_initial_state())
+
+        return initial_state
 
     def get_signals(self) -> tuple[Receiver, ...]:
         signals: list[Receiver] = []

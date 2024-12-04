@@ -20,7 +20,6 @@ SECURITY_IS_ENABLED = 'security_is_enabled'
 VIDEO_SECURITY_IS_ENABLED = 'video_security'
 CURRENT_FPS = 'current_fps'
 PHOTO = 'photo'
-ARDUINO_IS_ENABLED = 'arduino_is_enabled'
 RECOMMENDATION_SYSTEM_IS_ENABLED = 'recommendation_system_is_enabled'
 MAIN_LAMP_IS_ON = 'main_lamp_is_on'
 MENU_PAGES_MAP = 'menu_pages_map'
@@ -32,7 +31,6 @@ class BotCommands:
     TAKE_PICTURE = '/take_picture'
 
     SECURITY = '/security'
-    ARDUINO = '/arduino'
     CAMERA = '/camera'
 
     STATUS = '/status'

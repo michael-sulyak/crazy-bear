@@ -5,7 +5,7 @@ import logging
 import math
 import os
 import typing
-from collections import deque
+from collections import deque, namedtuple
 from contextlib import contextmanager
 
 import cv2
@@ -104,11 +104,7 @@ def create_plot(
 
     x = tuple(getattr(item, x_attr) for item in stats)
     y = tuple(round(getattr(item, y_attr), 1) for item in stats)
-    x_is_date = isinstance(
-        x[0],
-
-            datetime.date| datetime.datetime,
-    )
+    x_is_date = isinstance(x[0], datetime.date | datetime.datetime)
 
     fig, ax = plt.subplots(
         figsize=(
@@ -176,6 +172,42 @@ def create_plot(
     plt.close(fig)
 
     return buffer
+
+def interpolate_old_values_for_stats(
+    *,
+    x_attr: str,
+    y_attr: str,
+    x_atom: typing.Any,
+    stats: typing.Sequence,
+) -> list:
+    if not stats:
+        return []
+
+    blank_model = namedtuple('Blank', (x_attr, y_attr))
+    new_stats = []
+
+    for i, stat in enumerate(stats):
+        if i == 0:
+            new_stats.append(stat)
+            continue
+
+        prev_stat = stats[i - 1]
+
+        if getattr(prev_stat, x_attr) == getattr(stat, x_attr):
+            continue
+
+        if (
+            getattr(prev_stat, y_attr) != getattr(stat, y_attr)
+            and abs(getattr(prev_stat, x_attr) - getattr(stat, x_attr)) >= 2 * x_atom
+        ):
+            new_stats.extend((
+                blank_model(**{x_attr: getattr(prev_stat, x_attr) + x_atom, y_attr: getattr(prev_stat, y_attr)}),
+                blank_model(**{x_attr: getattr(stat, x_attr) - x_atom, y_attr: getattr(prev_stat, y_attr)}),
+            ))
+
+        new_stats.append(stat)
+
+    return new_stats
 
 
 def camera_is_available(src: int) -> bool:

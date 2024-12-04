@@ -44,6 +44,13 @@ class Signals(BaseModule):
             run_after=now + self._timedelta_for_ping,
         )
 
+    @property
+    def initial_state(self) -> dict[str, typing.Any]:
+        return {
+            **super().initial_state,
+            **self._supreme_signal_handler.get_initial_state(),
+        }
+
     def init_repeatable_tasks(self) -> tuple:
         return (
             IntervalTask(

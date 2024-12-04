@@ -8,14 +8,13 @@ from libs.casual_utils.time import get_current_time
 from libs.messengers.utils import escape_markdown
 
 from .... import config
-from ...arduino.constants import ArduinoSensorTypes
+from ... import db
 from ...common.constants import INITED_AT
 from ...common.exceptions import Shutdown
 from ...common.state import State
 from ...common.utils import get_cpu_temp, get_effective_temperature, get_free_disk_space, get_ram_usage
 from ...signals.models import Signal
 from ..constants import (
-    ARDUINO_IS_ENABLED,
     AUTO_SECURITY_IS_ENABLED,
     CAMERA_IS_AVAILABLE,
     CURRENT_FPS,
@@ -24,6 +23,7 @@ from ..constants import (
     VIDEO_RECORDING_IS_ENABLED,
     VIDEO_SECURITY_IS_ENABLED,
 )
+from ..signals.temp_hum_sensor import HUMIDITY, TEMPERATURE
 from .wifi import WifiDevice, get_connected_devices_to_router
 
 
@@ -63,12 +63,10 @@ class ShortTextReport:
 
         return (
             f'️*Crazy Bear* `v{escape_markdown(config.VERSION)}`\n\n'
-            f'{emojize(":floppy_disk:")} *Devices*\n'
-            f'Arduino: {self.YES if self.state[ARDUINO_IS_ENABLED] else self.NO}\n'
+            f'{emojize(":shield:")} *Security*\n'
+            f'Security: `{self.YES if self.state[SECURITY_IS_ENABLED] else self.NO}{additional_security_status}`\n'
             f'Camera: `{self.YES if self.state[CAMERA_IS_AVAILABLE] else self.NO}{additional_camera_status}'
             f'{f"FPS {escape_markdown(self._fps_info)}" if self.state[CAMERA_IS_AVAILABLE] else ""}`\n\n'
-            f'{emojize(":shield:")} *Security*\n'
-            f'Security: `{self.YES if self.state[SECURITY_IS_ENABLED] else self.NO}{additional_security_status}`\n\n'
             f'{emojize(":bar_chart:")} *Sensors*\n'
             f'Humidity: `{escape_markdown(self._humidity_info)}`\n'
             f'Temperature: `{escape_markdown(self._temperature_info)}`\n'
@@ -83,23 +81,47 @@ class ShortTextReport:
 
     @cached_property
     def _humidity(self) -> float | None:
-        return Signal.get_one_aggregated(ArduinoSensorTypes.HUMIDITY)
+        result = (
+            db.get_db_session()
+            .query(Signal.value)
+            .filter(
+                Signal.type == HUMIDITY,
+                Signal.received_at >= self.now - datetime.timedelta(minutes=30),
+            )
+            .order_by(Signal.received_at.desc())
+            .limit(1)
+            .first()
+        )
+
+        return result[0] if result else None
 
     @cached_property
     def _second_humidity(self) -> float | None:
         return Signal.get_one_aggregated(
-            ArduinoSensorTypes.HUMIDITY,
+            HUMIDITY,
             datetime_range=self._datetime_range_for_second_aggregation,
         )
 
     @cached_property
     def _temperature(self) -> float | None:
-        return Signal.get_one_aggregated(ArduinoSensorTypes.TEMPERATURE)
+        result = (
+            db.get_db_session()
+            .query(Signal.value)
+            .filter(
+                Signal.type == TEMPERATURE,
+                Signal.received_at >= self.now - datetime.timedelta(minutes=30),
+            )
+            .order_by(Signal.received_at.desc())
+            .limit(1)
+            .first()
+        )
+
+        return result[0] if result else None
 
     @cached_property
     def _second_temperature(self) -> float | None:
         return Signal.get_one_aggregated(
-            ArduinoSensorTypes.TEMPERATURE,
+            TEMPERATURE,
             datetime_range=self._datetime_range_for_second_aggregation,
         )
 

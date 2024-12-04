@@ -145,9 +145,7 @@ cython_debug/
 main.db
 .dev/
 certificate/
-hardware/arduino/radio_transmitter/config.hh
 zigbee2mqtt-data/configuration.yaml
-hardware/arduino/*/JsonRadioTransmitter
 home_assistant_config/
 postgres_data/
 mosquitto-data/
