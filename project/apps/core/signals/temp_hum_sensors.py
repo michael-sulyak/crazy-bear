@@ -1,6 +1,5 @@
 import datetime
 import io
-import logging
 import threading
 import typing
 from collections import defaultdict
@@ -8,22 +7,24 @@ from functools import partial
 
 from libs.casual_utils.parallel_computing import synchronized_method
 from libs.casual_utils.time import get_current_time
-from libs.zigbee.temperature_sensor.tuya import TuyaTemperatureHumiditySensor
+from libs.zigbee.devices import ZigBeeDeviceWithOnlyState
 from project.config import SmartDeviceNames
 
 from ...common.utils import create_plot
 from ...core import constants
 from ...signals.models import Signal
 from .base import BaseSignalHandler
+from .mixins import ZigBeeDeviceBatteryCheckerMixin
 from .utils import get_default_signal_compress_datetime_range
 
 
-__all__ = ('TemperatureHumiditySensorHandler',)
+__all__ = ('TemperatureHumiditySensorsHandler',)
 
 HUMIDITY = 'humidity'
 TEMPERATURE = 'temperature'
 
-class TemperatureHumiditySensorHandler(BaseSignalHandler):
+
+class TemperatureHumiditySensorsHandler(ZigBeeDeviceBatteryCheckerMixin, BaseSignalHandler):
     device_names = (SmartDeviceNames.TEMP_HUM_SENSOR_WORK_ROOM,)
     _lock: threading.RLock
     _last_sent_at_map: dict[str, datetime.datetime]
@@ -35,7 +36,7 @@ class TemperatureHumiditySensorHandler(BaseSignalHandler):
         self._last_sent_at_map = defaultdict(lambda: datetime.datetime.min)
 
         for device_name in self.device_names:
-            sensor: TuyaTemperatureHumiditySensor = self._context.smart_devices_map[device_name]
+            sensor: ZigBeeDeviceWithOnlyState = self._context.smart_devices_map[device_name]
             sensor.subscribe_on_update(partial(self._process_update, device_name=device_name))
 
     def compress(self) -> None:
@@ -142,13 +143,11 @@ class TemperatureHumiditySensorHandler(BaseSignalHandler):
 
     def disable(self) -> None:
         for device_name in self.device_names:
-            sensor: TuyaTemperatureHumiditySensor = self._context.smart_devices_map[device_name]
+            sensor: ZigBeeDeviceWithOnlyState = self._context.smart_devices_map[device_name]
             sensor.unsubscribe()
 
     @synchronized_method
     def _process_update(self, state: dict, *, device_name: str) -> None:
-        logging.info(f'>>> TEMP_HUM {state}')
-
         if device_name == SmartDeviceNames.TEMP_HUM_SENSOR_WORK_ROOM:
             now = get_current_time()
 
@@ -158,6 +157,8 @@ class TemperatureHumiditySensorHandler(BaseSignalHandler):
             ))
 
             self._process_main_sensor(state)
+
+        self._check_battery(state['battery'], device_name=device_name)
 
     def _process_main_sensor(self, state: dict) -> None:
         temperature = state['temperature']

@@ -177,7 +177,6 @@ class AllFuncsPage(BasePage):
             ],
             [
                 KeyboardButton(constants.BotCommands.RAW_WIFI_DEVICES),
-                KeyboardButton(constants.BotCommands.WIFI_DEVICES),
             ],
             [KeyboardButton(constants.BotCommands.HELP), KeyboardButton(constants.BotCommands.RETURN)],
         ]

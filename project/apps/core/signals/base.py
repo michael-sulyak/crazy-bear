@@ -38,10 +38,9 @@ class BaseSignalHandler(abc.ABC):
     def get_initial_state(self) -> dict[str, typing.Any]:
         return {}
 
-    def get_signals(self) -> tuple[Receiver, ...]:
+    def subscribe_to_events(self) -> tuple[Receiver, ...]:
         return (events.request_for_statistics.connect(self.generate_plots),)
 
-    @abc.abstractmethod
     def compress(self) -> None:
         pass
 

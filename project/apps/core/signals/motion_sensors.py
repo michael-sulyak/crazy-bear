@@ -7,7 +7,7 @@ from functools import partial
 from libs.casual_utils.parallel_computing import synchronized_method
 from libs.casual_utils.time import get_current_time
 from libs.messengers.utils import escape_markdown
-from libs.zigbee.motion_sensors.tuya import TuyaMotionSensor
+from libs.zigbee.devices import ZigBeeDeviceWithOnlyState
 from project.config import SmartDeviceNames
 
 from ...common.utils import create_plot, interpolate_old_values_for_stats, with_throttling
@@ -15,14 +15,15 @@ from ...signals.models import Signal
 from ..constants import SECURITY_IS_ENABLED, MotionTypeSources
 from ..events import motion_detected
 from .base import BaseSignalHandler
+from .mixins import ZigBeeDeviceBatteryCheckerMixin
 
 
-__all__ = ('MotionSensorHandler',)
+__all__ = ('MotionSensorsHandler',)
 
 OCCUPANCY = 'occupancy'
 
 
-class MotionSensorHandler(BaseSignalHandler):
+class MotionSensorsHandler(ZigBeeDeviceBatteryCheckerMixin, BaseSignalHandler):
     device_names = (SmartDeviceNames.MOTION_SENSOR_HALLWAY,)
     _last_occupancy: bool | None = None
     _lock: threading.RLock
@@ -33,7 +34,7 @@ class MotionSensorHandler(BaseSignalHandler):
         self._lock = threading.RLock()
 
         for device_name in self.device_names:
-            sensor: TuyaMotionSensor = self._context.smart_devices_map[device_name]
+            sensor: ZigBeeDeviceWithOnlyState = self._context.smart_devices_map[device_name]
             sensor.subscribe_on_update(partial(self._process_update, device_name=device_name))
 
     def compress(self) -> None:
@@ -41,7 +42,7 @@ class MotionSensorHandler(BaseSignalHandler):
 
     def disable(self) -> None:
         for device_name in self.device_names:
-            sensor: TuyaMotionSensor = self._context.smart_devices_map[device_name]
+            sensor: ZigBeeDeviceWithOnlyState = self._context.smart_devices_map[device_name]
             sensor.unsubscribe()
 
     def generate_plots(
@@ -81,6 +82,8 @@ class MotionSensorHandler(BaseSignalHandler):
                     self._send_message_about_movement(received_at=now)
         else:
             self._last_occupancy = None
+
+        self._check_battery(state['battery'], device_name=device_name)
 
     @with_throttling(datetime.timedelta(seconds=5), count=1)
     def _send_message_about_movement(self, *, received_at: datetime.datetime) -> None:

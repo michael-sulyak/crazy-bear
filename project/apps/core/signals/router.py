@@ -7,10 +7,11 @@ from requests import ReadTimeout
 
 from libs import task_queue
 
+from ...common.exceptions import Shutdown
 from ...common.utils import create_plot, is_sleep_hours
 from ...signals.models import Signal
-from .. import constants
-from ..utils.wifi import check_if_host_is_at_home
+from .. import constants, events
+from ..utils.wifi import check_if_owner_is_connected_to_router, get_connected_devices_to_router
 from .base import BaseSignalHandler, IntervalNotificationCheckMixin
 from .utils import get_default_signal_compress_datetime_range
 
@@ -24,6 +25,56 @@ class RouterHandler(IntervalNotificationCheckMixin, BaseSignalHandler):
     _timedelta_for_connection: datetime.timedelta = datetime.timedelta(minutes=2)
     _last_connected_at: datetime.datetime = datetime.datetime.min
 
+    def get_initial_state(self) -> dict[str, typing.Any]:
+        devices = ()
+
+        try:
+            devices = tuple(get_connected_devices_to_router())
+        except Shutdown:
+            raise
+        except Exception as e:
+            logging.exception(e)
+
+        owner_is_connected_to_router = check_if_owner_is_connected_to_router(devices)
+
+        return {
+            **super().get_initial_state(),
+            constants.USER_IS_CONNECTED_TO_ROUTER: owner_is_connected_to_router,
+            constants.USER_IS_AT_HOME: owner_is_connected_to_router,
+            constants.CONNECTED_DEVICES_TO_ROUTER: devices,
+        }
+
+    def subscribe_to_events(self) -> tuple:
+        return (
+            *super().subscribe_to_events(),
+            self._state.subscribe_toggle(
+                constants.USER_IS_CONNECTED_TO_ROUTER,
+                {
+                    (
+                        False,
+                        True,
+                    ): lambda name: events.user_is_connected_to_router.send(),
+                    (
+                        True,
+                        False,
+                    ): lambda name: events.user_is_disconnected_to_router.send(),
+                },
+            ),
+            self._state.subscribe_toggle(
+                constants.USER_IS_AT_HOME,
+                {
+                    (
+                        False,
+                        True,
+                    ): lambda name: events.user_is_at_home.send(),
+                    (
+                        True,
+                        False,
+                    ): lambda name: events.user_is_not_at_home.send(),
+                },
+            ),
+        )
+
     def process(self) -> None:
         now = datetime.datetime.now()
         date_coefficient = 2 if is_sleep_hours() else 1
@@ -33,21 +84,24 @@ class RouterHandler(IntervalNotificationCheckMixin, BaseSignalHandler):
         if not need_to_recheck:
             return
 
+        devices = None
+
         try:
-            is_connected = check_if_host_is_at_home()
+            devices = tuple(get_connected_devices_to_router())
         except (
             ConnectionError,
             ReadTimeout,
         ) as e:
             logging.warning(e)
-            is_connected = False
             self._errors_count += 1
         except Exception:
             logging.exception('Unexpected exception in "RouterHandler.process"')
-            is_connected = False
             self._errors_count += 1
         else:
             self._errors_count = 0
+
+        self._state[constants.CONNECTED_DEVICES_TO_ROUTER] = devices
+        is_connected = check_if_owner_is_connected_to_router(devices or ())
 
         if self._errors_count > 0:
             delta = self._timedelta_for_checking * date_coefficient + datetime.timedelta(

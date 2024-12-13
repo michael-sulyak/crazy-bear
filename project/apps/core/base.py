@@ -44,15 +44,14 @@ class BaseModule(abc.ABC):
         self.state = self.context.state
         self.task_queue = self.context.task_queue
 
-        self.state.create_many(**self.initial_state)
+        self.state.create_many(**self.get_initial_state())
         self._subscribers_to_events = self.subscribe_to_events()
         self._repeatable_tasks = self.init_repeatable_tasks()
 
         for repeatable_task in self._repeatable_tasks:
             self.task_queue.put_task(repeatable_task)
 
-    @property
-    def initial_state(self) -> dict[str, typing.Any]:
+    def get_initial_state(self) -> dict[str, typing.Any]:
         return {}
 
     def init_repeatable_tasks(self) -> tuple[ScheduledTask, ...]:

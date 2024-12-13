@@ -55,6 +55,7 @@ class Signal(db.Base):
 
     @classmethod
     def clear(cls, signal_types: typing.Iterable[str]) -> None:
+        # TODO: Remove `signal_types` and remove all old
         timestamp = get_current_time() - config.STORAGE_TIME
 
         with db.session_transaction() as session:
@@ -337,7 +338,7 @@ class Signal(db.Base):
 
         file_storage.upload_df_as_csv(
             file_name=f'signals/{df.iloc[0].received_at.strftime("%Y-%m-%d, %H:%M:%S")}'
-            f'-{df.iloc[-1].received_at.strftime("%Y-%m-%d, %H:%M:%S")}.csv',
+                      f'-{df.iloc[-1].received_at.strftime("%Y-%m-%d, %H:%M:%S")}.csv',
             data_frame=df,
         )
 

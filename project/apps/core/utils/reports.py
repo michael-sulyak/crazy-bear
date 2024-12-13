@@ -1,5 +1,4 @@
 import datetime
-import logging
 from functools import cached_property
 
 from emoji.core import emojize
@@ -10,10 +9,10 @@ from libs.messengers.utils import escape_markdown
 from .... import config
 from ... import db
 from ...common.constants import INITED_AT
-from ...common.exceptions import Shutdown
 from ...common.state import State
 from ...common.utils import get_cpu_temp, get_effective_temperature, get_free_disk_space, get_ram_usage
 from ...signals.models import Signal
+from .. import constants
 from ..constants import (
     AUTO_SECURITY_IS_ENABLED,
     CAMERA_IS_AVAILABLE,
@@ -23,14 +22,15 @@ from ..constants import (
     VIDEO_RECORDING_IS_ENABLED,
     VIDEO_SECURITY_IS_ENABLED,
 )
-from ..signals.temp_hum_sensor import HUMIDITY, TEMPERATURE
-from .wifi import WifiDevice, get_connected_devices_to_router
+from ..signals.temp_hum_sensors import HUMIDITY, TEMPERATURE
+from .wifi import WifiDevice
 
 
 class ShortTextReport:
     YES = emojize(':check_mark_button:')
     NO = emojize(':multiply:')
     NOTHING = emojize(':multiply:')
+    UNKNOWN = emojize(':white_question_mark:')
 
     state: State
     now: datetime.datetime
@@ -81,19 +81,7 @@ class ShortTextReport:
 
     @cached_property
     def _humidity(self) -> float | None:
-        result = (
-            db.get_db_session()
-            .query(Signal.value)
-            .filter(
-                Signal.type == HUMIDITY,
-                Signal.received_at >= self.now - datetime.timedelta(minutes=30),
-            )
-            .order_by(Signal.received_at.desc())
-            .limit(1)
-            .first()
-        )
-
-        return result[0] if result else None
+        return self._get_last_signal_value(HUMIDITY)
 
     @cached_property
     def _second_humidity(self) -> float | None:
@@ -104,11 +92,22 @@ class ShortTextReport:
 
     @cached_property
     def _temperature(self) -> float | None:
+        return self._get_last_signal_value(TEMPERATURE)
+
+    @cached_property
+    def _second_temperature(self) -> float | None:
+        return Signal.get_one_aggregated(
+            TEMPERATURE,
+            datetime_range=self._datetime_range_for_second_aggregation,
+        )
+
+    def _get_last_signal_value(self, signal_type: str) -> float | None:
+        # TODO: Use avg for last 3 values
         result = (
             db.get_db_session()
             .query(Signal.value)
             .filter(
-                Signal.type == TEMPERATURE,
+                Signal.type == signal_type,
                 Signal.received_at >= self.now - datetime.timedelta(minutes=30),
             )
             .order_by(Signal.received_at.desc())
@@ -118,19 +117,13 @@ class ShortTextReport:
 
         return result[0] if result else None
 
-    @cached_property
-    def _second_temperature(self) -> float | None:
-        return Signal.get_one_aggregated(
-            TEMPERATURE,
-            datetime_range=self._datetime_range_for_second_aggregation,
-        )
-
     @property
     def _humidity_info(self) -> str:
         if self._humidity is None:
             return self.NOTHING
 
-        humidity_info = f'{round(self._humidity, 1)}%{self._get_mark(self._humidity, (30, 45.5), (30, 60.5))}'
+        humidity_info = f'{round(self._humidity, 1)}%'
+        humidity_info += self._get_mark(self._humidity, (40, 50), (30, 60))
 
         if self._second_humidity is not None:
             diff = round(self._humidity - self._second_humidity, 1)
@@ -145,7 +138,8 @@ class ShortTextReport:
         if self._temperature is None:
             return self.NOTHING
 
-        temperature_info = f'{round(self._temperature, 1)}℃{self._get_mark(self._temperature, (20, 22.5), (18, 24.5))}'
+        temperature_info = f'{round(self._temperature, 1)}℃'
+        temperature_info += self._get_mark(self._temperature, (22, 24), (20, 25))
 
         if self._second_temperature is not None:
             diff = round(self._temperature - self._second_temperature, 1)
@@ -165,7 +159,8 @@ class ShortTextReport:
             humidity=self._humidity,
         )
 
-        temperature_info = f'{round(temperature, 1)}℃{self._get_mark(temperature, (18, 22.5), (16, 26.5))}'
+        temperature_info = f'{round(temperature, 1)}℃'
+        temperature_info += self._get_mark(temperature, (18, 22.5), (16, 26.5))
 
         if self._second_temperature is not None and self._second_humidity is not None:
             second_temperature = get_effective_temperature(
@@ -194,16 +189,12 @@ class ShortTextReport:
 
     @property
     def _connected_devices_info(self) -> str:
-        connected_devices: tuple[WifiDevice, ...] = ()
-
-        try:
-            connected_devices = tuple(get_connected_devices_to_router())
-        except Shutdown:
-            raise
-        except Exception as e:
-            logging.exception(e)
+        connected_devices: tuple[WifiDevice, ...] | None = self.state[constants.CONNECTED_DEVICES_TO_ROUTER]
 
         if not connected_devices:
+            if connected_devices is None:
+                return self.UNKNOWN
+
             return self.NOTHING
 
         return ', '.join(
@@ -239,7 +230,8 @@ class ShortTextReport:
         except RuntimeError:
             cpu_temperature_info = self.NOTHING
         else:
-            cpu_temperature_info = f'{round(cpu_temperature, 1)}℃{self._get_mark(cpu_temperature, (0, 60), (0, 80))}'
+            cpu_temperature_info = f'{round(cpu_temperature, 1)}℃'
+            cpu_temperature_info += self._get_mark(cpu_temperature, (0, 50), (0, 70))
 
         return cpu_temperature_info
 

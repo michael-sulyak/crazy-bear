@@ -48,8 +48,8 @@ ARDUINO_TTY = json_config['arduino_tty']
 # Databases
 DATABASE_URL = json_config['database_url']
 DATABASE_DEBUG = DEBUG
-_row_storage_time = json_config['storage_time'].split(' ')
-STORAGE_TIME = datetime.timedelta(**{_row_storage_time[1]: int(_row_storage_time[0])})
+_raw_storage_time = json_config['storage_time'].split(' ')
+STORAGE_TIME = datetime.timedelta(**{_raw_storage_time[1]: int(_raw_storage_time[0])})
 
 # Time
 TZ = json_config['tz']
@@ -94,3 +94,4 @@ class SmartDeviceNames:
     WATER_LEAK_SENSOR_WC_OPEN = 'water_leak_sensor:wc_open'
     TEMP_HUM_SENSOR_WORK_ROOM = 'temp_hum_sensor:work_room'
     MOTION_SENSOR_HALLWAY = 'motion_sensor:hallway'
+    DOOR_SENSOR_NARNIA = 'door_sensor:narnia'

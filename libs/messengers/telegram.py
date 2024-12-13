@@ -173,6 +173,9 @@ class TelegramMessenger(CVMixin, BaseMessenger):
             use_markdown=True,
         )
 
+    def warning(self, text: str) -> None:
+        self.error(text, title='Warning')
+
     def exception(self, exp: Exception) -> None:
         self.error(
             f'{exp!r}\n{"".join(traceback.format_tb(exp.__traceback__))}',

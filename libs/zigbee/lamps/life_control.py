@@ -5,7 +5,7 @@ import typing
 from time import sleep
 
 from ...casual_utils.parallel_computing import synchronized_method
-from ..base import BaseZigBeeDevice
+from ..devices import BaseZigBeeDevice
 
 
 __all__ = ('LCSmartLamp',)

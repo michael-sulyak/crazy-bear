@@ -26,13 +26,16 @@ __all__ = ('Security',)
     description='The module turns on the security mode and the camera after the owner leaves the house.',
 )
 class Security(BaseModule):
-    initial_state: typing.ClassVar = {
-        AUTO_SECURITY_IS_ENABLED: False,
-        SECURITY_IS_ENABLED: False,
-    }
     _last_movement_at: datetime.datetime | None = None
     _camera_was_not_used: bool = False
     _twenty_minutes: datetime.timedelta = datetime.timedelta(minutes=20)
+
+    def get_initial_state(self) -> dict[str, typing.Any]:
+        return {
+            **super().get_initial_state(),
+            AUTO_SECURITY_IS_ENABLED: False,
+            SECURITY_IS_ENABLED: False,
+        }
 
     def init_repeatable_tasks(self) -> tuple:
         return (

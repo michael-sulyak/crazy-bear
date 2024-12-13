@@ -6,12 +6,13 @@ from ...common.events import Receiver
 from ..base import ModuleContext
 from .base import BaseSignalHandler
 from .cpu_temp import CpuTempHandler
+from .door_sensors import DoorSensorsHandler
 from .free_disk_space import FreeDiskSpaceHandler
-from .motion_sensor import MotionSensorHandler
+from .motion_sensors import MotionSensorsHandler
 from .ram_usage import RamUsageHandler
 from .router import RouterHandler
-from .temp_hum_sensor import TemperatureHumiditySensorHandler
-from .water_leak_sensor import WaterLeakSensorHandler
+from .temp_hum_sensors import TemperatureHumiditySensorsHandler
+from .water_leak_sensors import WaterLeakSensorsHandler
 from .weather import WeatherHandler
 
 
@@ -22,9 +23,10 @@ class SupremeSignalHandler:
         RamUsageHandler,
         FreeDiskSpaceHandler,
         RouterHandler,
-        WaterLeakSensorHandler,
-        TemperatureHumiditySensorHandler,
-        MotionSensorHandler,
+        WaterLeakSensorsHandler,
+        TemperatureHumiditySensorsHandler,
+        MotionSensorsHandler,
+        DoorSensorsHandler,
     )
     _inited_handlers: tuple[BaseSignalHandler, ...]
 
@@ -51,11 +53,11 @@ class SupremeSignalHandler:
 
         return initial_state
 
-    def get_signals(self) -> tuple[Receiver, ...]:
+    def subscribe_to_events(self) -> tuple[Receiver, ...]:
         signals: list[Receiver] = []
 
         for handler in self._inited_handlers:
-            signals.extend(handler.get_signals())
+            signals.extend(handler.subscribe_to_events())
 
         return tuple(signals)
 

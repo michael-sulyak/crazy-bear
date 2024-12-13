@@ -1,4 +1,3 @@
-import abc
 import dataclasses
 import datetime
 import itertools
@@ -12,9 +11,9 @@ from collections import defaultdict
 from paho.mqtt.client import Client, MQTTMessage, MQTTMessageInfo, MQTTv5
 from paho.mqtt.enums import CallbackAPIVersion
 
+from project.apps.common.exceptions import Shutdown
+
 from ..casual_utils.parallel_computing import synchronized_method
-from ..smart_devices.base import BaseSmartDevice
-from ..smart_devices.constants import SmartDeviceType
 from . import exceptions
 from .constants import COORDINATOR_FRIENDLY_NAME, ZigBeePowerSources
 
@@ -185,15 +184,13 @@ class ZigBee:
             callback_api_version=CallbackAPIVersion.VERSION2,
             client_id='mqtt5_client',
             protocol=MQTTv5,
+            reconnect_on_failure=True,
         )
         mq.on_message = self._on_message
+        mq.on_connect = self._on_connect
         mq.on_disconnect = self._on_disconnect
         mq.connect(self._mq_host, port=self._mq_port)
         mq.loop_start()
-
-        for topic in itertools.chain(self._temporary_subscribers_map, self._permanent_subscribers_map):
-            logging.info(f'ZigBee: Subscribe on "{topic}" when opening.')
-            mq.subscribe(topic)
 
         self._mq = mq
 
@@ -208,8 +205,15 @@ class ZigBee:
         self.mq.loop_stop()
 
     @synchronized_method
-    def _on_disconnect(self, *args, **kwargs) -> None:
-        self._mq = None
+    def _on_connect(self, client, *args) -> None:
+        for topic in itertools.chain(self._temporary_subscribers_map, self._permanent_subscribers_map):
+            logging.info(f'ZigBee: Subscribe on "{topic}" when opening.')
+            client.subscribe(topic)
+
+    @synchronized_method
+    def _on_disconnect(self, client, userdata, rc) -> None:
+        if rc != 0:
+            logging.error('Unexpected MQTT disconnection')
 
     @synchronized_method
     def _on_message(self, client: Client, userdata: typing.Any, message: MQTTMessage) -> None:
@@ -229,7 +233,12 @@ class ZigBee:
         for pattern, key in self._permanent_subscriber_key_regexps_map.items():
             if pattern.fullmatch(message.topic):
                 for subscriber in self._permanent_subscribers_map[key]:
-                    subscriber(message.topic, payload)
+                    try:
+                        subscriber(message.topic, payload)
+                    except Shutdown:
+                        raise
+                    except Exception:
+                        logging.exception('Failed processing ZigBee message')
 
                 break
 
@@ -313,20 +322,3 @@ class ZigBee:
                     setattr(self._devices_map[device.friendly_name], field.name, getattr(device, field.name))
             else:
                 self._devices_map[device.friendly_name] = device
-
-
-class BaseZigBeeDevice(BaseSmartDevice, abc.ABC):
-    device_type = SmartDeviceType.ZIGBEE
-    zig_bee: ZigBee
-
-    def __init__(self, friendly_name: str, *, zig_bee: ZigBee) -> None:
-        self.friendly_name = friendly_name
-        self.zig_bee = zig_bee
-
-
-class SubscriptionOnStateOfZigBeeDeviceMixin(abc.ABC):
-    def subscribe_on_update(self, func: typing.Callable) -> None:
-        self.zig_bee.subscribe_on_state(self.friendly_name, lambda name, state: func(state))
-
-    def unsubscribe(self) -> None:
-        self.zig_bee.unsubscribe_from_state(self.friendly_name)

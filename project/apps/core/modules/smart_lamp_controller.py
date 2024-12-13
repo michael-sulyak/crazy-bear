@@ -1,4 +1,5 @@
 import datetime
+import json
 import math
 import threading
 import typing
@@ -6,6 +7,7 @@ from functools import partial
 
 from libs.casual_utils.parallel_computing import synchronized_method
 from libs.casual_utils.time import get_current_time
+from libs.messengers.utils import escape_markdown
 from libs.task_queue import ScheduledTask, TaskPriorities
 from libs.zigbee.exceptions import ZigBeeTimeoutError
 from libs.zigbee.lamps.life_control import LCSmartLamp
@@ -60,8 +62,7 @@ class LampControllerInBedroom(BaseModule):
             priority=TaskPriorities.LOW,
         )
 
-    @property
-    def initial_state(self) -> dict[str, typing.Any]:
+    def get_initial_state(self) -> dict[str, typing.Any]:
         return {
             constants.MAIN_LAMP_IS_ON: False,
         }
@@ -96,6 +97,7 @@ class LampControllerInBedroom(BaseModule):
             'increase_color_temp': lambda: self.smart_lamp.step_color_temp(50, transition=self._default_transition),
             'decrease_color_temp': lambda: self.smart_lamp.step_color_temp(-50, transition=self._default_transition),
             'sunrise': self._run_artificial_sunrise,
+            'state': self._get_state,
         }
 
         if command.name == BotCommands.LAMP:
@@ -259,4 +261,12 @@ class LampControllerInBedroom(BaseModule):
     def _can_continue_artificial_sunrise(self) -> bool:
         return self._last_artificial_sunrise_time is not None and (
             self._last_manual_action is None or self._last_manual_action < self._last_artificial_sunrise_time
+        )
+
+    @synchronized_method
+    def _get_state(self) -> None:
+        state = json.dumps(self.smart_lamp.get_state(), indent=2)
+        self.messenger.send_message(
+            f'**State of "{self.smart_lamp.friendly_name}"**:\n```json\n{escape_markdown(state)}\n```',
+            use_markdown=True,
         )

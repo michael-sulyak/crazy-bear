@@ -31,6 +31,11 @@ class BaseMessenger(mixins.BaseCVMixin, abc.ABC):
         pass
 
     @abc.abstractmethod
+    def warning(self, text: str) -> None:
+        # TODO: Implement
+        pass
+
+    @abc.abstractmethod
     def error(self, text: str) -> None:
         pass
 

@@ -74,6 +74,12 @@ up: _run_remote_cmd
 fast_stop: CMD = "cd crazy_bear && docker compose -p crazy_bear -f docker-compose.prod.yml stop core"
 fast_stop: _run_remote_cmd
 
+restart: CMD = "cd crazy_bear && docker compose -p crazy_bear -f docker-compose.prod.yml restart"
+restart: _run_remote_cmd
+
+restart_zigbee: CMD = "cd crazy_bear && docker compose -p crazy_bear -f docker-compose.prod.yml restart zigbee2mqtt core"
+restart_zigbee: _run_remote_cmd
+
 stop: CMD = "cd crazy_bear && docker compose -p crazy_bear -f docker-compose.prod.yml stop"
 stop: _run_remote_cmd
 

@@ -43,13 +43,6 @@ __all__ = ('Camera',)
     description=('The module provides integration with a camera.'),
 )
 class Camera(BaseModule):
-    initial_state: typing.ClassVar = {
-        VIDEO_SECURITY_IS_ENABLED: None,
-        USE_CAMERA: False,
-        CAMERA_IS_AVAILABLE: True,
-        CURRENT_FPS: None,
-        VIDEO_RECORDING_IS_ENABLED: False,
-    }
     _video_stream: VideoStream | None = None
     _video_camera: VideoCamera | None = None
     _camera_is_available: bool = True
@@ -60,6 +53,16 @@ class Camera(BaseModule):
 
         self._update_camera_status()
         self._video_frames = []
+
+    def get_initial_state(self) -> dict[str, typing.Any]:
+        return {
+            **super().get_initial_state(),
+            VIDEO_SECURITY_IS_ENABLED: None,
+            USE_CAMERA: False,
+            CAMERA_IS_AVAILABLE: True,
+            CURRENT_FPS: None,
+            VIDEO_RECORDING_IS_ENABLED: False,
+        }
 
     def init_repeatable_tasks(self) -> tuple:
         return (

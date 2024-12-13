@@ -44,10 +44,9 @@ class Signals(BaseModule):
             run_after=now + self._timedelta_for_ping,
         )
 
-    @property
-    def initial_state(self) -> dict[str, typing.Any]:
+    def get_initial_state(self) -> dict[str, typing.Any]:
         return {
-            **super().initial_state,
+            **super().get_initial_state(),
             **self._supreme_signal_handler.get_initial_state(),
         }
 
@@ -82,7 +81,7 @@ class Signals(BaseModule):
         return (
             *super().subscribe_to_events(),
             events.request_for_statistics.connect(self._create_task_queue_stats),
-            *self._supreme_signal_handler.get_signals(),
+            *self._supreme_signal_handler.subscribe_to_events(),
         )
 
     def disable(self) -> None:
