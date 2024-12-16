@@ -16,7 +16,6 @@ __all__ = (
 
 
 class Event:
-    # todo: add parallel processing
     receivers: tuple[typing.Callable, ...]
     providing_kwargs: tuple[str, ...]
     _lock: threading.RLock

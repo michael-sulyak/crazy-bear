@@ -5,48 +5,49 @@ import threading
 import typing
 
 
-# TODO: Close loops
-# _thread_event_loops: dict = {}
-_lock = threading.Lock()
+class AsyncThread:
+    _lock: threading.Lock()
+    _loop: asyncio.AbstractEventLoop
+    _thread: threading.Thread | None = None
 
-# def async_to_sync(func: typing.Callable) -> typing.Callable:
-#     @functools.wraps(func)
-#     def wrapper(*args, **kwargs):
-#         with _lock:
-#             thread_id = threading.get_ident()
-#             if thread_id not in _thread_event_loops:
-#                 _thread_event_loops[thread_id] = asyncio.new_event_loop()
-#
-#             loop = _thread_event_loops[thread_id]
-#
-#         return loop.run_until_complete(func(*args, **kwargs))
-#
-#     return wrapper
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._create_loop()
 
-_loop = None
+    def get_loop(self) -> asyncio.AbstractEventLoop:
+        if self._loop.is_closed():
+            logging.error('Thread for asyncio was closed')
+            raise RuntimeError('Event loop is closed')
+
+        return self._loop
+
+    def close_loop(self) -> None:
+        if self._loop and not self._loop.is_closed():
+            self._loop.call_soon_threadsafe(self._loop.stop())
+
+        self._thread.join()
+
+    def _create_loop(self) -> None:
+        self._loop = asyncio.new_event_loop()
+        self._thread = threading.Thread(
+            target=self._start_background_loop,
+            daemon=True,
+        )
+        self._thread.start()
+
+    def _start_background_loop(self) -> None:
+        asyncio.set_event_loop(self._loop)
+        self._loop.run_forever()
 
 
-def _start_background_loop(loop: asyncio.AbstractEventLoop) -> None:
-    asyncio.set_event_loop(loop)
-    loop.run_forever()
+async_thread = AsyncThread()
 
 
 def async_to_sync(func: typing.Callable) -> typing.Callable:
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        global _loop
-
-        if _loop is None:
-            with _lock:
-                if _loop is None:
-                    _loop = asyncio.new_event_loop()
-                    tread = threading.Thread(target=_start_background_loop, args=(_loop,), daemon=True)
-                    tread.start()
-
-            if _loop.is_closed():
-                logging.error('Thread for asyncio was closed')
-
-        task = asyncio.run_coroutine_threadsafe(func(*args, **kwargs), _loop)
+        loop = async_thread.get_loop()
+        task = asyncio.run_coroutine_threadsafe(func(*args, **kwargs), loop)
         return task.result()
 
     return wrapper

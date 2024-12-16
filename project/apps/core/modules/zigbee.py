@@ -48,24 +48,20 @@ class ZigBeeController(BaseModule):
 
         self.messenger.send_message(f'*Devices*\n\n{devices_info}', use_markdown=True)
 
-        temporary_subscribers = '\n'.join(
-            key for key, value in self.context.zig_bee._temporary_subscribers_map.items() if value
-        )
+        temporary_subscribers = '\n'.join(self.context.zig_bee.temporary_subscribers_map.keys())
         self.messenger.send_message(
             f'Temporary subscribers:\n```\n{temporary_subscribers or "-"}\n```',
             use_markdown=True,
         )
 
-        permanent_subscribers = '\n'.join(
-            key for key, value in self.context.zig_bee._permanent_subscribers_map.items() if value
-        )
+        permanent_subscribers = '\n'.join(self.context.zig_bee.permanent_subscribers_map.keys())
         self.messenger.send_message(
             f'Permanent subscribers:\n```\n{permanent_subscribers or "-"}\n```',
             use_markdown=True,
         )
 
         self.messenger.send_message(
-            f'Availability map:\n```\n{self.context.zig_bee._availability_map or "-"}\n```',
+            f'Availability map:\n```\n{self.context.zig_bee.availability_map or "-"}\n```',
             use_markdown=True,
         )
 

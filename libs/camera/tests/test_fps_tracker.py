@@ -23,7 +23,7 @@ class TestFPSTracker(unittest.TestCase):
         fps_manager.update()
         fps_manager.stop()
 
-        fps_manager._finished_at = fps_manager._started_at + timedelta(seconds=1)
+        fps_manager._finished_at = fps_manager._started_at + timedelta(seconds=1)  # noqa: SLF001
 
         self.assertEqual(fps_manager.fps(), 3)
 
@@ -31,20 +31,20 @@ class TestFPSTracker(unittest.TestCase):
         fps_manager = FPSTracker()
         fps_manager.start()
         fps_manager.update()
-        fps_manager._started_at = fps_manager._started_at - fps_manager._timedelta_for_duplicate
+        fps_manager._started_at = fps_manager._started_at - fps_manager._timedelta_for_duplicate  # noqa: SLF001
         fps_manager.update()
         fps_manager.update()
 
-        self.assertEqual(2, fps_manager._new_num_frames)
+        self.assertEqual(2, fps_manager._new_num_frames)  # noqa: SLF001
 
     def test_reset(self):
         fps_manager = FPSTracker()
         fps_manager.start()
         fps_manager.update()
-        fps_manager._started_at = fps_manager._started_at - fps_manager._timedelta_for_duplicate
+        fps_manager._started_at = fps_manager._started_at - fps_manager._timedelta_for_duplicate  # noqa: SLF001
         fps_manager.update()
         fps_manager.update()
-        fps_manager._started_at = fps_manager._started_at - fps_manager._timedelta_for_reset
+        fps_manager._started_at = fps_manager._started_at - fps_manager._timedelta_for_reset  # noqa: SLF001
         fps_manager.update()
 
-        self.assertEqual(3, fps_manager._num_frames)
+        self.assertEqual(3, fps_manager._num_frames)  # noqa: SLF001

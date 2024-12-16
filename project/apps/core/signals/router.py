@@ -164,12 +164,8 @@ class RouterHandler(IntervalNotificationCheckMixin, BaseSignalHandler):
         )
 
     def compress(self) -> None:
-        signal = constants.USER_IS_CONNECTED_TO_ROUTER
-
-        Signal.clear((signal,))
-
         Signal.compress(
-            signal,
+            constants.USER_IS_CONNECTED_TO_ROUTER,
             datetime_range=get_default_signal_compress_datetime_range(),
             approximation_value=0,
             approximation_time=datetime.timedelta(hours=1),

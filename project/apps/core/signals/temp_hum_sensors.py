@@ -40,12 +40,9 @@ class TemperatureHumiditySensorsHandler(ZigBeeDeviceBatteryCheckerMixin, BaseSig
             sensor.subscribe_on_update(partial(self._process_update, device_name=device_name))
 
     def compress(self) -> None:
-        signal_types = self.device_names
-        Signal.clear(signal_types)
-
         datetime_range = get_default_signal_compress_datetime_range()
 
-        for signal_type in signal_types:
+        for signal_type in self.device_names:
             Signal.compress_by_time(
                 signal_type,
                 datetime_range=datetime_range,

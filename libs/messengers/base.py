@@ -32,7 +32,6 @@ class BaseMessenger(mixins.BaseCVMixin, abc.ABC):
 
     @abc.abstractmethod
     def warning(self, text: str) -> None:
-        # TODO: Implement
         pass
 
     @abc.abstractmethod

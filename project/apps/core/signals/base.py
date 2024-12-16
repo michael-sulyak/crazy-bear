@@ -112,8 +112,6 @@ class BaseSimpleSignalHandler(SignalNotificationMixin, IntervalNotificationCheck
         pass
 
     def compress(self) -> None:
-        Signal.clear((self.signal_type,))
-
         datetime_range = get_default_signal_compress_datetime_range()
 
         if self.compress_by_time:

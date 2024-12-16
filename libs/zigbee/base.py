@@ -9,7 +9,7 @@ import typing
 from collections import defaultdict
 
 from paho.mqtt.client import Client, MQTTMessage, MQTTMessageInfo, MQTTv5
-from paho.mqtt.enums import CallbackAPIVersion
+from paho.mqtt.enums import CallbackAPIVersion, MQTTErrorCode
 
 from project.apps.common.exceptions import Shutdown
 
@@ -80,6 +80,21 @@ class ZigBee:
 
         self._mq_host = mq_host
         self._mq_port = mq_port
+
+    @property
+    @synchronized_method
+    def permanent_subscribers_map(self) -> dict[str, tuple[typing.Callable, ...]]:
+        return {key: tuple(value) for key, value in self._permanent_subscribers_map.items() if value}
+
+    @property
+    @synchronized_method
+    def temporary_subscribers_map(self) -> dict[str, tuple[typing.Callable, ...]]:
+        return {key: tuple(value) for key, value in self._temporary_subscribers_map.items() if value}
+
+    @property
+    @synchronized_method
+    def availability_map(self) -> dict[str, bool]:
+        return self._availability_map.copy()
 
     @property
     @synchronized_method
@@ -205,14 +220,14 @@ class ZigBee:
         self.mq.loop_stop()
 
     @synchronized_method
-    def _on_connect(self, client, *args) -> None:
+    def _on_connect(self, client: Client, *args) -> None:
         for topic in itertools.chain(self._temporary_subscribers_map, self._permanent_subscribers_map):
             logging.info(f'ZigBee: Subscribe on "{topic}" when opening.')
             client.subscribe(topic)
 
     @synchronized_method
-    def _on_disconnect(self, client, userdata, rc) -> None:
-        if rc != 0:
+    def _on_disconnect(self, client: Client, userdata: typing.Any, rc: MQTTErrorCode, *args) -> None:
+        if rc != MQTTErrorCode.MQTT_ERR_SUCCESS:
             logging.error('Unexpected MQTT disconnection')
 
     @synchronized_method

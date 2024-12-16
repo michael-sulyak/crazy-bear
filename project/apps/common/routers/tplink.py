@@ -26,11 +26,11 @@ class TplinkRouter:
         return self._router.get_status().devices
 
     def _check_and_auth(self) -> None:
-        if self._router._logged:
+        if self._router._logged:   # noqa: SLF001
             return
 
         with self._lock:
-            if not self._router._logged:
+            if not self._router._logged:   # noqa: SLF001
                 self._router.authorize()
 
     def _relogin(self) -> None:

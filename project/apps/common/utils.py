@@ -253,8 +253,7 @@ def convert_params_to_date_range(
     return now - datetime.timedelta(**{delta_type: delta_value}), now
 
 
-# TODO: Use it
-def max_timer(max_timedelta: datetime.timedelta, log: typing.Callable = logging.warning) -> typing.Callable:
+def max_time_execution(max_timedelta: datetime.timedelta, log: typing.Callable = logging.warning) -> typing.Callable:
     def _decorator(func: typing.Callable) -> typing.Callable:
         @functools.wraps(func)
         def _wrapper(*args, **kwargs) -> typing.Any:

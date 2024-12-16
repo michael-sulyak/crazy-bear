@@ -169,12 +169,16 @@ class TelegramMessenger(CVMixin, BaseMessenger):
     def error(self, text: str, *, title: str = 'Error') -> None:
         logging.warning(text)
         self.send_message(
-            f'{emojize(":pager:")} ️*{title}* ```\n{escape_markdown(text, entity_type="pre")}\n```',
+            f'{emojize(":pager:")} *{title}* ```\n{escape_markdown(text, entity_type="pre")}\n```',
             use_markdown=True,
         )
 
     def warning(self, text: str) -> None:
-        self.error(text, title='Warning')
+        logging.warning(text)
+        self.send_message(
+            f'{emojize(":warning:")} *Warning* ```\n{escape_markdown(text, entity_type="pre")}\n```',
+            use_markdown=True,
+        )
 
     def exception(self, exp: Exception) -> None:
         self.error(

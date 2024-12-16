@@ -97,7 +97,7 @@ ignore = [
     "PLR0915",
     "PLR2004",
     "PLW0603",
-    "PT009",  # TODO: Fix
+    "PT009",
     "PYI024",
     "Q003",
     "Q004",
@@ -108,7 +108,6 @@ ignore = [
     "S605",
     "S607",
     "SIM108",
-    "SLF001",  # TODO: Fix
     "TRY002",  # TODO: Fix
     "TRY003",
     "TRY004",

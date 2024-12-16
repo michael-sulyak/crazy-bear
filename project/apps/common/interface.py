@@ -182,7 +182,7 @@ def module(
             commands=(
                 *commands,
                 *chain.from_iterable(
-                    method._commands
+                    method._commands  # noqa: SLF001
                     for method_name, method in inspect.getmembers(klass, predicate=inspect.isfunction)
                     if hasattr(method, '_commands')
                 ),
@@ -201,10 +201,10 @@ def command(
 ) -> typing.Callable:
     def wrapper(func: typing.Callable) -> typing.Callable:
         if not hasattr(func, '_commands'):
-            func._commands = []  # type: ignore
+            func._commands = []  # noqa: SLF001
 
-        func._commands.append(
-            Command(  # type: ignore
+        func._commands.append(  # noqa: SLF001
+            Command(
                 name,
                 *params,
                 flags=flags,

@@ -134,12 +134,12 @@ class Signals(BaseModule):
         )
 
     def _compress_db(self) -> typing.Generator:
+        Signal.remove_old()
+
         for progress in self._supreme_signal_handler.compress():
             yield progress * 0.8
 
         now = get_current_time()
-
-        Signal.clear((constants.TASK_QUEUE_DELAY,))
 
         with db.session_transaction() as session:
             session.query(Signal).filter(
@@ -159,8 +159,3 @@ class Signals(BaseModule):
         )
 
         yield 1
-
-        # TODO: Figure out how to clean old signals
-        # db.db_session().query(Signal).filter(
-        #     Signal.type.notin_(all_signals),
-        # ).delete()

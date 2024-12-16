@@ -54,12 +54,11 @@ class Signal(db.Base):
             session.add_all(signals)
 
     @classmethod
-    def clear(cls, signal_types: typing.Iterable[str]) -> None:
-        # TODO: Remove `signal_types` and remove all old
+    def remove_old(cls) -> None:
         timestamp = get_current_time() - config.STORAGE_TIME
 
         with db.session_transaction() as session:
-            session.query(cls).filter(cls.type.in_(signal_types), cls.received_at <= timestamp).delete()
+            session.query(cls).filter(cls.received_at <= timestamp).delete()
 
     @classmethod
     def get(cls, signal_type: str, *, datetime_range: tuple[datetime.datetime, datetime.datetime]) -> list['Signal']:

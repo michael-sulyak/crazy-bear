@@ -28,7 +28,6 @@ class WeatherHandler(IntervalNotificationCheckMixin, BaseSignalHandler):
             constants.WEATHER_TEMPERATURE,
             constants.WEATHER_HUMIDITY,
         )
-        Signal.clear(signal_types)
 
         datetime_range = get_default_signal_compress_datetime_range()
 

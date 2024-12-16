@@ -37,9 +37,6 @@ class MotionSensorsHandler(ZigBeeDeviceBatteryCheckerMixin, BaseSignalHandler):
             sensor: ZigBeeDeviceWithOnlyState = self._context.smart_devices_map[device_name]
             sensor.subscribe_on_update(partial(self._process_update, device_name=device_name))
 
-    def compress(self) -> None:
-        Signal.clear((OCCUPANCY,))
-
     def disable(self) -> None:
         for device_name in self.device_names:
             sensor: ZigBeeDeviceWithOnlyState = self._context.smart_devices_map[device_name]
