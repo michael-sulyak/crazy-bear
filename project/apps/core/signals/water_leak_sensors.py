@@ -38,7 +38,7 @@ class WaterLeakSensorsHandler(ZigBeeDeviceBatteryCheckerMixin, BaseSignalHandler
 
     @synchronized_method
     def _process_update(self, state: dict, *, device_name: str) -> None:
-        water_leak = state['water_leak']
+        water_leak = state.get('water_leak', False)
 
         if water_leak:
             self._messenger.send_message(f'Detected water leak!\nSensor: {device_name}')

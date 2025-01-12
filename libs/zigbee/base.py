@@ -241,7 +241,12 @@ class ZigBee:
             self._temporary_subscribers_map[message.topic],
             self._permanent_subscribers_map[message.topic],
         ):
-            subscriber(message.topic, payload)
+            try:
+                subscriber(message.topic, payload)
+            except Shutdown:
+                raise
+            except Exception:
+                logging.exception('Failed processing ZigBee message')
 
         self._temporary_subscribers_map[message.topic].clear()
 

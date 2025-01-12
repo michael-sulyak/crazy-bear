@@ -281,7 +281,7 @@ def max_time_execution(max_timedelta: datetime.timedelta, log: typing.Callable =
 
 def get_ram_usage() -> float:
     total, used, free = map(int, os.popen('free -t -m').readlines()[1].split()[1:4])
-    return 1 - free / total
+    return used / total
 
 
 def get_free_disk_space() -> int:
