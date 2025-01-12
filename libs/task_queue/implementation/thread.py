@@ -1,14 +1,17 @@
+import bisect
+import datetime
 import logging
-import queue
 import threading
 import typing
 from functools import partial
+from heapq import heappop, heappush
 from time import sleep
 
 from .. import constants
-from ..base import BaseTaskQueue, BaseWorker, TaskPriorityQueue
+from ..base import BaseTaskQueue, BaseWorker
 from ..dto import Task
 from ..middlewares import BaseMiddleware
+from ...casual_utils.parallel_computing import synchronized_method
 
 
 __all__ = (
@@ -18,24 +21,49 @@ __all__ = (
 
 
 class MemTaskQueue(BaseTaskQueue):
-    _tasks: TaskPriorityQueue
+    _queue_map: dict[int, list[tuple[typing.Any, Task]]]
+    _priorities: list[int]
+    _lock: threading.Lock
 
     def __init__(self) -> None:
-        self._tasks = TaskPriorityQueue()
+        self._queue_map = {}
+        self._priorities = []
+        self._lock = threading.Lock()
 
     def __len__(self) -> int:
-        return self._tasks.qsize()
+        return sum(len(x) for x in self._queue_map.values())
 
+    @synchronized_method
     def put_task(self, task: Task) -> None:
         task.status = constants.TaskStatuses.PENDING
         logging.debug('Put %s to MemTaskQueue', task)
-        self._tasks.put(task)
 
+        if task.priority not in self._queue_map:
+            self._queue_map[task.priority] = []
+            bisect.insort(self._priorities, task.priority)
+
+        heappush(
+            self._queue_map[task.priority],
+            (
+                task.run_after,
+                task,
+            ),
+        )
+
+    @synchronized_method
     def get(self) -> Task | None:
-        try:
-            return self._tasks.get(block=False)
-        except queue.Empty:
-            return None
+        now = datetime.datetime.now()
+
+        for priority in self._priorities:
+            queue = self._queue_map[priority]
+
+            if not queue:
+                continue
+
+            if queue[0][1].run_after <= now:
+                return heappop(queue)[1]
+
+        return None
 
 
 class ThreadWorker(BaseWorker):
