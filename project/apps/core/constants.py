@@ -12,6 +12,7 @@ TASK_QUEUE_DELAY = 'task_queue_delay'
 USER_IS_CONNECTED_TO_ROUTER = 'user_is_connected_to_router'
 USER_IS_AT_HOME = 'user_is_at_home'
 CONNECTED_DEVICES_TO_ROUTER = 'connected_devices_to_router'
+LAST_CRITICAL_SITUATION_OCCURRED_AT = 'last_critical_situation_occurred_at'
 
 AUTO_SECURITY_IS_ENABLED = 'auto_security_is_enabled'
 USE_CAMERA = 'use_camera'

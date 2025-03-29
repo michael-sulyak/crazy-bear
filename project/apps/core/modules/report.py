@@ -45,6 +45,13 @@ class Report(BaseModule):
 
         self._lock_for_status = threading.RLock()
 
+    def get_initial_state(self) -> dict[str, typing.Any]:
+        return {
+            **super().get_initial_state(),
+            constants.LAST_CRITICAL_SITUATION_OCCURRED_AT: None,
+        }
+
+
     def init_repeatable_tasks(self) -> tuple:
         return (
             IntervalTask(

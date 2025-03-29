@@ -4,8 +4,8 @@ import threading
 import typing
 from time import sleep
 
-from ...casual_utils.parallel_computing import synchronized_method
 from ..devices import BaseZigBeeDevice
+from ...casual_utils.parallel_computing import synchronized_method
 
 
 __all__ = ('LCSmartLamp',)
@@ -38,15 +38,8 @@ class LCSmartLamp(BaseZigBeeDevice):
     color_temps = (
         'coolest',
         'cool',
-        'neutral',
-        'warm',
+        'warmest',
     )
-    color_temps_map: typing.ClassVar = {
-        'coolest': 250,
-        'cool': 250,
-        'neutral': 350,
-        'warm': 150,
-    }
     colors_map: typing.ClassVar = {
         'yellow': (
             249,
@@ -74,8 +67,8 @@ class LCSmartLamp(BaseZigBeeDevice):
             254,
         ),
     }
-    MIN_BRIGHTNESS = 0
-    MAX_BRIGHTNESS = 254
+    color_temp_range = (167, 333,)
+    brightness_range = (3, 254,)
     _can_run_after: datetime.datetime
     _lock: threading.RLock
 
@@ -87,10 +80,9 @@ class LCSmartLamp(BaseZigBeeDevice):
 
     @synchronized_method
     @method_with_transition
-    def turn_on(self, *, color_temp: str = 'neutral', brightness: int = 254, transition: int = 0) -> None:
-        assert self.MIN_BRIGHTNESS <= brightness <= self.MAX_BRIGHTNESS
-        assert not isinstance(color_temp, str) or color_temp in self.color_temps
-        assert not isinstance(color_temp, int) or 150 <= color_temp <= 500
+    def turn_on(self, *, color_temp: str = 'cool', brightness: int = brightness_range[1], transition: int = 0) -> None:
+        brightness = self._fix_brightness(brightness)
+        color_temp = self._fix_color_temp(color_temp)
 
         self.zig_bee.set(
             self.friendly_name,
@@ -130,20 +122,18 @@ class LCSmartLamp(BaseZigBeeDevice):
     @synchronized_method
     @method_with_transition
     def set_color_temp(self, value: str | int, *, transition: int = 0) -> None:
-        assert not isinstance(value, str) or value in self.color_temps
-        assert not isinstance(value, int) or 150 <= value <= 500
+        value = self._fix_color_temp(value)
         self.zig_bee.set(self.friendly_name, {'color_temp': value, 'transition': transition})
 
     @synchronized_method
     def set_color_temp_startup(self, value: str | int) -> None:
-        assert not isinstance(value, str) or value in self.color_temps
-        assert not isinstance(value, int) or 150 <= value <= 500
+        value = self._fix_color_temp(value)
         self.zig_bee.set(self.friendly_name, {'color_temp_startup': value})
 
     @synchronized_method
     @method_with_transition
     def set_brightness(self, value: int, *, transition: int = 0) -> None:
-        assert self.MIN_BRIGHTNESS <= value <= self.MAX_BRIGHTNESS
+        value = self._fix_brightness(value)
         self.zig_bee.set(self.friendly_name, {'brightness': value, 'transition': transition})
 
     @synchronized_method
@@ -218,10 +208,14 @@ class LCSmartLamp(BaseZigBeeDevice):
         )
         sleep(2)
 
+        for color in self.color_temps:
+            self.set_color_temp(color, transition=1)
+            sleep(2)
+
         self.set_brightness(0, transition=1)
         sleep(2)
 
-        for brightness in range(0, 254, 50):
+        for brightness in range(0, 254, 10):
             self.set_brightness(brightness, transition=1)
             sleep(2)
 
@@ -233,3 +227,29 @@ class LCSmartLamp(BaseZigBeeDevice):
             sleep(2)
 
         self.turn_off(transition=1)
+
+    def _fix_color_temp(self, value: int | str) -> int | str:
+        assert not isinstance(value, str) or value in self.color_temps
+        assert not isinstance(value, int) or 150 <= value <= 500
+
+        if isinstance(value, str):
+            return value
+
+        if value > self.color_temp_range[1]:
+            return self.color_temp_range[1]
+
+        if value < self.color_temp_range[0]:
+            return self.color_temp_range[0]
+
+        return value
+
+    def _fix_brightness(self, value: int) -> int:
+        assert not isinstance(value, int) or 0 <= value <= 254
+
+        if value > self.brightness_range[1]:
+            return self.brightness_range[1]
+
+        if value < self.brightness_range[0]:
+            return self.brightness_range[0]
+
+        return value

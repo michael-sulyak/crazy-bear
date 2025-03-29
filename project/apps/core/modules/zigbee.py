@@ -2,10 +2,10 @@ import datetime
 
 from libs.messengers.utils import escape_markdown
 from libs.task_queue import IntervalTask, TaskPriorities
-
-from .... import config
-from ...common import interface
 from ..base import BaseModule
+from ...common import interface
+from .... import config
+from ....config import SmartDeviceNames
 
 
 __all__ = ('ZigBeeController',)
@@ -86,7 +86,7 @@ class ZigBeeController(BaseModule):
                     f'ZigBee device *{escape_markdown(device.friendly_name)}* has unknown availability',
                     use_markdown=True,
                 )
-            else:
+            elif device.friendly_name in SmartDeviceNames.ALL:
                 self.messenger.send_message(
                     f'ZigBee device *{escape_markdown(device.friendly_name)}* is not available',
                     use_markdown=True,

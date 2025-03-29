@@ -6,6 +6,7 @@ import typing
 
 from libs import task_queue
 from libs.messengers.base import BaseMessenger
+from libs.task_queue import BaseTaskQueue
 
 from ...common.constants import NOTHING
 from ...common.events import Receiver
@@ -26,11 +27,13 @@ class NotificationParams:
 class BaseSignalHandler(abc.ABC):
     _messenger: BaseMessenger
     _state: State
+    _task_queue: BaseTaskQueue
 
     def __init__(self, *, context: ModuleContext) -> None:
         self._context = context
         self._messenger = context.messenger
         self._state = context.state
+        self._task_queue = context.task_queue
 
     def get_tasks(self) -> tuple[task_queue.Task, ...]:
         return ()

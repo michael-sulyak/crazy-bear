@@ -1,20 +1,26 @@
+import datetime
 import threading
-from functools import cached_property, partial
+from functools import cached_property
 
 from libs.casual_utils.parallel_computing import synchronized_method
+from libs.task_queue import TaskPriorities
 from libs.zigbee.devices import ZigBeeDeviceWithOnlyState
 from project.config import SmartDeviceNames
-
-from ...signals.models import Signal
 from .base import BaseSignalHandler
 from .mixins import ZigBeeDeviceBatteryCheckerMixin
+from ..constants import LAST_CRITICAL_SITUATION_OCCURRED_AT
+from ...signals.models import Signal
 
 
 __all__ = ('WaterLeakSensorsHandler',)
 
 
 class WaterLeakSensorsHandler(ZigBeeDeviceBatteryCheckerMixin, BaseSignalHandler):
-    device_names = (SmartDeviceNames.WATER_LEAK_SENSOR_WC_OPEN,)
+    device_names = (
+        SmartDeviceNames.WATER_LEAK_SENSOR_BATH,
+        SmartDeviceNames.WATER_LEAK_SENSOR_KITCHEN_TAP,
+        SmartDeviceNames.WATER_LEAK_SENSOR_KITCHEN_BOTTOM,
+    )
     _lock: threading.RLock
 
     def __init__(self, *args, **kwargs) -> None:
@@ -23,7 +29,13 @@ class WaterLeakSensorsHandler(ZigBeeDeviceBatteryCheckerMixin, BaseSignalHandler
         self._lock = threading.RLock()
 
         for sensor in self._sensors:
-            sensor.subscribe_on_update(partial(self._process_update, device_name=sensor.friendly_name))
+            sensor.subscribe_on_update(
+                lambda state: self._task_queue.put(
+                    self._process_update,
+                    kwargs={'state': state, 'device_name': sensor.friendly_name},
+                    priority=TaskPriorities.HIGH,
+                ),
+            )
 
     def disable(self) -> None:
         for sensor in self._sensors:
@@ -37,11 +49,12 @@ class WaterLeakSensorsHandler(ZigBeeDeviceBatteryCheckerMixin, BaseSignalHandler
         )
 
     @synchronized_method
-    def _process_update(self, state: dict, *, device_name: str) -> None:
+    def _process_update(self, *, state: dict, device_name: str) -> None:
         water_leak = state.get('water_leak', False)
 
         if water_leak:
             self._messenger.send_message(f'Detected water leak!\nSensor: {device_name}')
+            self._state[LAST_CRITICAL_SITUATION_OCCURRED_AT] = datetime.datetime.now()
 
         Signal.add(signal_type=device_name, value=int(water_leak))
 

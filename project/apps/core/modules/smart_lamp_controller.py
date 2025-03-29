@@ -12,13 +12,12 @@ from libs.task_queue import ScheduledTask, TaskPriorities
 from libs.zigbee.exceptions import ZigBeeTimeoutError
 from libs.zigbee.lamps.life_control import LCSmartLamp
 from project import config
-
+from . import constants
+from ..base import BaseModule, Command
+from ..constants import BotCommands, LAST_CRITICAL_SITUATION_OCCURRED_AT
 from ...common import interface
 from ...common.constants import OFF, ON
 from ...common.utils import get_sunrise_time
-from ..base import BaseModule, Command
-from ..constants import BotCommands
-from . import constants
 
 
 __all__ = ('LampControllerInBedroom',)
@@ -49,6 +48,7 @@ class LampControllerInBedroom(BaseModule):
     _last_manual_action: datetime.datetime | None = None
     _last_artificial_sunrise_time: datetime.datetime | None = None
     _default_transition: float = 0.5
+    _warning_occurred_at: datetime.datetime | None = None
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -82,6 +82,15 @@ class LampControllerInBedroom(BaseModule):
 
         return repeatable_tasks
 
+    def subscribe_to_events(self) -> tuple:
+        return (
+            *super().subscribe_to_events(),
+            self.state.subscribe(
+                LAST_CRITICAL_SITUATION_OCCURRED_AT,
+                self._process_critical_situation,
+            )
+        )
+
     def process_command(self, command: Command) -> typing.Any:
         handlers_map: dict[str, typing.Callable] = {
             ON: lambda: self._turn_on_lamp(brightness=command.second_arg and int(command.second_arg)),
@@ -98,6 +107,7 @@ class LampControllerInBedroom(BaseModule):
             'decrease_color_temp': lambda: self.smart_lamp.step_color_temp(-50, transition=self._default_transition),
             'sunrise': self._run_artificial_sunrise,
             'state': self._get_state,
+            'warning': self._run_warning,
         }
 
         if command.name == BotCommands.LAMP:
@@ -106,8 +116,8 @@ class LampControllerInBedroom(BaseModule):
                     handler = handlers_map.get(command.first_arg)
 
                     if handler:
-                        handler()
                         self._last_manual_action = get_current_time()
+                        handler()
                         self.messenger.send_message('Done')
                         return True
                 except ZigBeeTimeoutError:
@@ -117,7 +127,7 @@ class LampControllerInBedroom(BaseModule):
 
         return False
 
-    def _turn_on_lamp(self, brightness: int) -> None:
+    def _turn_on_lamp(self, brightness: int | None = None) -> None:
         if brightness:
             self.smart_lamp.turn_on(
                 brightness=brightness,
@@ -170,7 +180,7 @@ class LampControllerInBedroom(BaseModule):
         delay_between_steps = datetime.timedelta(seconds=10)
         sunrise_time = datetime.timedelta(hours=1)
         total_steps = int(sunrise_time.total_seconds() / delay_between_steps.total_seconds())
-        max_brightness = self.smart_lamp.MAX_BRIGHTNESS
+        max_brightness = self.smart_lamp.brightness_range[1]
 
         def _run_next_step() -> None:
             self.task_queue.put(
@@ -189,12 +199,13 @@ class LampControllerInBedroom(BaseModule):
             if not self.state[constants.USER_IS_AT_HOME]:
                 return
 
+            self.smart_lamp.set_color_temp_startup('warmest')
             self.smart_lamp.turn_on(
                 brightness=brightness,
-                color_temp='warm',
+                color_temp='warmest',
                 transition=self._default_transition,
             )
-            self.smart_lamp.set_color_temp('warm')
+            self.smart_lamp.set_color_temp('warmest')
             self.state[constants.MAIN_LAMP_IS_ON] = True
 
             self._last_artificial_sunrise_time = get_current_time()
@@ -223,7 +234,7 @@ class LampControllerInBedroom(BaseModule):
             diff = max(delta_to_wait_sunrise, delta_to_wait_one_hour_after_finishing, datetime.timedelta())
 
             self.smart_lamp.set_brightness(max_brightness, transition=1)
-            self.smart_lamp.set_color_temp('neutral', transition=1)
+            self.smart_lamp.set_color_temp('cool', transition=1)
 
             self.task_queue.put(
                 self._turn_down_lamp_artificial_sunrise,
@@ -269,4 +280,47 @@ class LampControllerInBedroom(BaseModule):
         self.messenger.send_message(
             f'**State of "{self.smart_lamp.friendly_name}"**:\n```json\n{escape_markdown(state)}\n```',
             use_markdown=True,
+        )
+
+    @synchronized_method
+    def _process_critical_situation(self, name: str, old_value: datetime.datetime | None,
+                                    new_value: datetime.datetime) -> None:
+        was_empty = self._warning_occurred_at is None
+        self._warning_occurred_at = new_value
+
+        if was_empty:
+            self.task_queue.put(
+                self._run_warning,
+                priority=TaskPriorities.HIGH,
+            )
+
+    @synchronized_method
+    def _run_warning(self, *, turn_on: bool = True, is_new: bool = True) -> None:
+        min_brightness = 50
+        max_brightness = self.smart_lamp.brightness_range[1]
+
+        if turn_on:
+            if is_new:
+                self._turn_on_lamp(brightness=max_brightness)
+                self.smart_lamp.set_color(self.smart_lamp.colors_map['red'])
+            else:
+                self.smart_lamp.set_brightness(max_brightness, transition=1)
+        else:
+            self.smart_lamp.set_brightness(min_brightness, transition=1)
+
+            if (
+                self._warning_occurred_at is None
+                or datetime.datetime.now() - self._warning_occurred_at > datetime.timedelta(minutes=30)
+            ):
+                self._turn_off_lamp()
+                self._warning_occurred_at = None
+                return
+
+        self._last_manual_action = get_current_time()
+
+        self.task_queue.put(
+            self._run_warning,
+            kwargs={'turn_on': not turn_on, 'is_new': False},
+            run_after=datetime.datetime.now() + datetime.timedelta(seconds=3),
+            priority=TaskPriorities.HIGH,
         )
