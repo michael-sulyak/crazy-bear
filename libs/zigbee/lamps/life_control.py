@@ -4,8 +4,8 @@ import threading
 import typing
 from time import sleep
 
-from ..devices import BaseZigBeeDevice
 from ...casual_utils.parallel_computing import synchronized_method
+from ..devices import BaseZigBeeDevice
 
 
 __all__ = ('LCSmartLamp',)
@@ -67,8 +67,8 @@ class LCSmartLamp(BaseZigBeeDevice):
             254,
         ),
     }
-    color_temp_range = (167, 333,)
-    brightness_range = (3, 254,)
+    color_temp_range = (167, 333)
+    brightness_range = (3, 254)
     _can_run_after: datetime.datetime
     _lock: threading.RLock
 

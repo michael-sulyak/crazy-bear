@@ -49,7 +49,7 @@ class ConcreteRetries(BaseMiddleware):
         try:
             result = handler(task=task)
         except self.exceptions as e:
-            with task._lock:
+            with task._lock:  # NOQA
                 retries = task.options.setdefault('retries', 0)
                 retries += 1
 
@@ -63,7 +63,7 @@ class ConcreteRetries(BaseMiddleware):
                 task.error = e
                 task.status = constants.TaskStatuses.FAILED
         else:
-            with task._lock:
+            with task._lock:  # NOQA
                 task.options['retries'] = 0
 
         return result

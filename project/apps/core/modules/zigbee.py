@@ -2,10 +2,11 @@ import datetime
 
 from libs.messengers.utils import escape_markdown
 from libs.task_queue import IntervalTask, TaskPriorities
-from ..base import BaseModule
-from ...common import interface
+
 from .... import config
 from ....config import SmartDeviceNames
+from ...common import interface
+from ..base import BaseModule
 
 
 __all__ = ('ZigBeeController',)

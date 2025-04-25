@@ -7,11 +7,11 @@ from functools import partial
 from heapq import heappop, heappush
 from time import sleep
 
+from ...casual_utils.parallel_computing import synchronized_method
 from .. import constants
 from ..base import BaseTaskQueue, BaseWorker
 from ..dto import Task
 from ..middlewares import BaseMiddleware
-from ...casual_utils.parallel_computing import synchronized_method
 
 
 __all__ = (

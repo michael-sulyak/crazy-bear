@@ -4,6 +4,7 @@ import math
 import threading
 import typing
 from functools import partial
+from time import sleep
 
 from libs.casual_utils.parallel_computing import synchronized_method
 from libs.casual_utils.time import get_current_time
@@ -12,12 +13,13 @@ from libs.task_queue import ScheduledTask, TaskPriorities
 from libs.zigbee.exceptions import ZigBeeTimeoutError
 from libs.zigbee.lamps.life_control import LCSmartLamp
 from project import config
-from . import constants
-from ..base import BaseModule, Command
-from ..constants import BotCommands, LAST_CRITICAL_SITUATION_OCCURRED_AT
+
 from ...common import interface
 from ...common.constants import OFF, ON
 from ...common.utils import get_sunrise_time
+from ..base import BaseModule, Command
+from ..constants import LAST_CRITICAL_SITUATION_OCCURRED_AT, BotCommands
+from . import constants
 
 
 __all__ = ('LampControllerInBedroom',)
@@ -88,7 +90,7 @@ class LampControllerInBedroom(BaseModule):
             self.state.subscribe(
                 LAST_CRITICAL_SITUATION_OCCURRED_AT,
                 self._process_critical_situation,
-            )
+            ),
         )
 
     def process_command(self, command: Command) -> typing.Any:
@@ -181,6 +183,7 @@ class LampControllerInBedroom(BaseModule):
         sunrise_time = datetime.timedelta(hours=1)
         total_steps = int(sunrise_time.total_seconds() / delay_between_steps.total_seconds())
         max_brightness = self.smart_lamp.brightness_range[1]
+        color_temp = 'warmest'
 
         def _run_next_step() -> None:
             self.task_queue.put(
@@ -199,13 +202,17 @@ class LampControllerInBedroom(BaseModule):
             if not self.state[constants.USER_IS_AT_HOME]:
                 return
 
-            self.smart_lamp.set_color_temp_startup('warmest')
+            # Note: The below code contains some commands to try to get needed behaviour from the lamp.
+
+            self.smart_lamp.set_color_temp_startup(color_temp)
+            sleep(1)
             self.smart_lamp.turn_on(
                 brightness=brightness,
-                color_temp='warmest',
+                color_temp=color_temp,
                 transition=self._default_transition,
             )
-            self.smart_lamp.set_color_temp('warmest')
+            sleep(2)
+            self.smart_lamp.set_color_temp(color_temp)
             self.state[constants.MAIN_LAMP_IS_ON] = True
 
             self._last_artificial_sunrise_time = get_current_time()

@@ -2,6 +2,7 @@ import datetime
 import json
 import os
 import time
+import typing
 from os.path import dirname
 from pathlib import Path
 
@@ -94,16 +95,22 @@ class SmartDeviceNames:
     WATER_LEAK_SENSOR_BATH = 'water_leak_sensor:bath'
     WATER_LEAK_SENSOR_KITCHEN_TAP = 'water_leak_sensor:kitchen:tap'
     WATER_LEAK_SENSOR_KITCHEN_BOTTOM = 'water_leak_sensor:kitchen:bottom'
+    WATER_LEAK_SENSOR_WC = 'water_leak_sensor:wc'
     TEMP_HUM_SENSOR_WORK_ROOM = 'temp_hum_sensor:work_room'
     MOTION_SENSOR_HALLWAY = 'motion_sensor:hallway'
     DOOR_SENSOR_NARNIA = 'door_sensor:narnia'
 
-    ALL = {
-        MAIN_SMART_LAMP,
+    WATER_LEAK_SENSORS: typing.ClassVar[set[str]] = {
         WATER_LEAK_SENSOR_BATH,
         WATER_LEAK_SENSOR_KITCHEN_TAP,
         WATER_LEAK_SENSOR_KITCHEN_BOTTOM,
+        WATER_LEAK_SENSOR_WC,
+    }
+
+    ALL: typing.ClassVar[set[str]] = {
+        MAIN_SMART_LAMP,
         TEMP_HUM_SENSOR_WORK_ROOM,
         MOTION_SENSOR_HALLWAY,
         DOOR_SENSOR_NARNIA,
+        *WATER_LEAK_SENSORS,
     }

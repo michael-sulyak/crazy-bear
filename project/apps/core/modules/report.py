@@ -51,7 +51,6 @@ class Report(BaseModule):
             constants.LAST_CRITICAL_SITUATION_OCCURRED_AT: None,
         }
 
-
     def init_repeatable_tasks(self) -> tuple:
         return (
             IntervalTask(
@@ -108,7 +107,13 @@ class Report(BaseModule):
 
     def _update_status(self) -> None:
         with self._lock_for_status:
-            if self._message_id_for_status and self.messenger.last_message_id != self._message_id_for_status:
+            if (
+                self._message_id_for_status
+                and (
+                    self.messenger.last_message_id != self._message_id_for_status
+                    or get_current_time() - self.messenger.last_sent_at >= datetime.timedelta(hours=48)
+                )
+            ):
                 self._message_id_for_status = None
 
             if not self._message_id_for_status:

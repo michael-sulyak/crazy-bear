@@ -6,10 +6,11 @@ from libs.casual_utils.parallel_computing import synchronized_method
 from libs.task_queue import TaskPriorities
 from libs.zigbee.devices import ZigBeeDeviceWithOnlyState
 from project.config import SmartDeviceNames
+
+from ...signals.models import Signal
+from ..constants import LAST_CRITICAL_SITUATION_OCCURRED_AT
 from .base import BaseSignalHandler
 from .mixins import ZigBeeDeviceBatteryCheckerMixin
-from ..constants import LAST_CRITICAL_SITUATION_OCCURRED_AT
-from ...signals.models import Signal
 
 
 __all__ = ('WaterLeakSensorsHandler',)
@@ -17,9 +18,7 @@ __all__ = ('WaterLeakSensorsHandler',)
 
 class WaterLeakSensorsHandler(ZigBeeDeviceBatteryCheckerMixin, BaseSignalHandler):
     device_names = (
-        SmartDeviceNames.WATER_LEAK_SENSOR_BATH,
-        SmartDeviceNames.WATER_LEAK_SENSOR_KITCHEN_TAP,
-        SmartDeviceNames.WATER_LEAK_SENSOR_KITCHEN_BOTTOM,
+        *SmartDeviceNames.WATER_LEAK_SENSORS,
     )
     _lock: threading.RLock
 
@@ -30,9 +29,9 @@ class WaterLeakSensorsHandler(ZigBeeDeviceBatteryCheckerMixin, BaseSignalHandler
 
         for sensor in self._sensors:
             sensor.subscribe_on_update(
-                lambda state: self._task_queue.put(
+                lambda state, device_name=sensor.friendly_name: self._task_queue.put(
                     self._process_update,
-                    kwargs={'state': state, 'device_name': sensor.friendly_name},
+                    kwargs={'state': state, 'device_name': device_name},
                     priority=TaskPriorities.HIGH,
                 ),
             )

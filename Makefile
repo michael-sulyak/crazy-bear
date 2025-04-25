@@ -1,7 +1,3 @@
-REMOTE_ARDUINO_PORT = /dev/ttyUSB0
-LOCAL_ARDUINO_PORT = /dev/ttyUSB0
-
-
 # Main commands
 
 bash:
@@ -45,20 +41,9 @@ redeploy:
 	@$(MAKE) --no-print-directory build
 	@$(MAKE) --no-print-directory up
 
-
 push:
 	@$(MAKE) --no-print-directory scp
 	@$(MAKE) --no-print-directory rewrite
-
-compile_arduino:
-	@$(MAKE) --no-print-directory stop
-	@$(MAKE) --no-print-directory fast_compile_arduino
-	@$(MAKE) --no-print-directory up
-
-fast_compile_arduino:
-	@$(MAKE) --no-print-directory scp
-	@$(MAKE) --no-print-directory rewrite
-	@$(MAKE) --no-print-directory compile_arduino_on_server
 
 rewrite: CMD := "\
 	sudo rm ./crazy_bear -r && \
@@ -90,8 +75,6 @@ scp:
 	@echo "Creating zip..."
 	@zip -r crazy_bear.zip \
 	    $(shell git ls-files) \
-	    ./hardware/arduino/core/JsonRadioTransmitter \
-	    ./hardware/arduino/viewer/JsonRadioTransmitter \
 	    ./config/
 	@echo "Coping to RPi..."
 	@scp ./crazy_bear.zip pi:~

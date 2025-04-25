@@ -127,12 +127,13 @@ def main() -> None:
         ),
         smart_devices=(
             LCSmartLamp(config.SmartDeviceNames.MAIN_SMART_LAMP, zig_bee=zig_bee),
-            ZigBeeDeviceWithOnlyState(config.SmartDeviceNames.WATER_LEAK_SENSOR_BATH, zig_bee=zig_bee),
-            ZigBeeDeviceWithOnlyState(config.SmartDeviceNames.WATER_LEAK_SENSOR_KITCHEN_TAP, zig_bee=zig_bee),
-            ZigBeeDeviceWithOnlyState(config.SmartDeviceNames.WATER_LEAK_SENSOR_KITCHEN_BOTTOM, zig_bee=zig_bee),
             ZigBeeDeviceWithOnlyState(config.SmartDeviceNames.TEMP_HUM_SENSOR_WORK_ROOM, zig_bee=zig_bee),
             ZigBeeDeviceWithOnlyState(config.SmartDeviceNames.MOTION_SENSOR_HALLWAY, zig_bee=zig_bee),
             ZigBeeDeviceWithOnlyState(config.SmartDeviceNames.DOOR_SENSOR_NARNIA, zig_bee=zig_bee),
+            *(
+                ZigBeeDeviceWithOnlyState(leak_sensor, zig_bee=zig_bee)
+                for leak_sensor in config.SmartDeviceNames.WATER_LEAK_SENSORS
+            ),
         ),
     )
 
