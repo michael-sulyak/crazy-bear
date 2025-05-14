@@ -25,7 +25,6 @@ OCCUPANCY = 'occupancy'
 
 class MotionSensorsHandler(ZigBeeDeviceBatteryCheckerMixin, BaseSignalHandler):
     device_names = (SmartDeviceNames.MOTION_SENSOR_HALLWAY,)
-    _last_occupancy: bool | None = None
     _lock: threading.RLock
 
     def __init__(self, *args, **kwargs) -> None:
@@ -65,24 +64,17 @@ class MotionSensorsHandler(ZigBeeDeviceBatteryCheckerMixin, BaseSignalHandler):
     @synchronized_method
     def _process_update(self, state: dict, *, device_name: str) -> None:
         occupancy = state['occupancy']
-
         now = get_current_time()
 
         Signal.add(signal_type=OCCUPANCY, value=1 if occupancy else 0, received_at=now)
 
-        if self._state[SECURITY_IS_ENABLED]:
-            if self._last_occupancy != occupancy:
-                self._last_occupancy = occupancy
-
-                if occupancy:
-                    motion_detected.send(source=MotionTypeSources.SENSORS)
-                    self._send_message_about_movement(received_at=now)
-        else:
-            self._last_occupancy = None
+        if occupancy and self._state[SECURITY_IS_ENABLED]:
+            self._send_message_about_movement(received_at=now)
+            motion_detected.send(source=MotionTypeSources.SENSORS)
 
         self._check_battery(state['battery'], device_name=device_name)
 
-    @with_throttling(datetime.timedelta(seconds=5), count=1)
+    @with_throttling(datetime.timedelta(seconds=10), count=1)
     def _send_message_about_movement(self, *, received_at: datetime.datetime) -> None:
         self._messenger.send_message(
             (

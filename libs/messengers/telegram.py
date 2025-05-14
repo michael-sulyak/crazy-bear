@@ -115,12 +115,16 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         else:
             func = self._bot.send_message
 
-        result = await func(
-            chat_id=self.chat_id,
-            text=text,
-            parse_mode=ParseMode.MARKDOWN_V2 if use_markdown else None,
-            reply_markup=reply_markup,
-        )
+        try:
+            result = await func(
+                chat_id=self.chat_id,
+                text=text,
+                parse_mode=ParseMode.MARKDOWN_V2 if use_markdown else None,
+                reply_markup=reply_markup,
+            )
+        except Exception:
+            logging.info('Not sent telegram message: %s', text)
+            raise
 
         self._last_message_id = message_id or result.message_id
         self._last_sent_at = get_current_time()

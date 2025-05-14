@@ -17,9 +17,7 @@ __all__ = ('WaterLeakSensorsHandler',)
 
 
 class WaterLeakSensorsHandler(ZigBeeDeviceBatteryCheckerMixin, BaseSignalHandler):
-    device_names = (
-        *SmartDeviceNames.WATER_LEAK_SENSORS,
-    )
+    device_names = SmartDeviceNames.WATER_LEAK_SENSORS
     _lock: threading.RLock
 
     def __init__(self, *args, **kwargs) -> None:

@@ -91,12 +91,15 @@ ARTIFICIAL_SUNRISE_SCHEDULES = tuple(CronTab(schedule) for schedule in json_conf
 
 
 class SmartDeviceNames:
+    TEMP_HUM_SENSOR_NAME_PREFIX = 'temp_hum_sensor:'
+
     MAIN_SMART_LAMP = 'lamp:main_room'
     WATER_LEAK_SENSOR_BATH = 'water_leak_sensor:bath'
     WATER_LEAK_SENSOR_KITCHEN_TAP = 'water_leak_sensor:kitchen:tap'
     WATER_LEAK_SENSOR_KITCHEN_BOTTOM = 'water_leak_sensor:kitchen:bottom'
     WATER_LEAK_SENSOR_WC = 'water_leak_sensor:wc'
-    TEMP_HUM_SENSOR_WORK_ROOM = 'temp_hum_sensor:work_room'
+    TEMP_HUM_SENSOR_WORK_ROOM = f'{TEMP_HUM_SENSOR_NAME_PREFIX}work_room'
+    TEMP_HUM_SENSOR_BEDROOM = f'{TEMP_HUM_SENSOR_NAME_PREFIX}bedroom'
     MOTION_SENSOR_HALLWAY = 'motion_sensor:hallway'
     DOOR_SENSOR_NARNIA = 'door_sensor:narnia'
 
@@ -107,10 +110,15 @@ class SmartDeviceNames:
         WATER_LEAK_SENSOR_WC,
     }
 
+    TEMP_HUM_SENSORS: typing.ClassVar[set[str]] = {
+        TEMP_HUM_SENSOR_WORK_ROOM,
+        TEMP_HUM_SENSOR_BEDROOM,
+    }
+
     ALL: typing.ClassVar[set[str]] = {
         MAIN_SMART_LAMP,
-        TEMP_HUM_SENSOR_WORK_ROOM,
         MOTION_SENSOR_HALLWAY,
         DOOR_SENSOR_NARNIA,
+        *TEMP_HUM_SENSORS,
         *WATER_LEAK_SENSORS,
     }

@@ -180,7 +180,7 @@ class LampControllerInBedroom(BaseModule):
     @synchronized_method
     def _run_artificial_sunrise(self, *, step: int = 1) -> None:
         delay_between_steps = datetime.timedelta(seconds=10)
-        sunrise_time = datetime.timedelta(hours=1)
+        sunrise_time = datetime.timedelta(minutes=30)
         total_steps = int(sunrise_time.total_seconds() / delay_between_steps.total_seconds())
         max_brightness = self.smart_lamp.brightness_range[1]
         color_temp = 'warmest'
