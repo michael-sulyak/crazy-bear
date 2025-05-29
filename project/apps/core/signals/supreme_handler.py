@@ -11,6 +11,7 @@ from .free_disk_space import FreeDiskSpaceHandler
 from .motion_sensors import MotionSensorsHandler
 from .ram_usage import RamUsageHandler
 from .router import RouterHandler
+from .smoke_detectors import SmokeDetectorsHandler
 from .temp_hum_sensors import TemperatureHumiditySensorsHandler
 from .water_leak_sensors import WaterLeakSensorsHandler
 from .weather import WeatherHandler
@@ -25,6 +26,7 @@ class SupremeSignalHandler:
         RouterHandler,
         WaterLeakSensorsHandler,
         TemperatureHumiditySensorsHandler,
+        SmokeDetectorsHandler,
         MotionSensorsHandler,
         DoorSensorsHandler,
     )

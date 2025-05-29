@@ -1,21 +1,13 @@
 import datetime
 import io
-import threading
 import typing
 from collections import defaultdict
-from functools import cached_property
 
-from libs.casual_utils.parallel_computing import synchronized_method
-from libs.casual_utils.time import get_current_time
-from libs.task_queue import TaskPriorities
-from libs.zigbee.devices import ZigBeeDeviceWithOnlyState
-from project.config import SmartDeviceNames
-
+from ....config import SmartDeviceNames
 from ...common.utils import create_plot
 from ...core import constants
 from ...signals.models import Signal
-from .base import BaseSignalHandler
-from .mixins import ZigBeeDeviceBatteryCheckerMixin
+from .base import BaseSimpleSensorStateHandler
 from .utils import get_default_signal_compress_datetime_range
 
 
@@ -28,32 +20,24 @@ TEMPERATURE = f'{SmartDeviceNames.TEMP_HUM_SENSOR_WORK_ROOM}{TEMPERATURE_SUFFIX}
 HUMIDITY = f'{SmartDeviceNames.TEMP_HUM_SENSOR_WORK_ROOM}{HUMIDITY_SUFFIX}'
 
 
-class TemperatureHumiditySensorsHandler(ZigBeeDeviceBatteryCheckerMixin, BaseSignalHandler):
+class TemperatureHumiditySensorsHandler(BaseSimpleSensorStateHandler):
     device_names = SmartDeviceNames.TEMP_HUM_SENSORS
-    _lock: threading.RLock
     _last_sent_at_map: dict[str, datetime.datetime]
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-
-        self._lock = threading.RLock()
         self._last_sent_at_map = defaultdict(lambda: datetime.datetime.min)
 
-        for sensor in self._sensors:
-            sensor.subscribe_on_update(
-                lambda state, device_name=sensor.friendly_name: self._task_queue.put(
-                    self._process_update,
-                    kwargs={'state': state, 'device_name': device_name, 'received_at': get_current_time()},
-                    priority=TaskPriorities.HIGH,
-                ),
-            )
+    def handle(self, *, state: dict, device_name: str, received_at: datetime.datetime) -> None:
+        Signal.bulk_add((
+            Signal(type=f'{device_name}{TEMPERATURE_SUFFIX}', value=state['temperature'], received_at=received_at),
+            Signal(type=f'{device_name}{HUMIDITY_SUFFIX}', value=state['humidity'], received_at=received_at),
+        ))
 
-    @cached_property
-    def _sensors(self) -> tuple[ZigBeeDeviceWithOnlyState, ...]:
-        return tuple(
-            self._context.smart_devices_map[device_name]
-            for device_name in self.device_names
-        )
+        if device_name == SmartDeviceNames.TEMP_HUM_SENSOR_WORK_ROOM:
+            self._process_main_sensor(state)
+
+        self._check_battery(state.get('battery'), device_name=device_name)
 
     def compress(self) -> None:
         datetime_range = get_default_signal_compress_datetime_range()
@@ -155,22 +139,6 @@ class TemperatureHumiditySensorsHandler(ZigBeeDeviceBatteryCheckerMixin, BaseSig
                 )
 
         return plots
-
-    def disable(self) -> None:
-        for sensor in self._sensors:
-            sensor.unsubscribe()
-
-    @synchronized_method
-    def _process_update(self, state: dict, *, device_name: str, received_at: datetime.datetime) -> None:
-        Signal.bulk_add((
-            Signal(type=f'{device_name}{TEMPERATURE_SUFFIX}', value=state['temperature'], received_at=received_at),
-            Signal(type=f'{device_name}{HUMIDITY_SUFFIX}', value=state['humidity'], received_at=received_at),
-        ))
-
-        if device_name == SmartDeviceNames.TEMP_HUM_SENSOR_WORK_ROOM:
-            self._process_main_sensor(state)
-
-        self._check_battery(state.get('battery'), device_name=device_name)
 
     def _process_main_sensor(self, state: dict) -> None:
         temperature = state['temperature']

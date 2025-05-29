@@ -2,11 +2,16 @@ import abc
 import dataclasses
 import datetime
 import io
+import threading
 import typing
+from functools import cached_property
 
 from libs import task_queue
+from libs.casual_utils.parallel_computing import synchronized_method
+from libs.casual_utils.time import get_current_time
 from libs.messengers.base import BaseMessenger
-from libs.task_queue import BaseTaskQueue
+from libs.task_queue import BaseTaskQueue, TaskPriorities
+from libs.zigbee.devices import ZigBeeDeviceWithOnlyState
 
 from ...common.constants import NOTHING
 from ...common.events import Receiver
@@ -14,6 +19,7 @@ from ...common.state import State
 from ...signals.models import Signal
 from .. import events
 from ..base import ModuleContext
+from .mixins import ZigBeeDeviceBatteryCheckerMixin
 from .utils import get_default_signal_compress_datetime_range
 
 
@@ -129,3 +135,41 @@ class BaseSimpleSignalHandler(SignalNotificationMixin, IntervalNotificationCheck
             approximation_value=self.approximation_value,
             approximation_time=datetime.timedelta(hours=1),
         )
+
+
+class BaseSimpleSensorStateHandler(ZigBeeDeviceBatteryCheckerMixin, BaseSignalHandler, abc.ABC):
+    device_names: typing.Sequence[str]
+    _lock: threading.RLock
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
+        self._lock = threading.RLock()
+
+        for sensor in self._sensors:
+            sensor.subscribe_on_update(
+                lambda state, device_name=sensor.friendly_name: self._task_queue.put(
+                    self._process_update,
+                    kwargs={'state': state, 'device_name': device_name, 'received_at': get_current_time()},
+                    priority=TaskPriorities.HIGH,
+                ),
+            )
+
+    @abc.abstractmethod
+    def handle(self, *, state: dict, device_name: str, received_at: datetime.datetime) -> None:
+        pass
+
+    def disable(self) -> None:
+        for sensor in self._sensors:
+            sensor.unsubscribe()
+
+    @cached_property
+    def _sensors(self) -> tuple[ZigBeeDeviceWithOnlyState, ...]:
+        return tuple(
+            self._context.smart_devices_map[device_name]
+            for device_name in self.device_names
+        )
+
+    @synchronized_method
+    def _process_update(self, *, state: dict, device_name: str, received_at: datetime.datetime) -> None:
+        self.handle(state=state, device_name=device_name, received_at=received_at)

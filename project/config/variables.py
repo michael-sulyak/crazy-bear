@@ -102,6 +102,7 @@ class SmartDeviceNames:
     TEMP_HUM_SENSOR_BEDROOM = f'{TEMP_HUM_SENSOR_NAME_PREFIX}bedroom'
     MOTION_SENSOR_HALLWAY = 'motion_sensor:hallway'
     DOOR_SENSOR_NARNIA = 'door_sensor:narnia'
+    SMOKE_DETECTOR_KITCHEN = 'smoke_detector:kitchen'
 
     WATER_LEAK_SENSORS: typing.ClassVar[set[str]] = {
         WATER_LEAK_SENSOR_BATH,
@@ -119,6 +120,7 @@ class SmartDeviceNames:
         MAIN_SMART_LAMP,
         MOTION_SENSOR_HALLWAY,
         DOOR_SENSOR_NARNIA,
+        SMOKE_DETECTOR_KITCHEN,
         *TEMP_HUM_SENSORS,
         *WATER_LEAK_SENSORS,
     }
