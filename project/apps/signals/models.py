@@ -97,6 +97,7 @@ class Signal(db.Base):
         *,
         aggregate_function: typing.Callable = sa_func.avg,
         datetime_range: tuple[datetime.datetime, datetime.datetime],
+        date_trunc: str = None,
     ) -> list['Signal']:
         query_data = cls._get_query_data(
             signal_type=signal_type,
@@ -105,6 +106,9 @@ class Signal(db.Base):
 
         if not query_data:
             return []
+
+        if date_trunc is not None:
+            query_data['date_trunc'] = date_trunc
 
         signals = (
             db.get_db_session()

@@ -22,6 +22,8 @@ services:
       options:
         max-size: "1mb"
         max-file: "3"
+    ports:
+      - '8500:8000'
     command: make run
 
   postgres:
@@ -34,7 +36,7 @@ services:
 
   zigbee_mq:
     restart: always
-    image: eclipse-mosquitto:2.0.20
+    image: eclipse-mosquitto:2.0.22
     volumes:
       - "./mosquitto-data:/mosquitto"
 #    ports:
@@ -44,7 +46,7 @@ services:
 
   zigbee2mqtt:
     restart: always
-    image: koenkk/zigbee2mqtt:2.1.0
+    image: koenkk/zigbee2mqtt:2.6.3
     privileged: true
     depends_on:
       - zigbee_mq

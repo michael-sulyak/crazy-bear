@@ -8,6 +8,7 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from sentry_sdk.integrations.threading import ThreadingIntegration
 
+from libs.casual_utils.aio import async_thread
 from libs.messengers.telegram import TelegramMessenger
 from libs.task_queue import DelayedTask, ScheduledTask, TaskPriorities
 from libs.zigbee.base import ZigBee
@@ -26,6 +27,7 @@ from project.apps.core.commander import Commander
 from project.apps.core.constants import BotCommands
 from project.apps.core.modules import TelegramMenu
 from project.apps.core.utils.messages import process_telegram_message
+from project.apps.dashboard.base import AioHttpServer
 
 
 log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -128,7 +130,10 @@ def main() -> None:
             LCSmartLamp(config.SmartDeviceNames.MAIN_SMART_LAMP, zig_bee=zig_bee),
             ZigBeeDeviceWithOnlyState(config.SmartDeviceNames.MOTION_SENSOR_HALLWAY, zig_bee=zig_bee),
             ZigBeeDeviceWithOnlyState(config.SmartDeviceNames.DOOR_SENSOR_NARNIA, zig_bee=zig_bee),
-            ZigBeeDeviceWithOnlyState(config.SmartDeviceNames.SMOKE_DETECTOR_KITCHEN, zig_bee=zig_bee),
+            *(
+                ZigBeeDeviceWithOnlyState(sensor, zig_bee=zig_bee)
+                for sensor in config.SmartDeviceNames.SMOKE_DETECTORS
+            ),
             *(
                 ZigBeeDeviceWithOnlyState(sensor, zig_bee=zig_bee)
                 for sensor in config.SmartDeviceNames.TEMP_HUM_SENSORS
@@ -170,11 +175,16 @@ def main() -> None:
     for command in initial_commands:
         commander.message_queue.put(Message(command=command))
 
-    logging.info('Running commander...')
+    logging.info('Running server...')
+    server = AioHttpServer()
+    server.start()
 
+    logging.info('Running commander...')
     try:
         commander.run()
     finally:
+        server.stop()
+        async_thread.close_loop()
         db.close_db_session()
 
 

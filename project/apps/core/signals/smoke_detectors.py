@@ -10,7 +10,7 @@ __all__ = ('SmokeDetectorsHandler',)
 
 
 class SmokeDetectorsHandler(BaseSimpleSensorStateHandler):
-    device_names = (SmartDeviceNames.SMOKE_DETECTOR_KITCHEN,)
+    device_names = SmartDeviceNames.SMOKE_DETECTORS
 
     def handle(self, *, state: dict, device_name: str, received_at: datetime.datetime) -> None:
         has_smoke = state.get('smoke', False)

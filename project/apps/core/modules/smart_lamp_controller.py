@@ -235,10 +235,10 @@ class LampControllerInBedroom(BaseModule):
             assert self._last_artificial_sunrise_time is not None
 
             delta_to_wait_sunrise = get_sunrise_time() - get_current_time()
-            delta_to_wait_one_hour_after_finishing = (
-                self._last_artificial_sunrise_time + sunrise_time + datetime.timedelta(hours=1) - get_current_time()
+            delta_to_wait_after_finishing = (
+                self._last_artificial_sunrise_time + sunrise_time + datetime.timedelta(hours=2) - get_current_time()
             )
-            diff = max(delta_to_wait_sunrise, delta_to_wait_one_hour_after_finishing, datetime.timedelta())
+            diff = max(delta_to_wait_sunrise, delta_to_wait_after_finishing, datetime.timedelta())
 
             self.smart_lamp.set_brightness(max_brightness, transition=1)
             self.smart_lamp.set_color_temp('cool', transition=1)

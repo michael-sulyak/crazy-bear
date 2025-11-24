@@ -2,7 +2,7 @@ import threading
 import typing
 
 import tplinkrouterc6u
-from tplinkrouterc6u.exception import ClientError
+from tplinkrouterc6u import ClientError
 
 from project import config
 

@@ -1,7 +1,7 @@
 version: '3'
 
 services:
-  core:
+  core: &core
     restart: unless-stopped
     build:
       context: .
@@ -21,6 +21,8 @@ services:
       options:
         max-size: "1mb"
         max-file: "3"
+    ports:
+      - '8500:8000'
     command: make run
 
 #  home_assistant:
@@ -46,7 +48,7 @@ services:
 
   zigbee_mq:
     restart: always
-    image: eclipse-mosquitto:2.0.18
+    image: eclipse-mosquitto:2.0.22
     volumes:
       - "./mosquitto-data:/mosquitto"
     ports:
