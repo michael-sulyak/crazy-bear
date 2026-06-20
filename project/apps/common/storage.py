@@ -17,7 +17,20 @@ class FileStorage:
     _dbx: dropbox.Dropbox
 
     def __init__(self) -> None:
-        self._dbx = dropbox.Dropbox(config.DROPBOX_TOKEN, timeout=10)
+        if config.PROXY:
+            proxies = {
+                'http': config.PROXY,
+                'https': config.PROXY,
+                'ftp': config.PROXY,
+            }
+        else:
+            proxies = None
+
+        self._dbx = dropbox.Dropbox(
+            config.DROPBOX_TOKEN,
+            timeout=10,
+            session=dropbox.create_session(proxies=proxies),
+        )
 
     def upload(self, file_name: str, content: bytes) -> None:
         now = get_current_time()

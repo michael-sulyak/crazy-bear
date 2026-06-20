@@ -1,25 +1,30 @@
+import asyncio
 import datetime
 import functools
 import json
 import logging
 import queue
+import random
 import threading
 import traceback
 import typing
 from functools import partial
 from time import sleep
 
+import httpx
 import pika
 import telegram
 import urllib3
 from emoji import emojize
 from pika.exceptions import AMQPConnectionError
+from sentry_sdk import metrics
 from telegram import InputMediaPhoto, ReplyKeyboardMarkup
 from telegram import Update as TelegramUpdate
 from telegram.constants import ChatAction, ParseMode
 from telegram.error import (
     NetworkError as TelegramNetworkError,
 )
+from telegram.request import HTTPXRequest
 
 from project import config
 
@@ -48,13 +53,45 @@ def handel_telegram_exceptions(func: typing.Callable) -> typing.Callable:
         try:
             return func(*args, **kwargs)
         except TelegramNetworkError as e:
-            if isinstance(e.__cause__, urllib3.exceptions.HTTPError):
-                logging.warning(e, exc_info=True)
+            if isinstance(e.__cause__, (urllib3.exceptions.HTTPError, httpx.HTTPError)):
+                logging.warning('Issue with network while sending to Telegram', exc_info=True)
                 return None
 
             raise
 
     return wrap_func
+
+
+class CustomHTTPXRequest(HTTPXRequest):
+    async def do_request(self, *args, **kwargs):
+        max_attempts = 3
+        base_delay = 0.5
+        max_delay = 10
+
+        for attempt in range(1, max_attempts + 1):
+            try:
+                return await super().do_request(*args, **kwargs)
+            except TelegramNetworkError:
+                metrics.count('telegram.network.error', 1)
+
+                if attempt >= max_attempts:
+                    logging.warning(
+                        'Telegram HTTP request failed (%s/%s)',
+                        attempt, max_attempts,
+                        exc_info=True,
+                    )
+                    raise
+
+                delay = min(max_delay, base_delay * (2 ** (attempt - 1)))
+                delay *= random.uniform(0.7, 1.3)
+
+                logging.warning(
+                    'Telegram HTTP request failed, retry %s/%s in %.2fs',
+                    attempt, max_attempts, delay,
+                    exc_info=True,
+                )
+
+                await asyncio.sleep(delay)
 
 
 class TelegramMessenger(CVMixin, BaseMessenger):
@@ -73,7 +110,15 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         self, *, message_handler: typing.Callable, default_reply_markup: typing.Callable | None = None,
     ) -> None:
         self.default_reply_markup = default_reply_markup
-        self._bot = telegram.Bot(token=config.TELEGRAM_TOKEN)
+        telegram_request = CustomHTTPXRequest(
+            connect_timeout=10,
+            read_timeout=60,
+            write_timeout=30,
+            pool_timeout=10,
+            connection_pool_size=20,
+            proxy=config.PROXY,
+        )
+        self._bot = telegram.Bot(token=config.TELEGRAM_TOKEN, request=telegram_request)
         self._lock = threading.RLock()
         self._update_queue = queue.Queue()
         self._run_worker()
@@ -94,7 +139,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         self._worker.join(0)
 
     @synchronized_method
-    @handel_telegram_exceptions
+    # @handel_telegram_exceptions
     @async_to_sync
     async def send_message(
         self,
@@ -132,7 +177,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         return message_id or result.message_id
 
     @synchronized_method
-    @handel_telegram_exceptions
+    # @handel_telegram_exceptions
     @async_to_sync
     async def send_image(self, image: typing.Any, *, caption: str | None = None) -> None:
         result = await self._bot.send_photo(
@@ -144,7 +189,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         self._last_sent_at = get_current_time()
 
     @synchronized_method
-    @handel_telegram_exceptions
+    # @handel_telegram_exceptions
     @async_to_sync
     async def send_images(self, images: typing.Any) -> None:
         if not images:
@@ -159,7 +204,7 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         self._last_sent_at = get_current_time()
 
     @synchronized_method
-    @handel_telegram_exceptions
+    # @handel_telegram_exceptions
     @async_to_sync
     async def send_file(self, file: typing.Any, *, caption: str | None = None) -> None:
         result = await self._bot.send_document(
@@ -191,13 +236,13 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         )
 
     @synchronized_method
-    @handel_telegram_exceptions
+    # @handel_telegram_exceptions
     @async_to_sync
     async def start_typing(self) -> None:
         await self._bot.send_chat_action(chat_id=self.chat_id, action=ChatAction.TYPING)
 
     @synchronized_method
-    @handel_telegram_exceptions
+    # @handel_telegram_exceptions
     @async_to_sync
     async def remove_message(self, message_id: int) -> None:
         await self._bot.delete_message(chat_id=self.chat_id, message_id=message_id)

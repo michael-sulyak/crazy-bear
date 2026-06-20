@@ -4,6 +4,7 @@ from libs import task_queue
 
 from ...common.events import Receiver
 from ..base import ModuleContext
+from .air_monitor import AirMonitorHandler
 from .base import BaseSignalHandler
 from .cpu_temp import CpuTempHandler
 from .door_sensors import DoorSensorsHandler
@@ -29,6 +30,7 @@ class SupremeSignalHandler:
         SmokeDetectorsHandler,
         MotionSensorsHandler,
         DoorSensorsHandler,
+        AirMonitorHandler,
     )
     _inited_handlers: tuple[BaseSignalHandler, ...]
 

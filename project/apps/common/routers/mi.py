@@ -25,8 +25,7 @@ class MiWiFi:
     _timeout: int = 5
 
     def __init__(self, *, url: str, password: str, miwifi_type: int = 0) -> None:
-        if url.endswith('/'):
-            url = url[:-1]
+        url = url.removesuffix('/')
 
         self.url = url
         self.password = password

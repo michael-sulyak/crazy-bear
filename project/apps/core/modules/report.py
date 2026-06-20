@@ -119,10 +119,10 @@ class Report(BaseModule):
             if not self._message_id_for_status:
                 if (
                     self.messenger.last_sent_at
-                    and get_current_time() - self.messenger.last_sent_at > datetime.timedelta(minutes=5)
+                    and get_current_time() - self.messenger.last_sent_at > datetime.timedelta(minutes=10)
                     and not is_sleep_hours()
                 ):
-                    logging.debug('Send status after 5 min.')
+                    logging.info('Send full status again after timeout.')
                     self._send_status()
 
                 return

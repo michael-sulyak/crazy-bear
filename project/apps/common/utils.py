@@ -4,9 +4,11 @@ import io
 import logging
 import math
 import os
+import time
 import typing
 from collections import deque, namedtuple
 from contextlib import contextmanager
+from functools import lru_cache
 
 import cv2
 import matplotlib as mpl
@@ -18,6 +20,7 @@ import requests
 from matplotlib.dates import DateFormatter
 from matplotlib.ticker import AutoLocator, MaxNLocator
 from requests import RequestException
+from sentry_sdk import metrics
 
 from libs.casual_utils.time import get_current_time
 
@@ -70,8 +73,8 @@ def get_cpu_temp() -> float:
     try:
         return int(temp_str) / 1_000
     except (
-        IndexError,
-        ValueError,
+            IndexError,
+            ValueError,
     ) as e:
         raise RuntimeError('Could not parse temperature output.') from e
 
@@ -173,6 +176,7 @@ def create_plot(
 
     return buffer
 
+
 def interpolate_old_values_for_stats(
     *,
     x_attr: str,
@@ -218,8 +222,40 @@ def camera_is_available(src: int) -> bool:
     return is_available
 
 
+@lru_cache
+def get_proxy_for_requests() -> dict | None:
+    if not config.PROXY:
+        return None
+
+    return {
+        'http': config.PROXY,
+        'https': config.PROXY,
+    }
+
+
 def get_weather() -> dict:
-    return requests.get(config.OPENWEATHERMAP_URL, timeout=10).json()
+    max_retries = 3
+    backoff_factor = 2
+
+    for attempt in range(1, max_retries + 2):
+        try:
+            response = requests.get(config.OPENWEATHERMAP_URL, timeout=10, proxies=get_proxy_for_requests())
+
+            if response.status_code >= 400:
+                raise requests.HTTPError(response=response)
+
+            return response.json()
+
+        except Exception:
+            metrics.count('weather.network.error', 1)
+
+            if attempt <= max_retries:
+                sleep_time = backoff_factor ** (attempt - 1)
+                time.sleep(sleep_time)
+            else:
+                raise
+
+    raise RuntimeError
 
 
 def get_sunrise_time() -> datetime.datetime:

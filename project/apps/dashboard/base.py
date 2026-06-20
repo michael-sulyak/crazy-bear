@@ -5,32 +5,37 @@ import logging
 from aiohttp import web
 
 from libs.casual_utils.aio import async_thread
+from libs.qingping.base import Measurement
 from project.apps import db
+from project.apps.common.state import State
+from project.apps.core.constants import AIR_MONITOR_STATE
 from project.apps.core.signals.temp_hum_sensors import HUMIDITY_SUFFIX, TEMPERATURE_SUFFIX
 from project.apps.signals.models import Signal
 from project.config import SmartDeviceNames
 
 
 class AioHttpServer:
+    state: State
     host: str
     port: int
     html_content: str
     futures: list
 
-    def __init__(self, *, host: str = '0.0.0.0', port: int = 8000) -> None:
+    def __init__(self, *, state: State, host: str = '0.0.0.0', port: int = 8000) -> None:
+        self.state = state
         self.host = host
         self.port = port
         self.runner = None
         self.futures = []
 
-        with open('./project/apps/dashboard/resources/index.html', 'r') as file:
+        with open('./project/apps/dashboard/resources/index.html') as file:
             self.html_content = file.read()
 
     async def handle_index(self, request: web.Request) -> web.Response:
         return web.Response(text=self.html_content, content_type='text/html')
 
     async def handle_stats(self, request: web.Request) -> web.Response:
-        now = datetime.datetime.now(datetime.timezone.utc)
+        now = datetime.datetime.now(datetime.UTC)
         day_ago = now - datetime.timedelta(hours=24)
 
         rooms = []
@@ -98,7 +103,20 @@ class AioHttpServer:
                 'aggregated': agg_data,
             })
 
-        stats = [{'rooms': rooms}]
+        air_monitor_state: Measurement | None = self.state[AIR_MONITOR_STATE]
+
+        if air_monitor_state:
+            air_monitor = {
+                'temperature': air_monitor_state.temperature_celsius,
+                'humidity': air_monitor_state.humidity_percent,
+                'co2': air_monitor_state.co2,
+                'pm10': air_monitor_state.pm10,
+                'pm25': air_monitor_state.pm25,
+            }
+        else:
+            air_monitor = None
+
+        stats = {'rooms': rooms, 'air_monitor': air_monitor}
         return web.json_response(stats)
 
     async def start_server(self) -> None:

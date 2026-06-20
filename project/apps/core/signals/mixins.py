@@ -3,5 +3,5 @@ class ZigBeeDeviceBatteryCheckerMixin:
         if battery is None:
             return
 
-        if battery < 30:
+        if battery <= 50:
             self._messenger.warning(f'Battery is low ({battery}%)!\nSensor: "{device_name}"')

@@ -64,6 +64,11 @@ SENTRY_DSN = json_config['sentry_dsn']
 # Dropbox
 DROPBOX_TOKEN = json_config['dropbox_token']
 
+# Qingping
+QINGPING_APP_KEY = json_config['qingping_app_key']
+QINGPING_APP_SECRET = json_config['qingping_app_secret']
+QINGPING_DEVICE_MAC = json_config['qingping_device_mac']
+
 # Router
 ROUTER_TYPE = json_config['router_type']
 assert ROUTER_TYPE == 'tplink'
@@ -88,6 +93,7 @@ SLEEPING_TIME = tuple(datetime.time.fromisoformat(t) for t in json_config['sleep
 NORMAL_HUMIDITY_RANGE = json_config['normal_humidity_range']
 NORMAL_TEMPERATURE_RANGE = json_config['normal_temperature_range']
 ARTIFICIAL_SUNRISE_SCHEDULES = tuple(CronTab(schedule) for schedule in json_config['artificial_sunrise_schedules'])
+PROXY = json_config['proxy']
 
 
 class SmartDeviceNames:
@@ -101,6 +107,7 @@ class SmartDeviceNames:
     TEMP_HUM_SENSOR_WORK_ROOM = f'{TEMP_HUM_SENSOR_NAME_PREFIX}work_room'
     TEMP_HUM_SENSOR_BEDROOM = f'{TEMP_HUM_SENSOR_NAME_PREFIX}bedroom'
     TEMP_HUM_SENSOR_KITCHEN = f'{TEMP_HUM_SENSOR_NAME_PREFIX}kitchen'
+    TEMP_HUM_SENSOR_KITCHEN_HOOD = f'{TEMP_HUM_SENSOR_NAME_PREFIX}kitchen_hood'
     MOTION_SENSOR_HALLWAY = 'motion_sensor:hallway'
     DOOR_SENSOR_NARNIA = 'door_sensor:narnia'
     SMOKE_DETECTOR_KITCHEN = 'smoke_detector:kitchen'
@@ -117,6 +124,7 @@ class SmartDeviceNames:
         TEMP_HUM_SENSOR_WORK_ROOM,
         TEMP_HUM_SENSOR_BEDROOM,
         TEMP_HUM_SENSOR_KITCHEN,
+        TEMP_HUM_SENSOR_KITCHEN_HOOD,
     }
 
     SMOKE_DETECTORS: typing.ClassVar[set[str]] = {

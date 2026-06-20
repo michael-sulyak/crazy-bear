@@ -176,7 +176,7 @@ def main() -> None:
         commander.message_queue.put(Message(command=command))
 
     logging.info('Running server...')
-    server = AioHttpServer()
+    server = AioHttpServer(state=state)
     server.start()
 
     logging.info('Running commander...')

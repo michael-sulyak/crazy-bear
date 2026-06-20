@@ -54,10 +54,10 @@ class BaseSignalHandler(abc.ABC):
         pass
 
     def generate_plots(
-        self,
-        *,
-        date_range: tuple[datetime.datetime, datetime.datetime],
-        components: set[str],
+            self,
+            *,
+            date_range: tuple[datetime.datetime, datetime.datetime],
+            components: set[str],
     ) -> typing.Sequence[io.BytesIO] | None:
         return None
 
@@ -65,8 +65,9 @@ class BaseSignalHandler(abc.ABC):
         pass
 
 
-class IntervalNotificationCheckMixin(abc.ABC):
+class IntervalCheckMixin(abc.ABC):
     task_interval: datetime.timedelta
+    has_init_run: bool = False
     priority = task_queue.TaskPriorities.LOW
 
     def get_tasks(self) -> tuple[task_queue.Task, ...]:
@@ -75,7 +76,12 @@ class IntervalNotificationCheckMixin(abc.ABC):
                 target=self.process,
                 priority=self.priority,
                 interval=self.task_interval,
-                run_after=datetime.datetime.now() + datetime.timedelta(seconds=10),
+                run_after=(
+                    datetime.datetime.now()
+                    if self.has_init_run
+                    else
+                    datetime.datetime.now() + datetime.timedelta(seconds=10)
+                ),
             ),
         )
 
@@ -102,7 +108,7 @@ class SignalNotificationMixin(abc.ABC):
             break
 
 
-class BaseSimpleSignalHandler(SignalNotificationMixin, IntervalNotificationCheckMixin, BaseSignalHandler, abc.ABC):
+class BaseSimpleSignalHandler(SignalNotificationMixin, IntervalCheckMixin, BaseSignalHandler, abc.ABC):
     signal_type: str
     compress_by_time: bool
     approximation_value: float = 0

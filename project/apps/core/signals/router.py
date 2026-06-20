@@ -12,11 +12,11 @@ from ...common.utils import create_plot, is_sleep_hours
 from ...signals.models import Signal
 from .. import constants, events
 from ..utils.wifi import check_if_owner_is_connected_to_router, get_connected_devices_to_router
-from .base import BaseSignalHandler, IntervalNotificationCheckMixin
+from .base import BaseSignalHandler, IntervalCheckMixin
 from .utils import get_default_signal_compress_datetime_range
 
 
-class RouterHandler(IntervalNotificationCheckMixin, BaseSignalHandler):
+class RouterHandler(IntervalCheckMixin, BaseSignalHandler):
     task_interval = datetime.timedelta(seconds=10)
     priority = task_queue.TaskPriorities.HIGH
     _check_after: datetime.datetime = datetime.datetime.min

@@ -21,6 +21,11 @@
             font-weight: bold;
         }
 
+        .medium-stat {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
         .mini-table th, .mini-table td {
             font-size: 0.95rem;
             padding: 0.25rem 0.5rem;
@@ -47,6 +52,16 @@
         .card-header {
             --bs-card-cap-bg: rgba(33, 37, 41, 0.5);
         }
+
+        .metric-label {
+            font-size: 0.95rem;
+            opacity: 0.75;
+        }
+
+        .metric-unit {
+            font-size: 1rem;
+            opacity: 0.8;
+        }
     </style>
 </head>
 <body>
@@ -55,21 +70,100 @@
         <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" style="width: 100%"></div>
     </div>
 </div>
+
 <div class="container-fluid py-3" style="max-width: 1500px; min-height: 100vh">
     <header class="mt-4 mb-5 text-center">
         <div class="fs-1 text-white fw-bold">
             Dashboard
         </div>
     </header>
+
     <main>
+        <div id="air-monitor-block" class="card mb-4 d-none">
+            <h4 class="card-header mb-3 text-center text-white">
+                Air Monitor
+            </h4>
+
+            <div class="card-body text-center text-white">
+                <div class="row g-4">
+                    <div class="col-6 col-md">
+                        <div class="metric-label">
+                            Temperature
+                        </div>
+                        <div>
+                            <span id="air-monitor-temp" class="medium-stat">-</span>
+                            <span class="metric-unit">°C</span>
+                        </div>
+                        <div class="fs-5">
+                            <i class="fa-solid fa-temperature-three-quarters"></i>
+                        </div>
+                    </div>
+
+                    <div class="col-6 col-md">
+                        <div class="metric-label">
+                            Humidity
+                        </div>
+                        <div>
+                            <span id="air-monitor-hum" class="medium-stat">-</span>
+                            <span class="metric-unit">%</span>
+                        </div>
+                        <div class="fs-5">
+                            <i class="fa-solid fa-droplet"></i>
+                        </div>
+                    </div>
+
+                    <div class="col-6 col-md">
+                        <div class="metric-label">
+                            CO₂
+                        </div>
+                        <div>
+                            <span id="air-monitor-co2" class="medium-stat">-</span>
+                            <span class="metric-unit">ppm</span>
+                        </div>
+                        <div class="fs-5">
+                            <i class="fa-solid fa-wind"></i>
+                        </div>
+                    </div>
+
+                    <div class="col-6 col-md">
+                        <div class="metric-label">
+                            PM 1.0
+                        </div>
+                        <div>
+                            <span id="air-monitor-pm10" class="medium-stat">-</span>
+                            <span class="metric-unit">µg/m³</span>
+                        </div>
+                        <div class="fs-5">
+                            <i class="fa-solid fa-smog"></i>
+                        </div>
+                    </div>
+
+                    <div class="col-6 col-md">
+                        <div class="metric-label">
+                            PM 2.5
+                        </div>
+                        <div>
+                            <span id="air-monitor-pm25" class="medium-stat">-</span>
+                            <span class="metric-unit">µg/m³</span>
+                        </div>
+                        <div class="fs-5">
+                            <i class="fa-solid fa-cloud"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div id="rooms-row" class="row g-4">
         </div>
+
         <div class="card mt-4">
             <h4 class="card-header mb-3 text-white">Temperature Plot</h4>
             <div class="card-body text-center">
                 <canvas id="tempChart" height="120"></canvas>
             </div>
         </div>
+
         <div class="card mt-4">
             <h4 class="card-header mb-3 text-white">Humidity Plot</h4>
             <div class="card-body text-center">
@@ -83,6 +177,7 @@
     // Chart.js setup
     const tempCtx = document.getElementById('tempChart').getContext('2d')
     const humCtx = document.getElementById('humChart').getContext('2d')
+
     Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)'
     Chart.defaults.color = '#fff'
 
@@ -125,7 +220,31 @@
     })
 
     const colors = ['#0d6efd', '#198754', '#fd7e14', '#6f42c1', '#d63384', '#20c997', '#ffc107']
-    // const humColors = ['#6f42c1', '#d63384', '#20c997', '#0dcaf0', '#6610f2', '#ff6f00', '#8bc34a']
+
+    function formatNumber(value, digits = 1) {
+        return value !== null && value !== undefined ? Number(value).toFixed(digits) : '-'
+    }
+
+    function formatInteger(value) {
+        return value !== null && value !== undefined ? Math.round(Number(value)).toString() : '-'
+    }
+
+    function updateAirMonitorBlock(airMonitor) {
+        const block = document.getElementById('air-monitor-block')
+
+        if (!airMonitor) {
+            block.classList.add('d-none')
+            return
+        }
+
+        block.classList.remove('d-none')
+
+        document.getElementById('air-monitor-temp').textContent = formatNumber(airMonitor.temperature, 1)
+        document.getElementById('air-monitor-hum').textContent = formatNumber(airMonitor.humidity, 1)
+        document.getElementById('air-monitor-co2').textContent = formatInteger(airMonitor.co2)
+        document.getElementById('air-monitor-pm10').textContent = formatNumber(airMonitor.pm10, 1)
+        document.getElementById('air-monitor-pm25').textContent = formatNumber(airMonitor.pm25, 1)
+    }
 
     // Create a room card DOM element
     function createRoomCard(room, idx) {
@@ -155,39 +274,48 @@
         try {
             const resp = await fetch('/api/stats')
             const data = await resp.json()
-            // let data = [
-            //     {
-            //         'rooms': [
-            //             {
-            //                 'name': 'Room 1',
-            //                 'last': {'temperature': 22.1, 'humidity': 45.3},
-            //                 'aggregated': [
-            //                     {'time': '2024-06-07T12:00:00+00:00', 'temperature': 21.1, 'humidity': 39.8},
-            //                 ],
-            //             },
-            //             {
-            //                 'name': 'Room 2',
-            //                 'last': {'temperature': 22.1, 'humidity': 45.3},
-            //                 'aggregated': [
-            //                     {'time': '2024-06-07T12:00:00+00:00', 'temperature': 21.1, 'humidity': 39.8},
-            //                 ],
-            //             },
-            //         ],
-            //     },
-            // ]
-            if (!Array.isArray(data) || !data[0] || !Array.isArray(data[0].rooms)) {
-                return
-            }
-            const rooms = data[0].rooms
+            //
+            // const data = {
+            //     'rooms': [
+            //         {
+            //             'name': 'Room 1',
+            //             'last': {'temperature': 22.1, 'humidity': 45.3},
+            //             'aggregated': [
+            //                 {'time': '2024-06-07T12:00:00+00:00', 'temperature': 21.1, 'humidity': 39.8},
+            //             ],
+            //         },
+            //         {
+            //             'name': 'Room 2',
+            //             'last': {'temperature': 22.1, 'humidity': 45.3},
+            //             'aggregated': [
+            //                 {'time': '2024-06-07T12:00:00+00:00', 'temperature': 21.1, 'humidity': 39.8},
+            //             ],
+            //         },
+            //     ],
+            //     'air_monitor': {
+            //         'temperature': 22,
+            //         'humidity': 40,
+            //         'co2': 462,
+            //         'pm10': 3,
+            //         'pm25': 4,
+            //     }
+            // }
+
+            const rooms = data.rooms || []
+            const airMonitor = data.air_monitor || null
+
+            updateAirMonitorBlock(airMonitor)
 
             // Dynamically render room cards
             const roomsRow = document.getElementById('rooms-row')
             roomsRow.innerHTML = ''
+
             rooms.forEach((room, idx) => {
                 roomsRow.appendChild(createRoomCard(room, idx))
             })
 
             const allTimestampsSet = new Set()
+
             rooms.forEach(room => {
                 if (Array.isArray(room.aggregated)) {
                     room.aggregated.forEach(entry => {
@@ -195,15 +323,18 @@
                     })
                 }
             })
+
             const allTimestamps = Array.from(allTimestampsSet).sort()
 
             const roomDataMaps = rooms.map(room => {
                 const map = {}
+
                 if (Array.isArray(room.aggregated)) {
                     room.aggregated.forEach(entry => {
                         map[entry.time] = entry
                     })
                 }
+
                 return map
             })
 
@@ -213,6 +344,7 @@
 
             allTimestamps.forEach(time => {
                 const d = new Date(time)
+
                 labels.push(d.toLocaleString([], {
                     hourCycle: 'h23',
                     hour: '2-digit',
@@ -220,15 +352,20 @@
                     month: 'short',
                     day: 'numeric',
                 }))
+
                 rooms.forEach((room, i) => {
                     const entry = roomDataMaps[i][time]
+
                     tempData[i].push(entry && entry.temperature !== null ? entry.temperature : null)
                     humData[i].push(entry && entry.humidity !== null ? entry.humidity : null)
                 })
             })
+
             const prevTempVisibility = tempChart.data.datasets.map((ds, i) => !tempChart.isDatasetVisible(i))
+
             tempChart.data.labels = labels
             tempChart.data.datasets = []
+
             for (let i = 0; i < rooms.length; i++) {
                 tempChart.data.datasets.push({
                     label: `${rooms[i].name || `Room ${i + 1}`} Temp (°C)`,
@@ -237,27 +374,35 @@
                     tension: 0.3,
                 })
             }
+
             tempChart.update('none')
+
             tempChart.data.datasets.forEach((ds, i) => {
                 tempChart.setDatasetVisibility(i, !prevTempVisibility[i])
             })
 
+            tempChart.update('none')
+
             const prevHumVisibility = humChart.data.datasets.map((ds, i) => !humChart.isDatasetVisible(i))
+
             humChart.data.labels = labels
             humChart.data.datasets = []
+
             for (let i = 0; i < rooms.length; i++) {
                 humChart.data.datasets.push({
                     label: `${rooms[i].name || `Room ${i + 1}`} Hum (%)`,
                     data: humData[i],
                     borderColor: colors[i % colors.length],
-                    // borderDash: [5, 5],
                     tension: 0.3,
                 })
             }
+
             humChart.update('none')
+
             humChart.data.datasets.forEach((ds, i) => {
                 humChart.setDatasetVisibility(i, !prevHumVisibility[i])
             })
+
             humChart.update('none')
         } catch (e) {
             console.error('Failed to fetch or parse /api/stats', e)
@@ -265,6 +410,7 @@
     }
 
     fetchAndUpdate()
+
     setTimeout(function tick() {
         fetchAndUpdate()
         setTimeout(tick, 60000)

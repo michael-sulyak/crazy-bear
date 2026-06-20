@@ -5,11 +5,11 @@ from libs.casual_utils.time import get_current_time
 from ...common import utils
 from ...signals.models import Signal
 from .. import constants
-from .base import BaseSignalHandler, IntervalNotificationCheckMixin
+from .base import BaseSignalHandler, IntervalCheckMixin
 from .utils import get_default_signal_compress_datetime_range
 
 
-class WeatherHandler(IntervalNotificationCheckMixin, BaseSignalHandler):
+class WeatherHandler(IntervalCheckMixin, BaseSignalHandler):
     task_interval = datetime.timedelta(minutes=10)  # Note: See recommendation from https://openweathermap.org/faq
 
     def process(self) -> None:

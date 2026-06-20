@@ -14,6 +14,13 @@ USER_IS_AT_HOME = 'user_is_at_home'
 CONNECTED_DEVICES_TO_ROUTER = 'connected_devices_to_router'
 LAST_CRITICAL_SITUATION_OCCURRED_AT = 'last_critical_situation_occurred_at'
 
+AIR_MONITOR_STATE = 'air_monitor_state'
+AIR_MONITOR_TEMPERATURE = 'air_monitor_temperature'
+AIR_MONITOR_HUMIDITY = 'air_monitor_humidity'
+AIR_MONITOR_CO2 = 'air_monitor_co2'
+AIR_MONITOR_PM25 = 'air_monitor_pm25'
+AIR_MONITOR_PM10 = 'air_monitor_pm10'
+
 AUTO_SECURITY_IS_ENABLED = 'auto_security_is_enabled'
 USE_CAMERA = 'use_camera'
 VIDEO_RECORDING_IS_ENABLED = 'video_recording_is_enabled'

@@ -14,6 +14,9 @@ from ...common.utils import get_cpu_temp, get_effective_temperature, get_free_di
 from ...signals.models import Signal
 from .. import constants
 from ..constants import (
+    AIR_MONITOR_CO2,
+    AIR_MONITOR_HUMIDITY,
+    AIR_MONITOR_TEMPERATURE,
     AUTO_SECURITY_IS_ENABLED,
     CAMERA_IS_AVAILABLE,
     CURRENT_FPS,
@@ -22,7 +25,7 @@ from ..constants import (
     VIDEO_RECORDING_IS_ENABLED,
     VIDEO_SECURITY_IS_ENABLED,
 )
-from ..signals.temp_hum_sensors import HUMIDITY, TEMPERATURE
+from ..signals.temp_hum_sensors import HUMIDITY
 from .wifi import WifiDevice
 
 
@@ -61,16 +64,24 @@ class ShortTextReport:
             else ''
         )
 
+        if self.state[CAMERA_IS_AVAILABLE]:
+            camera_status = (
+                f'Camera: `{self.YES if self.state[CAMERA_IS_AVAILABLE] else self.NO}{additional_camera_status}'
+                f'{f"FPS {escape_markdown(self._fps_info)}" if self.state[CAMERA_IS_AVAILABLE] else ""}`\n\n'
+            )
+        else:
+            camera_status = '\n'
+
         return (
             f'️*Crazy Bear* `v{escape_markdown(config.VERSION)}`\n\n'
             f'{emojize(":shield:")} *Security*\n'
             f'Security: `{self.YES if self.state[SECURITY_IS_ENABLED] else self.NO}{additional_security_status}`\n'
-            f'Camera: `{self.YES if self.state[CAMERA_IS_AVAILABLE] else self.NO}{additional_camera_status}'
-            f'{f"FPS {escape_markdown(self._fps_info)}" if self.state[CAMERA_IS_AVAILABLE] else ""}`\n\n'
+            f'{camera_status}'
             f'{emojize(":bar_chart:")} *Sensors*\n'
             f'Humidity: `{escape_markdown(self._humidity_info)}`\n'
             f'Temperature: `{escape_markdown(self._temperature_info)}`\n'
             f'Temperature\\*: `{escape_markdown(self._effective_temperature_info)}`\n'
+            f'CO2: `{escape_markdown(self._co2_info)}`\n'
             f'CPU Temperature: `{escape_markdown(self._cpu_temperature_info)}`\n'
             f'RAM usage: `{escape_markdown(self._ram_usage_info)}`\n'
             f'Free space: `{escape_markdown(self._free_space_info)}`\n\n'
@@ -81,7 +92,11 @@ class ShortTextReport:
 
     @cached_property
     def _humidity(self) -> float | None:
-        return self._get_last_signal_value(HUMIDITY)
+        return self._get_last_signal_value(AIR_MONITOR_HUMIDITY)
+
+    @cached_property
+    def _co2(self) -> float | None:
+        return self._get_last_signal_value(AIR_MONITOR_CO2)
 
     @cached_property
     def _second_humidity(self) -> float | None:
@@ -92,12 +107,12 @@ class ShortTextReport:
 
     @cached_property
     def _temperature(self) -> float | None:
-        return self._get_last_signal_value(TEMPERATURE)
+        return self._get_last_signal_value(AIR_MONITOR_TEMPERATURE)
 
     @cached_property
     def _second_temperature(self) -> float | None:
         return Signal.get_one_aggregated(
-            TEMPERATURE,
+            AIR_MONITOR_TEMPERATURE,
             datetime_range=self._datetime_range_for_second_aggregation,
         )
 
@@ -177,6 +192,16 @@ class ShortTextReport:
                 temperature_info += f' ({"+" if diff > 0 else ""}{diff})'
 
         return temperature_info
+
+    @property
+    def _co2_info(self) -> str:
+        if self._co2 is None:
+            return self.NOTHING
+
+        co2_info = f'{round(self._co2)}'
+        co2_info += self._get_mark(self._co2, (0, 600), (0, 1_000))
+
+        return co2_info
 
     @property
     def _fps_info(self) -> str:
