@@ -8,7 +8,7 @@ from libs.casual_utils.aio import async_thread
 from libs.qingping.base import Measurement
 from project.apps import db
 from project.apps.common.state import State
-from project.apps.core.constants import AIR_MONITOR_STATE
+from project.apps.core.constants import AIR_MONITOR_STATE, AIR_MONITOR_CO2
 from project.apps.core.signals.temp_hum_sensors import HUMIDITY_SUFFIX, TEMPERATURE_SUFFIX
 from project.apps.signals.models import Signal
 from project.config import SmartDeviceNames
@@ -106,12 +106,27 @@ class AioHttpServer:
         air_monitor_state: Measurement | None = self.state[AIR_MONITOR_STATE]
 
         if air_monitor_state:
+            agg_co2 = Signal.get_aggregated(
+                AIR_MONITOR_CO2,
+                datetime_range=(day_ago, now),
+                date_trunc='hour',
+            )
+
+            agg_data = [
+                {
+                    'time': row.aggregated_time.isoformat(),
+                    'co2': row.value and round(row.value),
+                }
+                for row in agg_co2
+            ]
+
             air_monitor = {
                 'temperature': air_monitor_state.temperature_celsius,
                 'humidity': air_monitor_state.humidity_percent,
                 'co2': air_monitor_state.co2,
                 'pm10': air_monitor_state.pm10,
                 'pm25': air_monitor_state.pm25,
+                'history': agg_data,
             }
         else:
             air_monitor = None

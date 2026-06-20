@@ -154,7 +154,7 @@ class ShortTextReport:
             return self.NOTHING
 
         temperature_info = f'{round(self._temperature, 1)}℃'
-        temperature_info += self._get_mark(self._temperature, (22, 24), (20, 25))
+        temperature_info += self._get_mark(self._temperature, (18, 23,), (16, 25,))
 
         if self._second_temperature is not None:
             diff = round(self._temperature - self._second_temperature, 1)
@@ -175,7 +175,7 @@ class ShortTextReport:
         )
 
         temperature_info = f'{round(temperature, 1)}℃'
-        temperature_info += self._get_mark(temperature, (18, 22.5), (16, 26.5))
+        temperature_info += self._get_mark(temperature, (18, 23,), (16, 25,))
 
         if self._second_temperature is not None and self._second_humidity is not None:
             second_temperature = get_effective_temperature(
@@ -199,7 +199,7 @@ class ShortTextReport:
             return self.NOTHING
 
         co2_info = f'{round(self._co2)}'
-        co2_info += self._get_mark(self._co2, (0, 600), (0, 1_000))
+        co2_info += self._get_mark(self._co2, (0, 800), (0, 1_000))
 
         return co2_info
 
@@ -230,7 +230,7 @@ class ShortTextReport:
     @property
     def _ram_usage_info(self) -> str:
         ram_usage = get_ram_usage() * 100
-        return f'{round(ram_usage, 1)}%{self._get_mark(ram_usage, (0, 60), (0, 80))}'
+        return f'{round(ram_usage, 1)}%{self._get_mark(ram_usage, (0, 60,), (0, 80,))}'
 
     @property
     def _free_space_info(self) -> str:

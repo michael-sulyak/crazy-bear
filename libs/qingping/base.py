@@ -84,6 +84,10 @@ class CleargrassAuthError(CleargrassApiError):
 
 
 class CleargrassClient:
+    """
+    Doc: https://developer.qingping.co/cloud-to-cloud/open-apis
+    """
+
     def __init__(
             self,
             app_key: str,
