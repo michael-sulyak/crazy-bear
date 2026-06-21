@@ -171,7 +171,7 @@ class Report(BaseModule):
 
         with self._lock_for_status:
             if self._message_id_for_status:
-                message += f'\nUpdated at: `{escape_markdown(report.now.strftime("%d.%m.%Y, %H:%M:%S"))}`'
+                message += f'\nUpdated: `{escape_markdown(report.now.strftime("%d.%m.%Y, %H:%M:%S"))}`'
 
             self._message_id_for_status = self.messenger.send_message(
                 message,

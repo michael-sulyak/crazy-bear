@@ -2,17 +2,28 @@ import datetime
 import typing
 
 from libs.qingping.base import CleargrassClient
-
-from .... import config
+from .base import BaseSignalHandler, IntervalCheckMixin, SignalNotificationMixin, NotificationParams
+from .. import constants
 from ...common.utils import get_proxy_for_requests
 from ...signals.models import Signal
-from .. import constants
-from .base import BaseSignalHandler, IntervalCheckMixin
+from .... import config
 
 
-class AirMonitorHandler(IntervalCheckMixin, BaseSignalHandler):
+class AirMonitorHandler(SignalNotificationMixin, IntervalCheckMixin, BaseSignalHandler):
     task_interval = datetime.timedelta(minutes=5)
     has_init_run = True
+    list_of_notification_params = (
+        NotificationParams(
+            condition=lambda x: x > 1_500,
+            message='Very high CO2 levels in the room. Need to ventilate!',
+            delay=datetime.timedelta(hours=1),
+        ),
+        NotificationParams(
+            condition=lambda x: x > 1_000,
+            message='High CO2 levels in the room. Need to ventilate!',
+            delay=datetime.timedelta(hours=2),
+        ),
+    )
 
     _client: CleargrassClient
 
@@ -76,3 +87,6 @@ class AirMonitorHandler(IntervalCheckMixin, BaseSignalHandler):
             ))
 
         Signal.bulk_add(signals)
+
+        if latest_measurement.co2 is not None:
+            self._check_notifications(latest_measurement.co2)

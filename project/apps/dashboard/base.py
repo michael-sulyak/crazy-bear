@@ -38,8 +38,8 @@ class AioHttpServer:
         now = datetime.datetime.now(datetime.UTC)
         day_ago = now - datetime.timedelta(hours=24)
 
-        rooms = []
-        rooms_map = {
+        places = []
+        places_map = {
             device_name.removeprefix(SmartDeviceNames.TEMP_HUM_SENSOR_NAME_PREFIX).replace('_', ' ').title(): {
                 'temperature': f'{device_name}{TEMPERATURE_SUFFIX}',
                 'humidity': f'{device_name}{HUMIDITY_SUFFIX}',
@@ -47,7 +47,7 @@ class AioHttpServer:
             for device_name in sorted(SmartDeviceNames.TEMP_HUM_SENSORS)
         }
 
-        for room_name, signals in rooms_map.items():
+        for place_name, signals in places_map.items():
             session = db.get_db_session()
             last_temp = (
                 session.query(Signal.value)
@@ -94,8 +94,8 @@ class AioHttpServer:
                     'humidity': current_hum_by_time and round(current_hum_by_time, 1),
                 })
 
-            rooms.append({
-                'name': room_name,
+            places.append({
+                'name': place_name,
                 'last': {
                     'temperature': round(last_temp[0], 1) if last_temp else None,
                     'humidity': round(last_hum[0]) if last_hum else None,
@@ -131,7 +131,7 @@ class AioHttpServer:
         else:
             air_monitor = None
 
-        stats = {'rooms': rooms, 'air_monitor': air_monitor}
+        stats = {'places': places, 'air_monitor': air_monitor}
         return web.json_response(stats)
 
     async def start_server(self) -> None:

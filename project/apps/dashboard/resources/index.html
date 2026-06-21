@@ -238,6 +238,37 @@
             border-radius: 0.85rem;
             background: var(--accent-soft);
             color: var(--accent);
+            transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease;
+        }
+
+        .metric-icon.is-good {
+            background: rgba(25, 135, 84, 0.2);
+            color: #51d88a;
+            box-shadow: 0 0 0 1px rgba(25, 135, 84, 0.16) inset;
+        }
+
+        .metric-icon.is-fair {
+            background: rgba(13, 202, 240, 0.2);
+            color: #5ee5ff;
+            box-shadow: 0 0 0 1px rgba(13, 202, 240, 0.16) inset;
+        }
+
+        .metric-icon.is-watch {
+            background: rgba(255, 193, 7, 0.24);
+            color: #ffd659;
+            box-shadow: 0 0 0 1px rgba(255, 193, 7, 0.18) inset;
+        }
+
+        .metric-icon.is-poor {
+            background: rgba(220, 53, 69, 0.24);
+            color: #ff6b6b;
+            box-shadow: 0 0 0 1px rgba(220, 53, 69, 0.2) inset;
+        }
+
+        .metric-icon.is-muted {
+            background: rgba(173, 181, 189, 0.16);
+            color: #ced4da;
+            box-shadow: 0 0 0 1px rgba(173, 181, 189, 0.12) inset;
         }
 
         .metric-value {
@@ -254,30 +285,30 @@
             white-space: nowrap;
         }
 
-        .room-card {
+        .place-card {
             transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
         }
 
-        .room-card:hover {
+        .place-card:hover {
             transform: translateY(-3px);
             border-color: rgba(32, 201, 151, 0.45);
             background: var(--card-bg-strong);
         }
 
-        .room-metric {
+        .place-metric {
             padding: 1rem;
             border-radius: 1rem;
             background: rgba(255, 255, 255, 0.055);
             border: 1px solid rgba(255, 255, 255, 0.075);
         }
 
-        .room-metric-label {
+        .place-metric-label {
             color: var(--muted);
             font-size: 0.85rem;
             margin-bottom: 0.35rem;
         }
 
-        .room-stat {
+        .place-stat {
             font-size: clamp(2rem, 4vw, 2.8rem);
             font-weight: 800;
             line-height: 1;
@@ -469,11 +500,11 @@
 
         <section>
             <div class="section-header">
-                <h2 class="section-title">Rooms</h2>
-                <span id="rooms-count" class="glass-pill py-2 px-3">0 rooms</span>
+                <h2 class="section-title">Places</h2>
+                <span id="places-count" class="glass-pill py-2 px-3">0 places</span>
             </div>
 
-            <div id="rooms-row" class="row g-4 row-cols-1 row-cols-md-2 row-cols-xl-3"></div>
+            <div id="places-row" class="row g-4 row-cols-1 row-cols-md-2 row-cols-xl-3"></div>
         </section>
 
         <section class="row g-4 mt-1">
@@ -554,6 +585,14 @@
         '#adb5bd',
     ]
 
+    const metricIconStatusClasses = [
+        'is-good',
+        'is-fair',
+        'is-watch',
+        'is-poor',
+        'is-muted',
+    ]
+
     Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)'
     Chart.defaults.color = 'rgba(255, 255, 255, 0.82)'
     Chart.defaults.font.family = "'Rubik', Arial, sans-serif"
@@ -599,6 +638,30 @@
         return statuses[Math.max(0, Math.min(score, statuses.length - 1))]
     }
 
+    function temperatureScore(value) {
+        if (!isFiniteNumber(value)) return null
+
+        const temperature = Number(value)
+
+        if (temperature >= 18 && temperature <= 24) return 0
+        if ((temperature >= 16 && temperature < 18) || (temperature > 24 && temperature <= 26)) return 1
+        if ((temperature >= 14 && temperature < 16) || (temperature > 26 && temperature <= 28)) return 2
+
+        return 3
+    }
+
+    function humidityScore(value) {
+        if (!isFiniteNumber(value)) return null
+
+        const humidity = Number(value)
+
+        if (humidity >= 40 && humidity <= 60) return 0
+        if ((humidity >= 35 && humidity < 40) || (humidity > 60 && humidity <= 65)) return 1
+        if ((humidity >= 30 && humidity < 35) || (humidity > 65 && humidity <= 70)) return 2
+
+        return 3
+    }
+
     function co2Score(value) {
         if (!isFiniteNumber(value)) return null
 
@@ -607,6 +670,18 @@
         if (co2 <= 800) return 0
         if (co2 <= 1000) return 1
         if (co2 <= 1500) return 2
+
+        return 3
+    }
+
+    function pm1Score(value) {
+        if (!isFiniteNumber(value)) return null
+
+        const pm1 = Number(value)
+
+        if (pm1 <= 5) return 0
+        if (pm1 <= 15) return 1
+        if (pm1 <= 25) return 2
 
         return 3
     }
@@ -623,6 +698,31 @@
         return 3
     }
 
+    function setMetricIconStatus(valueElementId, score) {
+        const valueElement = $(valueElementId)
+        const icon = valueElement
+            ?.closest('.metric-tile')
+            ?.querySelector('.metric-icon')
+
+        if (!icon) return
+
+        icon.classList.remove(...metricIconStatusClasses)
+
+        if (score === null || score === undefined) {
+            icon.classList.add('is-muted')
+            return
+        }
+
+        const className = [
+            'is-good',
+            'is-fair',
+            'is-watch',
+            'is-poor',
+        ][Math.max(0, Math.min(Number(score), 3))]
+
+        icon.classList.add(className)
+    }
+
     function airStatus(airMonitor) {
         const scores = [
             co2Score(airMonitor.co2),
@@ -636,7 +736,7 @@
         return scoreToStatus(Math.max(...scores))
     }
 
-    function roomStatus(temp, hum) {
+    function placeStatus(temp, hum) {
         const hasTemp = isFiniteNumber(temp)
         const hasHum = isFiniteNumber(hum)
 
@@ -835,63 +935,68 @@
 
         block.classList.remove('d-none')
 
+        const pm10 = airMonitor.pm10 ?? airMonitor.pm1 ?? airMonitor.pm1_0
+
         setText('air-monitor-temp', formatNumber(airMonitor.temperature, 1))
         setText('air-monitor-hum', formatNumber(airMonitor.humidity, 1))
         setText('air-monitor-co2', formatInteger(airMonitor.co2))
-
-        const pm10 = airMonitor.pm10 ?? airMonitor.pm1 ?? airMonitor.pm1_0
-
         setText('air-monitor-pm10', formatNumber(pm10, 1))
         setText('air-monitor-pm25', formatNumber(airMonitor.pm25, 1))
+
+        setMetricIconStatus('air-monitor-temp', temperatureScore(airMonitor.temperature))
+        setMetricIconStatus('air-monitor-hum', humidityScore(airMonitor.humidity))
+        setMetricIconStatus('air-monitor-co2', co2Score(airMonitor.co2))
+        setMetricIconStatus('air-monitor-pm10', pm1Score(pm10))
+        setMetricIconStatus('air-monitor-pm25', pm25Score(airMonitor.pm25))
 
         setBadge($('air-quality-badge'), airStatus(airMonitor))
     }
 
-    function createRoomCard(room, idx) {
-        const name = room?.name || `Room ${idx + 1}`
-        const temp = room?.last?.temperature
-        const hum = room?.last?.humidity
-        const status = roomStatus(temp, hum)
+    function createPlaceCard(place, idx) {
+        const name = place?.name || `Place ${idx + 1}`
+        const temp = place?.last?.temperature
+        const hum = place?.last?.humidity
+        const status = placeStatus(temp, hum)
 
         const col = document.createElement('div')
         col.className = 'col'
 
         col.innerHTML = `
-            <article class="card glass-card room-card h-100">
+            <article class="card glass-card place-card h-100">
                 <div class="card-header d-flex align-items-start justify-content-between gap-3">
                     <div>
-                        <div class="eyebrow">Room</div>
-                        <h3 class="h5 mb-0 room-name"></h3>
+                        <div class="eyebrow">Place</div>
+                        <h3 class="h5 mb-0 place-name"></h3>
                     </div>
 
-                    <span class="badge rounded-pill room-status"></span>
+                    <span class="badge rounded-pill place-status"></span>
                 </div>
 
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-6">
-                            <div class="room-metric h-100">
-                                <div class="room-metric-label">
+                            <div class="place-metric h-100">
+                                <div class="place-metric-label">
                                     <i class="fa-solid fa-temperature-three-quarters me-1"></i>
                                     Temperature
                                 </div>
 
                                 <div>
-                                    <span class="room-stat room-temp">-</span>
+                                    <span class="place-stat place-temp">-</span>
                                     <span class="metric-unit">°C</span>
                                 </div>
                             </div>
                         </div>
 
                         <div class="col-6">
-                            <div class="room-metric h-100">
-                                <div class="room-metric-label">
+                            <div class="place-metric h-100">
+                                <div class="place-metric-label">
                                     <i class="fa-solid fa-droplet me-1"></i>
                                     Humidity
                                 </div>
 
                                 <div>
-                                    <span class="room-stat room-hum">-</span>
+                                    <span class="place-stat place-hum">-</span>
                                     <span class="metric-unit">%</span>
                                 </div>
                             </div>
@@ -901,29 +1006,29 @@
             </article>
         `
 
-        col.querySelector('.room-name').textContent = name
-        col.querySelector('.room-temp').textContent = formatNumber(temp, 1)
-        col.querySelector('.room-hum').textContent = formatNumber(hum, 1)
+        col.querySelector('.place-name').textContent = name
+        col.querySelector('.place-temp').textContent = formatNumber(temp, 1)
+        col.querySelector('.place-hum').textContent = formatNumber(hum, 1)
 
-        const statusElement = col.querySelector('.room-status')
+        const statusElement = col.querySelector('.place-status')
         statusElement.textContent = status.label
-        statusElement.className = `badge rounded-pill room-status ${status.className}`
+        statusElement.className = `badge rounded-pill place-status ${status.className}`
 
         return col
     }
 
-    function renderRooms(rooms) {
-        const roomsRow = $('rooms-row')
-        roomsRow.innerHTML = ''
+    function renderPlaces(places) {
+        const placesRow = $('places-row')
+        placesRow.innerHTML = ''
 
-        $('rooms-count').textContent = `${rooms.length} ${rooms.length === 1 ? 'room' : 'rooms'}`
+        $('places-count').textContent = `${places.length} ${places.length === 1 ? 'place' : 'places'}`
 
-        if (rooms.length === 0) {
-            roomsRow.innerHTML = `
+        if (places.length === 0) {
+            placesRow.innerHTML = `
                 <div class="col-12">
                     <div class="empty-state glass-card">
                         <i class="fa-regular fa-face-smile-beam fa-2x mb-3"></i>
-                        <div class="fw-semibold">No rooms available yet</div>
+                        <div class="fw-semibold">No places available yet</div>
                         <div class="mt-1">Waiting for data from <code>/api/stats</code>.</div>
                     </div>
                 </div>
@@ -931,8 +1036,8 @@
             return
         }
 
-        rooms.forEach((room, idx) => {
-            roomsRow.appendChild(createRoomCard(room, idx))
+        places.forEach((place, idx) => {
+            placesRow.appendChild(createPlaceCard(place, idx))
         })
     }
 
@@ -952,13 +1057,13 @@
         })
     }
 
-    function buildTimeSeries(rooms) {
+    function buildTimeSeries(places) {
         const allTimestampsSet = new Set()
 
-        rooms.forEach(room => {
-            if (!Array.isArray(room.aggregated)) return
+        places.forEach(place => {
+            if (!Array.isArray(place.aggregated)) return
 
-            room.aggregated.forEach(entry => {
+            place.aggregated.forEach(entry => {
                 if (entry?.time) {
                     allTimestampsSet.add(entry.time)
                 }
@@ -968,11 +1073,11 @@
         const timestamps = Array.from(allTimestampsSet)
             .sort((a, b) => new Date(a) - new Date(b))
 
-        const roomDataMaps = rooms.map(room => {
+        const placeDataMaps = places.map(place => {
             const map = new Map()
 
-            if (Array.isArray(room.aggregated)) {
-                room.aggregated.forEach(entry => {
+            if (Array.isArray(place.aggregated)) {
+                place.aggregated.forEach(entry => {
                     if (entry?.time) {
                         map.set(entry.time, entry)
                     }
@@ -983,18 +1088,18 @@
         })
 
         const labels = timestamps.map(formatTimestamp)
-        const temperature = rooms.map(() => [])
-        const humidity = rooms.map(() => [])
+        const temperature = places.map(() => [])
+        const humidity = places.map(() => [])
 
         timestamps.forEach(time => {
-            rooms.forEach((room, roomIndex) => {
-                const entry = roomDataMaps[roomIndex].get(time)
+            places.forEach((place, placeIndex) => {
+                const entry = placeDataMaps[placeIndex].get(time)
 
-                temperature[roomIndex].push(
+                temperature[placeIndex].push(
                     isFiniteNumber(entry?.temperature) ? Number(entry.temperature) : null
                 )
 
-                humidity[roomIndex].push(
+                humidity[placeIndex].push(
                     isFiniteNumber(entry?.humidity) ? Number(entry.humidity) : null
                 )
             })
@@ -1015,14 +1120,14 @@
         )
     }
 
-    function updateChart(chart, labels, rooms, series, suffix) {
+    function updateChart(chart, labels, places, series) {
         const hiddenLabels = getHiddenDatasetLabels(chart)
 
         chart.data.labels = labels
-        chart.data.datasets = rooms.map((room, index) => {
-            const roomName = room?.name || `Room ${index + 1}`
+        chart.data.datasets = places.map((place, index) => {
+            const placeName = place?.name || `Place ${index + 1}`
             const color = palette[index % palette.length]
-            const label = `${roomName} ${suffix}`
+            const label = placeName
 
             return {
                 label,
@@ -1089,18 +1194,18 @@
             times.push(hoursAgo(i))
         }
 
-        const roomNames = [
+        const placeNames = [
             'Living Room',
             'Bedroom',
             'Office',
             'Kitchen',
         ]
 
-        const rooms = roomNames.map((name, roomIndex) => {
+        const places = placeNames.map((name, placeIndex) => {
             const aggregated = times.map((time, timeIndex) => {
-                const wave = Math.sin(timeIndex / 3 + roomIndex)
-                const temperature = 21.5 + roomIndex * 0.4 + wave * 1.8 + Math.random() * 0.4
-                const humidity = 46 + roomIndex * 2.2 + wave * 5 + Math.random() * 2
+                const wave = Math.sin(timeIndex / 3 + placeIndex)
+                const temperature = 21.5 + placeIndex * 0.4 + wave * 1.8 + Math.random() * 0.4
+                const humidity = 46 + placeIndex * 2.2 + wave * 5 + Math.random() * 2
 
                 return {
                     time,
@@ -1136,7 +1241,7 @@
         const latestCo2 = co2History[co2History.length - 1].co2
 
         return {
-            rooms,
+            places,
             air_monitor: {
                 temperature: 22.4,
                 humidity: 43.8,
@@ -1171,16 +1276,16 @@
                 data = await resp.json()
             }
 
-            const rooms = Array.isArray(data?.rooms) ? data.rooms : []
+            const places = Array.isArray(data?.places) ? data.places : []
             const airMonitor = data?.air_monitor || null
 
             updateAirMonitorBlock(airMonitor)
-            renderRooms(rooms)
+            renderPlaces(places)
 
-            const series = buildTimeSeries(rooms)
+            const series = buildTimeSeries(places)
 
-            updateChart(tempChart, series.labels, rooms, series.temperature, 'Temp')
-            updateChart(humChart, series.labels, rooms, series.humidity, 'Hum')
+            updateChart(tempChart, series.labels, places, series.temperature)
+            updateChart(humChart, series.labels, places, series.humidity)
             updateCo2Chart(airMonitor)
 
             hideError()

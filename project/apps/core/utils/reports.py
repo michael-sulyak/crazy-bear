@@ -1,32 +1,29 @@
 import datetime
+import math
 from functools import cached_property
 
 from emoji.core import emojize
 
 from libs.casual_utils.time import get_current_time
 from libs.messengers.utils import escape_markdown
-
-from .... import config
-from ... import db
-from ...common.constants import INITED_AT
-from ...common.state import State
-from ...common.utils import get_cpu_temp, get_effective_temperature, get_free_disk_space, get_ram_usage
-from ...signals.models import Signal
+from .wifi import WifiDevice
 from .. import constants
 from ..constants import (
     AIR_MONITOR_CO2,
     AIR_MONITOR_HUMIDITY,
     AIR_MONITOR_TEMPERATURE,
-    AUTO_SECURITY_IS_ENABLED,
     CAMERA_IS_AVAILABLE,
     CURRENT_FPS,
     SECURITY_IS_ENABLED,
     USE_CAMERA,
     VIDEO_RECORDING_IS_ENABLED,
-    VIDEO_SECURITY_IS_ENABLED,
 )
-from ..signals.temp_hum_sensors import HUMIDITY
-from .wifi import WifiDevice
+from ... import db
+from ...common.constants import INITED_AT
+from ...common.state import State
+from ...common.utils import get_cpu_temp, get_effective_temperature, get_free_disk_space, get_ram_usage
+from ...signals.models import Signal
+from .... import config
 
 
 class ShortTextReport:
@@ -34,60 +31,87 @@ class ShortTextReport:
     NO = emojize(':multiply:')
     NOTHING = emojize(':multiply:')
     UNKNOWN = emojize(':white_question_mark:')
+    WARNING = emojize(':warning:')
+    ALERT = emojize(':red_exclamation_mark:')
+
+    SHIELD = emojize(':shield:')
+    CHART = emojize(':bar_chart:')
+    SYSTEM = emojize(':hammer_and_pick:')
+    CLIPBOARD = emojize(':clipboard:')
+    CROSS_MARK = emojize(':cross_mark:')
+
+    MAX_CONNECTED_DEVICES_TO_SHOW = 8
 
     state: State
     now: datetime.datetime
-    _datetime_range_for_second_aggregation: tuple[datetime.datetime, datetime.datetime]
+    _datetime_range_for_hour_average: tuple[datetime.datetime, datetime.datetime]
 
     def __init__(self, *, state: State) -> None:
         self.state = state
         self.now = get_current_time()
-        self._datetime_range_for_second_aggregation = (
-            self.now - datetime.timedelta(minutes=60),
+        self._datetime_range_for_hour_average = (
+            self.now - datetime.timedelta(hours=1),
             self.now,
         )
 
     def generate(self) -> str:
-        camera_is_used = emojize(':camera_with_flash:') if self.state[USE_CAMERA] else ''
-        video_recording_is_on = emojize(':film_frames:') if self.state[VIDEO_RECORDING_IS_ENABLED] else ''
-        additional_camera_status = (
-            f' {camera_is_used}{video_recording_is_on}' if camera_is_used or video_recording_is_on else ''
+        return '\n'.join(
+            [
+                f'*Crazy Bear* `v{escape_markdown(str(config.VERSION))}`',
+                '',
+                f'{self.SHIELD} *Security*',
+                f'Security: {self._code(self._security_summary)}',
+                f'Camera: {self._code(self._camera_summary)}',
+                '',
+                f'{self.CHART} *Home*',
+                f'Temp: {self._code(self._temperature_info)}',
+                f'Feels: {self._code(self._effective_temperature_info)}',
+                f'Humidity: {self._code(self._humidity_info)}',
+                f'CO₂: {self._code(self._co2_info)}',
+                '',
+                f'{self.SYSTEM} *System*',
+                f'CPU: {self._code(self._cpu_temperature_info)}',
+                f'RAM: {self._code(self._ram_usage_info)}',
+                f'Disk: {self._code(self._free_space_info)}',
+                '',
+                f'{self.CLIPBOARD} *Other*',
+                f'WiFi: {self._connected_devices_info}',
+                f'Started: {self._code(self._started_at_info)}',
+            ]
         )
 
-        auto_security_is_enabled = (
-            emojize(':counterclockwise_arrows_button:') if self.state[AUTO_SECURITY_IS_ENABLED] else ''
-        )
-        video_security_is_enabled = emojize(':film_frames:') if self.state[VIDEO_SECURITY_IS_ENABLED] else ''
-        additional_security_status = (
-            f'{auto_security_is_enabled}{video_security_is_enabled}'
-            if auto_security_is_enabled or video_security_is_enabled
-            else ''
-        )
+    @cached_property
+    def _started_at(self) -> datetime.datetime | None:
+        started_at = self._state_get(INITED_AT)
 
-        if self.state[CAMERA_IS_AVAILABLE]:
-            camera_status = (
-                f'Camera: `{self.YES if self.state[CAMERA_IS_AVAILABLE] else self.NO}{additional_camera_status}'
-                f'{f"FPS {escape_markdown(self._fps_info)}" if self.state[CAMERA_IS_AVAILABLE] else ""}`\n\n'
-            )
-        else:
-            camera_status = '\n'
+        if isinstance(started_at, datetime.datetime):
+            return started_at
+
+        return None
+
+    @property
+    def _started_at_info(self) -> str:
+        if self._started_at is None:
+            return self._unknown_info()
+
+        return self._format_datetime(self._started_at)
+
+    @property
+    def _security_summary(self) -> str:
+        return self._on_off(self._state_get(SECURITY_IS_ENABLED))
+
+    @property
+    def _camera_summary(self) -> str:
+        camera_available = self._state_get(CAMERA_IS_AVAILABLE)
+
+        if not camera_available:
+            return self._on_off(camera_available)
 
         return (
-            f'️*Crazy Bear* `v{escape_markdown(config.VERSION)}`\n\n'
-            f'{emojize(":shield:")} *Security*\n'
-            f'Security: `{self.YES if self.state[SECURITY_IS_ENABLED] else self.NO}{additional_security_status}`\n'
-            f'{camera_status}'
-            f'{emojize(":bar_chart:")} *Sensors*\n'
-            f'Humidity: `{escape_markdown(self._humidity_info)}`\n'
-            f'Temperature: `{escape_markdown(self._temperature_info)}`\n'
-            f'Temperature\\*: `{escape_markdown(self._effective_temperature_info)}`\n'
-            f'CO2: `{escape_markdown(self._co2_info)}`\n'
-            f'CPU Temperature: `{escape_markdown(self._cpu_temperature_info)}`\n'
-            f'RAM usage: `{escape_markdown(self._ram_usage_info)}`\n'
-            f'Free space: `{escape_markdown(self._free_space_info)}`\n\n'
-            f'{emojize(":clipboard:")} *Other info*\n'
-            f'WiFi: {self._connected_devices_info}\n'
-            f'Started at: `{escape_markdown(self.state[INITED_AT].strftime("%d.%m.%Y, %H:%M:%S"))}`'
+            f'{self._on_off(camera_available)} · '
+            f'View {self._on_off(self._state_get(USE_CAMERA))} · '
+            f'Rec {self._on_off(self._state_get(VIDEO_RECORDING_IS_ENABLED))} · '
+            f'FPS {self._fps_info}'
         )
 
     @cached_property
@@ -99,10 +123,12 @@ class ShortTextReport:
         return self._get_last_signal_value(AIR_MONITOR_CO2)
 
     @cached_property
-    def _second_humidity(self) -> float | None:
-        return Signal.get_one_aggregated(
-            HUMIDITY,
-            datetime_range=self._datetime_range_for_second_aggregation,
+    def _hour_average_humidity(self) -> float | None:
+        return self._as_float(
+            Signal.get_one_aggregated(
+                AIR_MONITOR_HUMIDITY,
+                datetime_range=self._datetime_range_for_hour_average,
+            )
         )
 
     @cached_property
@@ -110,14 +136,15 @@ class ShortTextReport:
         return self._get_last_signal_value(AIR_MONITOR_TEMPERATURE)
 
     @cached_property
-    def _second_temperature(self) -> float | None:
-        return Signal.get_one_aggregated(
-            AIR_MONITOR_TEMPERATURE,
-            datetime_range=self._datetime_range_for_second_aggregation,
+    def _hour_average_temperature(self) -> float | None:
+        return self._as_float(
+            Signal.get_one_aggregated(
+                AIR_MONITOR_TEMPERATURE,
+                datetime_range=self._datetime_range_for_hour_average,
+            )
         )
 
     def _get_last_signal_value(self, signal_type: str) -> float | None:
-        # TODO: Use avg for last 3 values
         result = (
             db.get_db_session()
             .query(Signal.value)
@@ -135,141 +162,225 @@ class ShortTextReport:
     @property
     def _humidity_info(self) -> str:
         if self._humidity is None:
-            return self.NOTHING
+            return self._no_data()
 
-        humidity_info = f'{round(self._humidity, 1)}%'
-        humidity_info += self._get_mark(self._humidity, (40, 50), (30, 60))
-
-        if self._second_humidity is not None:
-            diff = round(self._humidity - self._second_humidity, 1)
-
-            if diff != 0:
-                humidity_info += f' ({"+" if diff > 0 else ""}{diff})'
+        humidity_info = f'{self._format_number(self._humidity, 1)}%'
+        humidity_info += self._get_mark(self._humidity, (40, 60), (30, 70))
+        humidity_info += self._format_delta(self._humidity, self._hour_average_humidity)
 
         return humidity_info
 
     @property
     def _temperature_info(self) -> str:
         if self._temperature is None:
-            return self.NOTHING
+            return self._no_data()
 
-        temperature_info = f'{round(self._temperature, 1)}℃'
-        temperature_info += self._get_mark(self._temperature, (18, 23,), (16, 25,))
-
-        if self._second_temperature is not None:
-            diff = round(self._temperature - self._second_temperature, 1)
-
-            if diff != 0:
-                temperature_info += f' ({"+" if diff > 0 else ""}{diff})'
+        temperature_info = f'{self._format_number(self._temperature, 1)} °C'
+        temperature_info += self._get_mark(self._temperature, (18, 24), (16, 28))
+        temperature_info += self._format_delta(self._temperature, self._hour_average_temperature)
 
         return temperature_info
 
     @property
     def _effective_temperature_info(self) -> str:
         if self._temperature is None or self._humidity is None:
-            return self.NOTHING
+            return self._no_data()
 
-        temperature = get_effective_temperature(
-            temperature=self._temperature,
-            humidity=self._humidity,
+        temperature = self._as_float(
+            get_effective_temperature(
+                temperature=self._temperature,
+                humidity=self._humidity,
+            )
         )
 
-        temperature_info = f'{round(temperature, 1)}℃'
-        temperature_info += self._get_mark(temperature, (18, 23,), (16, 25,))
+        if temperature is None:
+            return self._no_data()
 
-        if self._second_temperature is not None and self._second_humidity is not None:
-            second_temperature = get_effective_temperature(
-                temperature=self._second_temperature,
-                humidity=self._second_humidity,
+        temperature_info = f'{self._format_number(temperature, 1)} °C'
+        temperature_info += self._get_mark(temperature, (18, 24), (14, 28))
+
+        if self._hour_average_temperature is not None and self._hour_average_humidity is not None:
+            previous_temperature = self._as_float(
+                get_effective_temperature(
+                    temperature=self._hour_average_temperature,
+                    humidity=self._hour_average_humidity,
+                )
             )
-        else:
-            second_temperature = None
-
-        if second_temperature is not None:
-            diff = round(temperature - second_temperature, 1)
-
-            if diff != 0:
-                temperature_info += f' ({"+" if diff > 0 else ""}{diff})'
+            temperature_info += self._format_delta(temperature, previous_temperature)
 
         return temperature_info
 
     @property
     def _co2_info(self) -> str:
         if self._co2 is None:
-            return self.NOTHING
+            return self._no_data()
 
-        co2_info = f'{round(self._co2)}'
-        co2_info += self._get_mark(self._co2, (0, 800), (0, 1_000))
+        co2_info = f'{round(self._co2)} ppm'
+        co2_info += self._get_mark(self._co2, (0, 800), (0, 1_500))
 
         return co2_info
 
     @property
     def _fps_info(self) -> str:
-        current_fps = self.state[CURRENT_FPS]
+        current_fps = self._as_float(self._state_get(CURRENT_FPS))
 
         if current_fps is None:
-            return self.NOTHING
+            return self._no_data()
 
-        return str(round(self.state[CURRENT_FPS], 2))
+        return self._format_number(current_fps, 2)
 
     @property
     def _connected_devices_info(self) -> str:
-        connected_devices: tuple[WifiDevice, ...] | None = self.state[constants.CONNECTED_DEVICES_TO_ROUTER]
+        connected_devices: tuple[WifiDevice, ...] | None = self._state_get(constants.CONNECTED_DEVICES_TO_ROUTER)
+
+        if connected_devices is None:
+            return self._code(self._unknown_info())
 
         if not connected_devices:
-            if connected_devices is None:
-                return self.UNKNOWN
+            return self._code('No devices')
 
-            return self.NOTHING
+        shown_devices = connected_devices[:self.MAX_CONNECTED_DEVICES_TO_SHOW]
 
-        return ', '.join(
-            f'`{escape_markdown(device.name)}`' if device.name else f'`Unknown {escape_markdown(device.mac_address)}`'
-            for device in connected_devices
-        )
+        devices_info = [
+            self._code(device.name if device.name else f'Unknown {device.mac_address}')
+            for device in shown_devices
+        ]
+
+        hidden_count = len(connected_devices) - len(shown_devices)
+
+        if hidden_count > 0:
+            devices_info.append(self._code(f'+{hidden_count} more'))
+
+        return ', '.join(devices_info)
 
     @property
     def _ram_usage_info(self) -> str:
-        ram_usage = get_ram_usage() * 100
-        return f'{round(ram_usage, 1)}%{self._get_mark(ram_usage, (0, 60,), (0, 80,))}'
+        ram_usage = self._as_float(get_ram_usage())
+
+        if ram_usage is None:
+            return self._no_data()
+
+        ram_usage *= 100
+
+        return f'{self._format_number(ram_usage, 1)}%{self._get_mark(ram_usage, (0, 60), (0, 80))}'
 
     @property
     def _free_space_info(self) -> str:
-        free_space = get_free_disk_space() / 1024
-        mark = self._get_mark(
+        free_space = self._as_float(get_free_disk_space())
+
+        if free_space is None:
+            return self._no_data()
+
+        free_space /= 1024
+
+        free_space_info = f'{self._format_number(free_space, 2)} GB'
+        free_space_info += self._get_mark(
             free_space,
             (
                 1,
-                float('inf'),
+                math.inf,
             ),
             (
                 0.5,
-                float('inf'),
+                math.inf,
             ),
         )
-        return f'{round(free_space, 2)}GB {mark}'
+
+        return free_space_info
 
     @property
     def _cpu_temperature_info(self) -> str:
         try:
-            cpu_temperature = get_cpu_temp()
+            cpu_temperature = self._as_float(get_cpu_temp())
         except RuntimeError:
-            cpu_temperature_info = self.NOTHING
-        else:
-            cpu_temperature_info = f'{round(cpu_temperature, 1)}℃'
-            cpu_temperature_info += self._get_mark(cpu_temperature, (0, 50), (0, 70))
+            return self._no_data()
+
+        if cpu_temperature is None:
+            return self._no_data()
+
+        cpu_temperature_info = f'{self._format_number(cpu_temperature, 1)} °C'
+        cpu_temperature_info += self._get_mark(cpu_temperature, (0, 50), (0, 70))
 
         return cpu_temperature_info
 
+    def _state_get(self, key: object, default: object | None = None) -> object | None:
+        try:
+            return self.state[key]
+        except (KeyError, TypeError):
+            return default
+
+    @classmethod
+    def _on_off(cls, value: object | None) -> str:
+        if value is None:
+            return cls._unknown_info()
+
+        return cls.YES if value else cls.NO
+
+    @classmethod
+    def _no_data(cls) -> str:
+        return cls.NOTHING
+
+    @classmethod
+    def _unknown_info(cls) -> str:
+        return cls.UNKNOWN
+
+    @staticmethod
+    def _code(value: object) -> str:
+        return f'`{escape_markdown(str(value))}`'
+
+    @staticmethod
+    def _format_datetime(value: datetime.datetime) -> str:
+        return value.strftime('%d.%m.%Y, %H:%M:%S')
+
+    @staticmethod
+    def _format_number(value: float, digits: int = 1) -> str:
+        return f'{value:.{digits}f}'
+
+    @staticmethod
+    def _format_delta(value: float | None, previous_value: float | None) -> str:
+        value = ShortTextReport._as_float(value)
+        previous_value = ShortTextReport._as_float(previous_value)
+
+        if value is None or previous_value is None:
+            return ''
+
+        diff = round(value - previous_value, 1)
+
+        if diff == 0:
+            return ''
+
+        return f' ({diff:+.1f})'
+
+    @staticmethod
+    def _as_float(value: object | None) -> float | None:
+        if value is None:
+            return None
+
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return None
+
+        if not math.isfinite(number):
+            return None
+
+        return number
+
     @staticmethod
     def _get_mark(value: float, good_range: tuple[float, float], acceptable_range: tuple[float, float]) -> str:
+        value = ShortTextReport._as_float(value)
+
+        if value is None:
+            return f' {ShortTextReport.UNKNOWN}'
+
         is_not_acceptable = not (acceptable_range[0] <= value <= acceptable_range[1])
 
         if is_not_acceptable:
-            return emojize(':red_exclamation_mark:')
+            return f' {ShortTextReport.ALERT}'
 
         is_not_good = not (good_range[0] <= value <= good_range[1])
 
         if is_not_good:
-            return emojize(':white_exclamation_mark:')
+            return f' {ShortTextReport.WARNING}'
 
         return ''
