@@ -23,6 +23,13 @@
             --muted: rgba(255, 255, 255, 0.68);
             --muted-strong: rgba(255, 255, 255, 0.82);
             --shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+
+            --good: #51d88a;
+            --cool: #5ee5ff;
+            --warm: #ffd659;
+            --poor: #ff8f3d;
+            --very-bad: #ff4d5e;
+            --very-bad-soft: rgba(255, 77, 94, 0.2);
         }
 
         * {
@@ -243,35 +250,42 @@
 
         .metric-icon.is-good {
             background: rgba(25, 135, 84, 0.2);
-            color: #51d88a;
-            box-shadow: 0 0 0 1px rgba(25, 135, 84, 0.16) inset;
+            color: var(--good);
+            box-shadow: 0 0 0 0.28rem rgba(25, 135, 84, 0.08);
         }
 
-        .metric-icon.is-fair {
+        .metric-icon.is-cool {
             background: rgba(13, 202, 240, 0.2);
-            color: #5ee5ff;
-            box-shadow: 0 0 0 1px rgba(13, 202, 240, 0.16) inset;
+            color: var(--cool);
+            box-shadow: 0 0 0 0.28rem rgba(13, 202, 240, 0.08);
         }
 
-        .metric-icon.is-watch {
+        .metric-icon.is-warm {
             background: rgba(255, 193, 7, 0.24);
-            color: #ffd659;
-            box-shadow: 0 0 0 1px rgba(255, 193, 7, 0.18) inset;
+            color: var(--warm);
+            box-shadow: 0 0 0 0.28rem rgba(255, 193, 7, 0.08);
         }
 
         .metric-icon.is-poor {
-            background: rgba(220, 53, 69, 0.24);
-            color: #ff6b6b;
-            box-shadow: 0 0 0 1px rgba(220, 53, 69, 0.2) inset;
+            background: rgba(253, 126, 20, 0.24);
+            color: var(--poor);
+            box-shadow: 0 0 0 0.28rem rgba(253, 126, 20, 0.08);
+        }
+
+        .metric-icon.is-very-bad {
+            background: var(--very-bad-soft);
+            color: var(--very-bad);
+            box-shadow: 0 0 0 0.28rem rgba(255, 77, 94, 0.1);
         }
 
         .metric-icon.is-muted {
             background: rgba(173, 181, 189, 0.16);
             color: #ced4da;
-            box-shadow: 0 0 0 1px rgba(173, 181, 189, 0.12) inset;
+            box-shadow: 0 0 0 0.28rem rgba(173, 181, 189, 0.08);
         }
 
         .metric-value {
+            color: #fff;
             font-size: clamp(2rem, 4vw, 3rem);
             font-weight: 800;
             letter-spacing: -0.06em;
@@ -289,30 +303,10 @@
             transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
         }
 
-        .place-card:hover {
-            transform: translateY(-3px);
-            border-color: rgba(32, 201, 151, 0.45);
-            background: var(--card-bg-strong);
-        }
-
-        .place-metric {
-            padding: 1rem;
-            border-radius: 1rem;
-            background: rgba(255, 255, 255, 0.055);
-            border: 1px solid rgba(255, 255, 255, 0.075);
-        }
-
-        .place-metric-label {
-            color: var(--muted);
-            font-size: 0.85rem;
-            margin-bottom: 0.35rem;
-        }
-
-        .place-stat {
-            font-size: clamp(2rem, 4vw, 2.8rem);
-            font-weight: 800;
-            line-height: 1;
-            letter-spacing: -0.06em;
+        .badge-very-bad {
+            color: #fff;
+            background: linear-gradient(135deg, #dc3545, #ff4d5e);
+            box-shadow: 0 0 0 0.22rem rgba(255, 77, 94, 0.14);
         }
 
         .chart-card .card-body {
@@ -585,11 +579,12 @@
         '#adb5bd',
     ]
 
-    const metricIconStatusClasses = [
+    const visualStatusClasses = [
         'is-good',
-        'is-fair',
-        'is-watch',
+        'is-cool',
+        'is-warm',
         'is-poor',
+        'is-very-bad',
         'is-muted',
     ]
 
@@ -627,150 +622,231 @@
         return `rgba(${r}, ${g}, ${b}, ${alpha})`
     }
 
-    function scoreToStatus(score) {
-        const statuses = [
-            {label: 'Good', className: 'text-bg-success'},
-            {label: 'Fair', className: 'text-bg-info'},
-            {label: 'Watch', className: 'text-bg-warning'},
-            {label: 'Poor', className: 'text-bg-danger'},
-        ]
-
-        return statuses[Math.max(0, Math.min(score, statuses.length - 1))]
+    function clampScore(score) {
+        return Math.max(0, Math.min(Number(score), 4))
     }
 
-    function temperatureScore(value) {
-        if (!isFiniteNumber(value)) return null
+    function createAssessment(label, visualClass, severity, badgeClass) {
+        return {
+            label,
+            visualClass,
+            severity,
+            badgeClass,
+            hasData: true,
+        }
+    }
+
+    function noDataAssessment() {
+        return {
+            label: 'No data',
+            visualClass: 'is-muted',
+            severity: null,
+            badgeClass: 'text-bg-secondary',
+            hasData: false,
+        }
+    }
+
+    function pollutionAssessmentFromScore(score) {
+        if (score === null || score === undefined) {
+            return noDataAssessment()
+        }
+
+        const statuses = [
+            createAssessment('Good', 'is-good', 0, 'text-bg-success'),
+            createAssessment('Fair', 'is-cool', 1, 'text-bg-info'),
+            createAssessment('Watch', 'is-warm', 2, 'text-bg-warning'),
+            createAssessment('Poor', 'is-poor', 3, 'text-bg-danger'),
+            createAssessment('Very bad', 'is-very-bad', 4, 'badge-very-bad'),
+        ]
+
+        return statuses[clampScore(score)]
+    }
+
+    function temperatureAssessment(value) {
+        if (!isFiniteNumber(value)) return noDataAssessment()
 
         const temperature = Number(value)
 
-        if (temperature >= 18 && temperature <= 24) return 0
-        if ((temperature >= 16 && temperature < 18) || (temperature > 24 && temperature <= 26)) return 1
-        if ((temperature >= 14 && temperature < 16) || (temperature > 26 && temperature <= 28)) return 2
+        if (temperature >= 18 && temperature <= 24) {
+            return createAssessment('Good', 'is-good', 0, 'text-bg-success')
+        }
 
-        return 3
+        if (temperature >= 16 && temperature < 18) {
+            return createAssessment('Fair', 'is-cool', 1, 'text-bg-info')
+        }
+
+        if (temperature > 24 && temperature <= 26) {
+            return createAssessment('Fair', 'is-warm', 1, 'text-bg-info')
+        }
+
+        if (temperature >= 14 && temperature < 16) {
+            return createAssessment('Watch', 'is-cool', 2, 'text-bg-warning')
+        }
+
+        if (temperature > 26 && temperature <= 28) {
+            return createAssessment('Watch', 'is-warm', 2, 'text-bg-warning')
+        }
+
+        if (temperature >= 12 && temperature < 14) {
+            return createAssessment('Poor', 'is-poor', 3, 'text-bg-danger')
+        }
+
+        if (temperature > 28 && temperature <= 30) {
+            return createAssessment('Poor', 'is-poor', 3, 'text-bg-danger')
+        }
+
+        return createAssessment('Very bad', 'is-very-bad', 4, 'badge-very-bad')
     }
 
-    function humidityScore(value) {
-        if (!isFiniteNumber(value)) return null
+    function humidityAssessment(value) {
+        if (!isFiniteNumber(value)) return noDataAssessment()
 
         const humidity = Number(value)
 
-        if (humidity >= 40 && humidity <= 60) return 0
-        if ((humidity >= 35 && humidity < 40) || (humidity > 60 && humidity <= 65)) return 1
-        if ((humidity >= 30 && humidity < 35) || (humidity > 65 && humidity <= 70)) return 2
+        if (humidity >= 40 && humidity <= 60) {
+            return createAssessment('Good', 'is-good', 0, 'text-bg-success')
+        }
 
-        return 3
+        if (humidity >= 35 && humidity < 40) {
+            return createAssessment('Fair', 'is-warm', 1, 'text-bg-info')
+        }
+
+        if (humidity > 60 && humidity <= 65) {
+            return createAssessment('Fair', 'is-cool', 1, 'text-bg-info')
+        }
+
+        if (humidity >= 30 && humidity < 35) {
+            return createAssessment('Watch', 'is-warm', 2, 'text-bg-warning')
+        }
+
+        if (humidity > 65 && humidity <= 70) {
+            return createAssessment('Watch', 'is-cool', 2, 'text-bg-warning')
+        }
+
+        if (humidity >= 25 && humidity < 30) {
+            return createAssessment('Poor', 'is-poor', 3, 'text-bg-danger')
+        }
+
+        if (humidity > 70 && humidity <= 75) {
+            return createAssessment('Poor', 'is-poor', 3, 'text-bg-danger')
+        }
+
+        return createAssessment('Very bad', 'is-very-bad', 4, 'badge-very-bad')
     }
 
-    function co2Score(value) {
-        if (!isFiniteNumber(value)) return null
+    function co2Assessment(value) {
+        if (!isFiniteNumber(value)) return noDataAssessment()
 
         const co2 = Number(value)
 
-        if (co2 <= 800) return 0
-        if (co2 <= 1000) return 1
-        if (co2 <= 1500) return 2
+        if (co2 <= 800) return pollutionAssessmentFromScore(0)
+        if (co2 <= 1000) return pollutionAssessmentFromScore(1)
+        if (co2 <= 1500) return pollutionAssessmentFromScore(2)
+        if (co2 <= 2000) return pollutionAssessmentFromScore(3)
 
-        return 3
+        return pollutionAssessmentFromScore(4)
     }
 
-    function pm1Score(value) {
-        if (!isFiniteNumber(value)) return null
+    function pm1Assessment(value) {
+        if (!isFiniteNumber(value)) return noDataAssessment()
 
         const pm1 = Number(value)
 
-        if (pm1 <= 5) return 0
-        if (pm1 <= 15) return 1
-        if (pm1 <= 25) return 2
+        if (pm1 <= 5) return pollutionAssessmentFromScore(0)
+        if (pm1 <= 15) return pollutionAssessmentFromScore(1)
+        if (pm1 <= 25) return pollutionAssessmentFromScore(2)
+        if (pm1 <= 50) return pollutionAssessmentFromScore(3)
 
-        return 3
+        return pollutionAssessmentFromScore(4)
     }
 
-    function pm25Score(value) {
-        if (!isFiniteNumber(value)) return null
+    function pm25Assessment(value) {
+        if (!isFiniteNumber(value)) return noDataAssessment()
 
         const pm25 = Number(value)
 
-        if (pm25 <= 5) return 0
-        if (pm25 <= 15) return 1
-        if (pm25 <= 25) return 2
+        if (pm25 <= 5) return pollutionAssessmentFromScore(0)
+        if (pm25 <= 15) return pollutionAssessmentFromScore(1)
+        if (pm25 <= 25) return pollutionAssessmentFromScore(2)
+        if (pm25 <= 50) return pollutionAssessmentFromScore(3)
 
-        return 3
+        return pollutionAssessmentFromScore(4)
     }
 
-    function setMetricIconStatus(valueElementId, score) {
+    function applyVisualStatus(element, assessment) {
+        if (!element) return
+
+        element.classList.remove(...visualStatusClasses)
+        element.classList.add(assessment?.visualClass || 'is-muted')
+    }
+
+    function setMetricAssessment(valueElementId, assessment) {
         const valueElement = $(valueElementId)
-        const icon = valueElement
-            ?.closest('.metric-tile')
-            ?.querySelector('.metric-icon')
+        const metricTile = valueElement?.closest('.metric-tile')
+        const icon = metricTile?.querySelector('.metric-icon')
 
-        if (!icon) return
+        applyVisualStatus(icon, assessment)
+    }
 
-        icon.classList.remove(...metricIconStatusClasses)
-
-        if (score === null || score === undefined) {
-            icon.classList.add('is-muted')
-            return
-        }
-
-        const className = [
-            'is-good',
-            'is-fair',
-            'is-watch',
-            'is-poor',
-        ][Math.max(0, Math.min(Number(score), 3))]
-
-        icon.classList.add(className)
+    function pickWorstAssessment(assessments) {
+        return assessments
+            .filter(assessment => assessment?.hasData)
+            .sort((a, b) => b.severity - a.severity)[0] || null
     }
 
     function airStatus(airMonitor) {
-        const scores = [
-            co2Score(airMonitor.co2),
-            pm25Score(airMonitor.pm25),
-        ].filter(score => score !== null)
-
-        if (scores.length === 0) {
-            return {label: 'No data', className: 'text-bg-secondary'}
+        if (!airMonitor) {
+            return {
+                label: 'No data',
+                className: 'text-bg-secondary',
+                severity: null,
+            }
         }
 
-        return scoreToStatus(Math.max(...scores))
+        const pm1 = airMonitor.pm10 ?? airMonitor.pm1 ?? airMonitor.pm1_0
+
+        const worst = pickWorstAssessment([
+            temperatureAssessment(airMonitor.temperature),
+            humidityAssessment(airMonitor.humidity),
+            co2Assessment(airMonitor.co2),
+            pm1Assessment(pm1),
+            pm25Assessment(airMonitor.pm25),
+        ])
+
+        if (!worst) {
+            return {
+                label: 'No data',
+                className: 'text-bg-secondary',
+                severity: null,
+            }
+        }
+
+        return {
+            label: worst.label,
+            className: worst.badgeClass,
+            severity: worst.severity,
+        }
     }
 
     function placeStatus(temp, hum) {
-        const hasTemp = isFiniteNumber(temp)
-        const hasHum = isFiniteNumber(hum)
+        const worst = pickWorstAssessment([
+            temperatureAssessment(temp),
+            humidityAssessment(hum),
+        ])
 
-        if (!hasTemp && !hasHum) {
-            return {label: 'No data', className: 'text-bg-secondary'}
+        if (!worst) {
+            return {
+                label: 'No data',
+                className: 'text-bg-secondary',
+                severity: null,
+            }
         }
 
-        const t = Number(temp)
-        const h = Number(hum)
-
-        const tempOk = !hasTemp || (t >= 18 && t <= 24)
-        const humOk = !hasHum || (h >= 40 && h <= 60)
-
-        if (tempOk && humOk) {
-            return {label: 'Comfortable', className: 'text-bg-success'}
+        return {
+            label: worst.label,
+            className: worst.badgeClass,
+            severity: worst.severity,
         }
-
-        if (hasTemp && t > 26) {
-            return {label: 'Warm', className: 'text-bg-warning'}
-        }
-
-        if (hasTemp && t < 18) {
-            return {label: 'Cool', className: 'text-bg-info'}
-        }
-
-        if (hasHum && h > 65) {
-            return {label: 'Humid', className: 'text-bg-warning'}
-        }
-
-        if (hasHum && h < 35) {
-            return {label: 'Dry', className: 'text-bg-warning'}
-        }
-
-        return {label: 'Watch', className: 'text-bg-warning'}
     }
 
     function setBadge(element, status) {
@@ -935,19 +1011,25 @@
 
         block.classList.remove('d-none')
 
-        const pm10 = airMonitor.pm10 ?? airMonitor.pm1 ?? airMonitor.pm1_0
+        const pm1 = airMonitor.pm10 ?? airMonitor.pm1 ?? airMonitor.pm1_0
+
+        const airTempAssessment = temperatureAssessment(airMonitor.temperature)
+        const airHumAssessment = humidityAssessment(airMonitor.humidity)
+        const airCo2Assessment = co2Assessment(airMonitor.co2)
+        const airPm1Assessment = pm1Assessment(pm1)
+        const airPm25Assessment = pm25Assessment(airMonitor.pm25)
 
         setText('air-monitor-temp', formatNumber(airMonitor.temperature, 1))
         setText('air-monitor-hum', formatNumber(airMonitor.humidity, 1))
         setText('air-monitor-co2', formatInteger(airMonitor.co2))
-        setText('air-monitor-pm10', formatNumber(pm10, 1))
+        setText('air-monitor-pm10', formatNumber(pm1, 1))
         setText('air-monitor-pm25', formatNumber(airMonitor.pm25, 1))
 
-        setMetricIconStatus('air-monitor-temp', temperatureScore(airMonitor.temperature))
-        setMetricIconStatus('air-monitor-hum', humidityScore(airMonitor.humidity))
-        setMetricIconStatus('air-monitor-co2', co2Score(airMonitor.co2))
-        setMetricIconStatus('air-monitor-pm10', pm1Score(pm10))
-        setMetricIconStatus('air-monitor-pm25', pm25Score(airMonitor.pm25))
+        setMetricAssessment('air-monitor-temp', airTempAssessment)
+        setMetricAssessment('air-monitor-hum', airHumAssessment)
+        setMetricAssessment('air-monitor-co2', airCo2Assessment)
+        setMetricAssessment('air-monitor-pm10', airPm1Assessment)
+        setMetricAssessment('air-monitor-pm25', airPm25Assessment)
 
         setBadge($('air-quality-badge'), airStatus(airMonitor))
     }
@@ -956,6 +1038,8 @@
         const name = place?.name || `Place ${idx + 1}`
         const temp = place?.last?.temperature
         const hum = place?.last?.humidity
+        const tempStatus = temperatureAssessment(temp)
+        const humStatus = humidityAssessment(hum)
         const status = placeStatus(temp, hum)
 
         const col = document.createElement('div')
@@ -975,28 +1059,32 @@
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-6">
-                            <div class="place-metric h-100">
-                                <div class="place-metric-label">
-                                    <i class="fa-solid fa-temperature-three-quarters me-1"></i>
-                                    Temperature
+                            <div class="metric-tile h-100">
+                                <div class="metric-top">
+                                    <div class="metric-label">Temperature</div>
+                                    <div class="metric-icon place-temp-icon">
+                                        <i class="fa-solid fa-temperature-three-quarters"></i>
+                                    </div>
                                 </div>
 
                                 <div>
-                                    <span class="place-stat place-temp">-</span>
+                                    <span class="metric-value place-temp">-</span>
                                     <span class="metric-unit">°C</span>
                                 </div>
                             </div>
                         </div>
 
                         <div class="col-6">
-                            <div class="place-metric h-100">
-                                <div class="place-metric-label">
-                                    <i class="fa-solid fa-droplet me-1"></i>
-                                    Humidity
+                            <div class="metric-tile h-100">
+                                <div class="metric-top">
+                                    <div class="metric-label">Humidity</div>
+                                    <div class="metric-icon place-hum-icon">
+                                        <i class="fa-solid fa-droplet"></i>
+                                    </div>
                                 </div>
 
                                 <div>
-                                    <span class="place-stat place-hum">-</span>
+                                    <span class="metric-value place-hum">-</span>
                                     <span class="metric-unit">%</span>
                                 </div>
                             </div>
@@ -1009,6 +1097,9 @@
         col.querySelector('.place-name').textContent = name
         col.querySelector('.place-temp').textContent = formatNumber(temp, 1)
         col.querySelector('.place-hum').textContent = formatNumber(hum, 1)
+
+        applyVisualStatus(col.querySelector('.place-temp-icon'), tempStatus)
+        applyVisualStatus(col.querySelector('.place-hum-icon'), humStatus)
 
         const statusElement = col.querySelector('.place-status')
         statusElement.textContent = status.label
@@ -1204,7 +1295,7 @@
         const places = placeNames.map((name, placeIndex) => {
             const aggregated = times.map((time, timeIndex) => {
                 const wave = Math.sin(timeIndex / 3 + placeIndex)
-                const temperature = 21.5 + placeIndex * 0.4 + wave * 1.8 + Math.random() * 0.4
+                const temperature = 23.5 + placeIndex * 0.4 + wave * 1.8 + Math.random() * 0.4
                 const humidity = 46 + placeIndex * 2.2 + wave * 5 + Math.random() * 2
 
                 return {
@@ -1219,8 +1310,8 @@
             return {
                 name,
                 last: {
-                    temperature: last.temperature,
-                    humidity: Math.round(last.humidity),
+                    temperature: placeIndex === 2 ? 31.2 : last.temperature,
+                    humidity: placeIndex === 2 ? 77 : Math.round(last.humidity),
                 },
                 aggregated,
             }
@@ -1230,7 +1321,8 @@
             const wave = Math.sin(timeIndex / 4)
             const eveningBump = timeIndex > 16 ? 210 : 0
             const morningBump = timeIndex > 7 && timeIndex < 11 ? 120 : 0
-            const co2 = 520 + wave * 90 + eveningBump + morningBump + Math.random() * 45
+            const veryBadBump = timeIndex > 21 ? 1350 : 0
+            const co2 = 520 + wave * 90 + eveningBump + morningBump + veryBadBump + Math.random() * 45
 
             return {
                 time,
@@ -1243,7 +1335,7 @@
         return {
             places,
             air_monitor: {
-                temperature: 22.4,
+                temperature: 24.4,
                 humidity: 43.8,
                 co2: latestCo2,
                 pm10: 2.3,
