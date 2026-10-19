@@ -108,6 +108,7 @@ class SmartDeviceNames:
     TEMP_HUM_SENSOR_BEDROOM = f'{TEMP_HUM_SENSOR_NAME_PREFIX}bedroom'
     TEMP_HUM_SENSOR_KITCHEN = f'{TEMP_HUM_SENSOR_NAME_PREFIX}kitchen'
     TEMP_HUM_SENSOR_KITCHEN_HOOD = f'{TEMP_HUM_SENSOR_NAME_PREFIX}kitchen_hood'
+    TEMP_HUM_SENSOR_LOGGIA = f'{TEMP_HUM_SENSOR_NAME_PREFIX}loggia'
     MOTION_SENSOR_HALLWAY = 'motion_sensor:hallway'
     DOOR_SENSOR_NARNIA = 'door_sensor:narnia'
     SMOKE_DETECTOR_KITCHEN = 'smoke_detector:kitchen'
@@ -125,6 +126,7 @@ class SmartDeviceNames:
         TEMP_HUM_SENSOR_BEDROOM,
         TEMP_HUM_SENSOR_KITCHEN,
         TEMP_HUM_SENSOR_KITCHEN_HOOD,
+        TEMP_HUM_SENSOR_LOGGIA,
     }
 
     SMOKE_DETECTORS: typing.ClassVar[set[str]] = {

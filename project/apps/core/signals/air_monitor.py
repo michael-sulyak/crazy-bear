@@ -4,7 +4,6 @@ import typing
 from libs.qingping.base import CleargrassClient
 from .base import BaseSignalHandler, IntervalCheckMixin, SignalNotificationMixin, NotificationParams
 from .. import constants
-from ...common.utils import get_proxy_for_requests
 from ...signals.models import Signal
 from .... import config
 
@@ -33,7 +32,6 @@ class AirMonitorHandler(SignalNotificationMixin, IntervalCheckMixin, BaseSignalH
         self._client = CleargrassClient(
             app_key=config.QINGPING_APP_KEY,
             app_secret=config.QINGPING_APP_SECRET,
-            proxies=get_proxy_for_requests(),
         )
 
     def get_initial_state(self) -> dict[str, typing.Any]:

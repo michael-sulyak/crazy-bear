@@ -34,9 +34,7 @@ class TemperatureHumiditySensorsHandler(BaseSimpleSensorStateHandler):
             Signal(type=f'{device_name}{HUMIDITY_SUFFIX}', value=state['humidity'], received_at=received_at),
         ))
 
-        if device_name == SmartDeviceNames.TEMP_HUM_SENSOR_WORK_ROOM:
-            self._process_main_sensor(state)
-
+        self._check_state(state, device_name=device_name)
         self._check_battery(state.get('battery'), device_name=device_name)
 
     def compress(self) -> None:
@@ -140,29 +138,36 @@ class TemperatureHumiditySensorsHandler(BaseSimpleSensorStateHandler):
 
         return plots
 
-    def _process_main_sensor(self, state: dict) -> None:
+    def _check_state(self, state: dict, *, device_name: str) -> None:
         temperature = state['temperature']
         humidity = state['humidity']
 
-        can_send_warning = self._can_send_warning('humidity', datetime.timedelta(hours=3))
+        if device_name == SmartDeviceNames.TEMP_HUM_SENSOR_LOGGIA:
+            temperature_range = (10, 40,)
+            humidity_range = (0, 85,)
+        else:
+            temperature_range = (16, 28,)
+            humidity_range = (25, 70,)
 
-        if humidity < 30 and can_send_warning:
-            self._messenger.send_message(f'There is low humidity in the room ({humidity}%)!')
-            self._mark_as_sent('humidity')
+        can_send_warning = self._can_send_warning(f'temperature_{device_name}', datetime.timedelta(hours=3))
 
-        if humidity > 70 and can_send_warning:
-            self._messenger.send_message(f'There is high humidity in the room ({humidity}%)!')
-            self._mark_as_sent('humidity')
+        if temperature < temperature_range[0] and can_send_warning:
+            self._messenger.send_message(f'There is a low temperature in room "{device_name}" ({temperature})!')
+            self._mark_as_sent(f'temperature_{device_name}')
 
-        can_send_warning = self._can_send_warning('temperature', datetime.timedelta(hours=3))
+        if temperature > temperature_range[1] and can_send_warning:
+            self._messenger.send_message(f'There is a high temperature in room "{device_name}" ({temperature})!')
+            self._mark_as_sent(f'temperature_{device_name}')
 
-        if temperature < 18 and can_send_warning:
-            self._messenger.send_message(f'There is a low temperature in the room ({temperature})!')
-            self._mark_as_sent('temperature')
+        can_send_warning = self._can_send_warning(f'humidity_{device_name}', datetime.timedelta(hours=3))
 
-        if temperature > 28 and can_send_warning:
-            self._messenger.send_message(f'There is a high temperature in the room ({temperature})!')
-            self._mark_as_sent('temperature')
+        if humidity < humidity_range[0] and can_send_warning:
+            self._messenger.send_message(f'There is low humidity in room "{device_name}" ({humidity}%)!')
+            self._mark_as_sent(f'humidity_{device_name}')
+
+        if humidity > humidity_range[1] and can_send_warning:
+            self._messenger.send_message(f'There is high humidity in room "{device_name}" ({humidity}%)!')
+            self._mark_as_sent(f'humidity_{device_name}')
 
     def _can_send_warning(self, name: str, timedelta_for_sending: datetime.timedelta) -> bool:
         now = datetime.datetime.now()

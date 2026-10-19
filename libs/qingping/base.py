@@ -94,7 +94,7 @@ class CleargrassClient:
             app_secret: str,
             api_base_url: str = 'https://apis.cleargrass.com',
             oauth_base_url: str = 'https://oauth.cleargrass.com',
-            timeout_seconds: float = 10.0,
+            timeout_seconds: float = 30,
             token_refresh_margin_seconds: int = 60,
             proxies: dict | None = None,
     ) -> None:

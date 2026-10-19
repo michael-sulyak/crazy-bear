@@ -8,11 +8,18 @@ from project import config
 
 
 class TplinkRouter:
+    """
+    Useful links:
+    * https://github.com/AlexandrErohin/home-assistant-tplink-router/issues/220#issuecomment-3263919268
+    """
+
     _router: tplinkrouterc6u.AbstractRouter
     _lock: threading.Lock
 
     def __init__(self, *, password: str, host: str) -> None:
-        self._router = tplinkrouterc6u.TplinkRouterProvider.get_client(password=password, host=host)
+        # Note: `get_client` doesn't work well currently after firmware update on a router.
+        # self._router = tplinkrouterc6u.TplinkRouterProvider.get_client(password=password, host=host)
+        self._router = tplinkrouterc6u.TplinkRouterV1_11(password=password, host=host)
         self._lock = threading.Lock()
 
     def get_devices(self) -> typing.Sequence[tplinkrouterc6u.Device]:
