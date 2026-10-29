@@ -12,7 +12,7 @@ from .utils import get_default_signal_compress_datetime_range
 class WeatherHandler(IntervalCheckMixin, BaseSignalHandler):
     task_interval = datetime.timedelta(minutes=10)  # Note: See recommendation from https://openweathermap.org/faq
 
-    def process(self) -> None:
+    def process_by_interval(self) -> None:
         weather = utils.get_weather()
         now = get_current_time()
 

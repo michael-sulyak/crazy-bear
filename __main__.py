@@ -12,7 +12,7 @@ from libs.casual_utils.aio import async_thread
 from libs.messengers.telegram import TelegramMessenger
 from libs.task_queue import DelayedTask, ScheduledTask, TaskPriorities
 from libs.zigbee.base import ZigBee
-from libs.zigbee.devices import ZigBeeDeviceWithOnlyState
+from libs.zigbee.devices import ZigBeeDevice, ZigBeeDeviceWithOnlyState
 from libs.zigbee.lamps.life_control import LCSmartLamp
 from project import config
 from project.apps import db
@@ -124,6 +124,7 @@ def main() -> None:
             modules.Signals,
             modules.ZigBeeController,
             modules.LampControllerInBedroom,
+            modules.ThermostaticRadiatorValvesHandler,
             modules.Utils,
         ),
         smart_devices=(
@@ -141,6 +142,10 @@ def main() -> None:
             *(
                 ZigBeeDeviceWithOnlyState(sensor, zig_bee=zig_bee)
                 for sensor in config.SmartDeviceNames.WATER_LEAK_SENSORS
+            ),
+            *(
+                ZigBeeDevice(sensor, zig_bee=zig_bee)
+                for sensor in config.SmartDeviceNames.THERMOSTATIC_RADIATOR_VALVES
             ),
         ),
     )

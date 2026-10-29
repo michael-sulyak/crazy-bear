@@ -189,19 +189,30 @@ class TelegramMessenger(CVMixin, BaseMessenger):
         self._last_sent_at = get_current_time()
 
     @synchronized_method
-    # @handel_telegram_exceptions
     @async_to_sync
     async def send_images(self, images: typing.Any) -> None:
         if not images:
             return
 
-        results = await self._bot.send_media_group(
-            self.chat_id,
-            media=[InputMediaPhoto(media=image) for image in images],
-        )
+        images = tuple(images)
 
-        self._last_message_id = results[-1].message_id
-        self._last_sent_at = get_current_time()
+        for start in range(0, len(images), 10):
+            batch = images[start: start + 10]
+
+            if len(batch) == 1:
+                result = await self._bot.send_photo(
+                    self.chat_id,
+                    photo=batch[0],
+                )
+                self._last_message_id = result.message_id
+            else:
+                results = await self._bot.send_media_group(
+                    self.chat_id,
+                    media=[InputMediaPhoto(media=image) for image in batch],
+                )
+                self._last_message_id = results[-1].message_id
+
+            self._last_sent_at = get_current_time()
 
     @synchronized_method
     # @handel_telegram_exceptions

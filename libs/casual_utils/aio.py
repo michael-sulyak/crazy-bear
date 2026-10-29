@@ -23,7 +23,7 @@ class AsyncThread:
 
     def close_loop(self) -> None:
         if self._loop and not self._loop.is_closed():
-            self._loop.call_soon_threadsafe(self._loop.stop())
+            self._loop.call_soon_threadsafe(self._loop.stop)
 
         self._thread.join()
 

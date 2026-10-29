@@ -75,7 +75,7 @@ class RouterHandler(IntervalCheckMixin, BaseSignalHandler):
             ),
         )
 
-    def process(self) -> None:
+    def process_by_interval(self) -> None:
         now = datetime.datetime.now()
         date_coefficient = 2 if is_sleep_hours() else 1
 

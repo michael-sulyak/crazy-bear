@@ -25,7 +25,7 @@ from sentry_sdk import metrics
 from libs.casual_utils.time import get_current_time
 
 from ... import config
-from ...config import PY_TZ
+from ...config import PY_TZ, SmartDeviceNames
 
 
 def timer(func: typing.Callable) -> typing.Callable:
@@ -92,13 +92,13 @@ def init_settings_for_plt() -> None:
 
 @timer
 def create_plot(
-    *,
-    title: str,
-    x_attr: str,
-    y_attr: str,
-    stats: typing.Sequence,
-    additional_plots: typing.Sequence[dict] | None = None,
-    legend: typing.Sequence[str] | None = None,
+        *,
+        title: str,
+        x_attr: str,
+        y_attr: str,
+        stats: typing.Sequence,
+        additional_plots: typing.Sequence[dict] | None = None,
+        legend: typing.Sequence[str] | None = None,
 ) -> io.BytesIO:
     if len(stats) <= 2:
         marker = 'o'
@@ -178,11 +178,11 @@ def create_plot(
 
 
 def interpolate_old_values_for_stats(
-    *,
-    x_attr: str,
-    y_attr: str,
-    x_atom: typing.Any,
-    stats: typing.Sequence,
+        *,
+        x_attr: str,
+        y_attr: str,
+        x_atom: typing.Any,
+        stats: typing.Sequence,
 ) -> list:
     if not stats:
         return []
@@ -201,8 +201,8 @@ def interpolate_old_values_for_stats(
             continue
 
         if (
-            getattr(prev_stat, y_attr) != getattr(stat, y_attr)
-            and abs(getattr(prev_stat, x_attr) - getattr(stat, x_attr)) >= 2 * x_atom
+                getattr(prev_stat, y_attr) != getattr(stat, y_attr)
+                and abs(getattr(prev_stat, x_attr) - getattr(stat, x_attr)) >= 2 * x_atom
         ):
             new_stats.extend((
                 blank_model(**{x_attr: getattr(prev_stat, x_attr) + x_atom, y_attr: getattr(prev_stat, y_attr)}),
@@ -283,7 +283,7 @@ def is_sleep_hours(timestamp: datetime.datetime | None = None) -> bool:
 
 
 def convert_params_to_date_range(
-    delta_value: int = 24, delta_type: str = 'hours',
+        delta_value: int = 24, delta_type: str = 'hours',
 ) -> tuple[datetime.datetime, datetime.datetime]:
     now = get_current_time()
     return now - datetime.timedelta(**{delta_type: delta_value}), now
@@ -362,3 +362,16 @@ def get_effective_temperature(*, humidity: float, temperature: float) -> float:
 
     e = humidity / 100 * 6.105 * math.e ** ((17.27 * temperature) / (237.7 + temperature))
     return temperature + 0.348 * e - 4.25
+
+
+def is_heating_season() -> bool:
+    return config.HEATING_SEASON_DATE_RANGE[0] <= datetime.date.today() <= config.HEATING_SEASON_DATE_RANGE[1]
+
+
+def get_zigbee_device_names_to_ignore_availability() -> set[str]:
+    zigbee_device_names_to_ignore = set()
+
+    if is_heating_season():
+        zigbee_device_names_to_ignore.add(SmartDeviceNames.TEMP_HUM_SENSOR_LOGGIA)
+
+    return zigbee_device_names_to_ignore

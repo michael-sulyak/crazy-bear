@@ -12,7 +12,7 @@ __all__ = ('WaterLeakSensorsHandler',)
 class WaterLeakSensorsHandler(BaseSimpleSensorStateHandler):
     device_names = SmartDeviceNames.WATER_LEAK_SENSORS
 
-    def handle(self, *, state: dict, device_name: str, received_at: datetime.datetime) -> None:
+    def handle_sensor_state(self, *, state: dict, device_name: str, received_at: datetime.datetime) -> None:
         water_leak = state.get('water_leak', False)
 
         if water_leak:

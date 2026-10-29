@@ -92,12 +92,12 @@ class Signal(db.Base):
 
     @classmethod
     def get_aggregated(
-        cls,
-        signal_type: str,
-        *,
-        aggregate_function: typing.Callable = sa_func.avg,
-        datetime_range: tuple[datetime.datetime, datetime.datetime],
-        date_trunc: str = None,
+            cls,
+            signal_type: str,
+            *,
+            aggregate_function: typing.Callable = sa_func.avg,
+            datetime_range: tuple[datetime.datetime, datetime.datetime],
+            date_trunc: str = None,
     ) -> list['Signal']:
         query_data = cls._get_query_data(
             signal_type=signal_type,
@@ -135,12 +135,12 @@ class Signal(db.Base):
 
     @classmethod
     def get_one_aggregated(
-        cls,
-        signal_type: str,
-        *,
-        aggregate_function: typing.Callable = sa_func.avg,
-        datetime_range: tuple[datetime.datetime, datetime.datetime] | None = None,
-        period: datetime.timedelta = datetime.timedelta(minutes=1),
+            cls,
+            signal_type: str,
+            *,
+            aggregate_function: typing.Callable = sa_func.avg,
+            datetime_range: tuple[datetime.datetime, datetime.datetime] | None = None,
+            period: datetime.timedelta = datetime.timedelta(minutes=1),
     ) -> typing.Any:
         now = get_current_time()
 
@@ -165,61 +165,6 @@ class Signal(db.Base):
         )
 
         return result
-
-    @classmethod
-    def compress_by_time(
-        cls,
-        signal_type: str,
-        *,
-        datetime_range: tuple[datetime.datetime, datetime.datetime],
-        aggregate_function: typing.Callable = sa_func.avg,
-    ) -> None:
-        session = db.get_db_session()
-
-        query_data = cls._get_query_data(
-            signal_type=signal_type,
-            datetime_range=datetime_range,
-        )
-
-        if not query_data:
-            return
-
-        signals = (
-            session.query(
-                aggregate_function(cls.value).label('aggregated_value'),
-                sa_func.date_trunc(query_data['date_trunc'], cls.received_at).label('aggregated_time'),
-            )
-            .filter(
-                cls.received_at >= query_data['start_time'],
-                cls.received_at <= query_data['end_time'],
-                cls.type == signal_type,
-                cls.value.isnot(None),
-            )
-            .group_by(
-                'aggregated_time',
-            )
-            .order_by(
-                'aggregated_time',
-            )
-            .all()
-        )
-
-        if not signals:
-            return
-
-        new_signals = tuple(
-            Signal(type=signal_type, value=signal.aggregated_value, received_at=signal.aggregated_time)
-            for signal in signals
-        )
-
-        with db.transaction(session):
-            session.query(cls).filter(
-                cls.received_at >= query_data['start_time'],
-                cls.received_at <= query_data['end_time'],
-                cls.type == signal_type,
-            ).delete()
-
-            session.add_all(new_signals)
 
     @classmethod
     def compress(
@@ -259,45 +204,27 @@ class Signal(db.Base):
                 ).delete()
 
     @classmethod
-    def aggregated_compress(
-        cls,
-        signal_type: str,
-        *,
-        aggregate_function: typing.Callable = sa_func.avg,
-        datetime_range: tuple[datetime.datetime, datetime.datetime],
+    def compress_by_time(
+            cls,
+            signal_type: str,
+            *,
+            datetime_range: tuple[datetime.datetime, datetime.datetime],
+            aggregate_function: typing.Callable = sa_func.avg,
     ) -> None:
-        session = db.get_db_session()
-
-        aggregated_data = cls.get_aggregated(
-            signal_type,
-            aggregate_function=aggregate_function,
+        query_data = cls._get_query_data(
+            signal_type=signal_type,
             datetime_range=datetime_range,
         )
 
-        start_time, end_time = datetime_range
-
-        query = session.query(cls).filter(
-            cls.received_at >= start_time,
-            cls.received_at <= end_time,
-            cls.type == signal_type,
-        )
-
-        count = query.count()
-
-        if not count or len(aggregated_data) / count > 0.9:
+        if not query_data:
             return
 
-        with db.transaction(session):
-            query.delete()
-
-            session.add_all(
-                cls(
-                    type=signal_type,
-                    value=item.value,
-                    received_at=item.aggregated_time,
-                )
-                for item in aggregated_data
-            )
+        cls._compress_time_buckets(
+            signal_type,
+            datetime_range=datetime_range,
+            aggregate_function=aggregate_function,
+            date_trunc=query_data['date_trunc'],
+        )
 
     @classmethod
     def backup(cls, datetime_range: tuple[datetime.datetime, datetime.datetime] | None = None) -> None:
@@ -355,10 +282,10 @@ class Signal(db.Base):
 
     @classmethod
     def _get_query_data(
-        cls,
-        signal_type: str,
-        *,
-        datetime_range: tuple[datetime.datetime, datetime.datetime],
+            cls,
+            signal_type: str,
+            *,
+            datetime_range: tuple[datetime.datetime, datetime.datetime],
     ) -> dict[str, typing.Any] | None:
         time_filter = (
             db.get_db_session()
@@ -393,3 +320,133 @@ class Signal(db.Base):
             'start_time': first_time,
             'end_time': last_time,
         }
+
+    @classmethod
+    def _compress_time_buckets(
+            cls,
+            signal_type: str,
+            *,
+            datetime_range: tuple[datetime.datetime, datetime.datetime],
+            aggregate_function: typing.Callable,
+            date_trunc: str,
+            minimum_reduction: float = 0,
+    ) -> None:
+        if not 0 <= minimum_reduction <= 1:
+            raise ValueError('minimum_reduction must be between 0 and 1')
+
+        start, end = cls._compression_bounds(datetime_range, date_trunc)
+
+        if start >= end:
+            return
+
+        with db.session_transaction() as session:
+            selected_ids = [
+                row.id
+                for row in (
+                    session.query(cls.id)
+                    .filter(
+                        cls.type == signal_type,
+                        cls.received_at >= start,
+                        cls.received_at < end,
+                        cls.value.isnot(None),
+                    )
+                    .order_by(cls.id)
+                    .with_for_update()
+                    .all()
+                )
+            ]
+
+            if len(selected_ids) < 2:
+                return
+
+            bucket = sa_func.date_trunc(
+                date_trunc,
+                sa_func.timezone('UTC', cls.received_at),
+            )
+
+            # Only buckets with multiple readings need replacing.
+            aggregates = (
+                session.query(
+                    bucket.label('time'),
+                    aggregate_function(cls.value).label('value'),
+                    sa_func.array_agg(cls.id).label('ids'),
+                )
+                .filter(cls.id.in_(selected_ids))
+                .group_by(bucket)
+                .having(sa_func.count(cls.id) > 1)
+                .order_by(bucket)
+                .all()
+            )
+
+            aggregates = [
+                row for row in aggregates if row.value is not None
+            ]
+
+            ids_to_delete = [
+                record_id
+                for row in aggregates
+                for record_id in row.ids
+            ]
+
+            reduction = len(ids_to_delete) - len(aggregates)
+
+            if not reduction:
+                return
+
+            if reduction / len(selected_ids) < minimum_reduction:
+                return
+
+            for offset in range(0, len(ids_to_delete), 1000):
+                session.query(cls).filter(
+                    cls.type == signal_type,
+                    cls.id.in_(ids_to_delete[offset:offset + 1000]),
+                ).delete(synchronize_session=False)
+
+            session.add_all(
+                cls(
+                    type=signal_type,
+                    value=row.value,
+                    received_at=row.time.replace(tzinfo=datetime.UTC),
+                )
+                for row in aggregates
+            )
+
+    @staticmethod
+    def _compression_bounds(
+            datetime_range: tuple[datetime.datetime, datetime.datetime],
+            date_trunc: str,
+    ) -> tuple[datetime.datetime, datetime.datetime]:
+        """Return complete UTC buckets as a half-open interval."""
+
+        units = {
+            'second': datetime.timedelta(seconds=1),
+            'minute': datetime.timedelta(minutes=1),
+            'hour': datetime.timedelta(hours=1),
+            'day': datetime.timedelta(days=1),
+        }
+
+        if date_trunc not in units:
+            raise ValueError(f'Unsupported compression unit: {date_trunc!r}')
+
+        start, end = datetime_range
+
+        if start.utcoffset() is None or end.utcoffset() is None:
+            raise ValueError('Compression requires timezone-aware datetimes')
+
+        if start >= end:
+            raise ValueError('datetime_range start must be before end')
+
+        start = start.astimezone(datetime.UTC)
+        end = end.astimezone(datetime.UTC)
+
+        step = units[date_trunc]
+        origin = datetime.datetime(1970, 1, 1, tzinfo=datetime.UTC)
+
+        # Round start up and end down, leaving partial buckets untouched.
+        start_remainder = (start - origin) % step
+        if start_remainder:
+            start += step - start_remainder
+
+        end -= (end - origin) % step
+
+        return start, end

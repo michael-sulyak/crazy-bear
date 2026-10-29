@@ -4,10 +4,17 @@
     <meta charset="UTF-8">
     <title>Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="icon" href="https://fav.farm/📊"/>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <link rel="icon" href="https://fav.farm/📊">
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"/>
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+    >
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;800&display=swap');
@@ -46,9 +53,21 @@
             font-family: 'Rubik', Arial, sans-serif;
             color: #fff;
             background:
-                radial-gradient(circle at top left, rgba(32, 201, 151, 0.22), transparent 32rem),
-                radial-gradient(circle at top right, rgba(13, 110, 253, 0.18), transparent 30rem),
-                linear-gradient(180deg, var(--bg-mid) 0, var(--bg-dark) 100%);
+                radial-gradient(
+                    circle at top left,
+                    rgba(32, 201, 151, 0.22),
+                    transparent 32rem
+                ),
+                radial-gradient(
+                    circle at top right,
+                    rgba(13, 110, 253, 0.18),
+                    transparent 30rem
+                ),
+                linear-gradient(
+                    180deg,
+                    var(--bg-mid) 0,
+                    var(--bg-dark) 100%
+                );
             background-attachment: fixed;
         }
 
@@ -58,8 +77,15 @@
             inset: 0;
             pointer-events: none;
             background-image:
-                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+                linear-gradient(
+                    rgba(255, 255, 255, 0.03) 1px,
+                    transparent 1px
+                ),
+                linear-gradient(
+                    90deg,
+                    rgba(255, 255, 255, 0.03) 1px,
+                    transparent 1px
+                );
             background-size: 44px 44px;
             mask-image: linear-gradient(to bottom, black, transparent);
         }
@@ -135,6 +161,7 @@
         .status-dot {
             width: 0.62rem;
             height: 0.62rem;
+            flex-shrink: 0;
             border-radius: 50%;
             background: #adb5bd;
         }
@@ -227,6 +254,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            flex-wrap: wrap;
             gap: 0.75rem;
             margin-bottom: 0.8rem;
         }
@@ -240,12 +268,16 @@
         .metric-icon {
             width: 2.2rem;
             height: 2.2rem;
+            flex-shrink: 0;
             display: inline-grid;
             place-items: center;
             border-radius: 0.85rem;
             background: var(--accent-soft);
             color: var(--accent);
-            transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease;
+            transition:
+                background 160ms ease,
+                color 160ms ease,
+                box-shadow 160ms ease;
         }
 
         .metric-icon.is-good {
@@ -300,7 +332,15 @@
         }
 
         .place-card {
-            transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+            transition:
+                transform 160ms ease,
+                border-color 160ms ease,
+                background 160ms ease;
+        }
+
+        .place-name,
+        .radiator-name {
+            overflow-wrap: anywhere;
         }
 
         .badge-very-bad {
@@ -317,6 +357,26 @@
             position: relative;
             height: 360px;
             width: 100%;
+        }
+
+        .radiator-chart-wrap {
+            position: relative;
+            height: 220px;
+            width: 100%;
+            margin-top: 1.25rem;
+        }
+
+        .radiator-coverage {
+            min-height: 1.2rem;
+            margin-top: 0.65rem;
+            color: var(--muted);
+            font-size: 0.78rem;
+        }
+
+        .radiator-note {
+            margin-top: 0.75rem;
+            color: var(--muted);
+            font-size: 0.78rem;
         }
 
         .empty-state {
@@ -350,7 +410,7 @@
                 justify-content: stretch;
             }
 
-            .glass-pill,
+            .hero-actions .glass-pill,
             .btn-refresh {
                 width: 100%;
                 justify-content: center;
@@ -366,7 +426,10 @@
 <body>
 <div id="loading-bar" class="d-none" aria-hidden="true">
     <div class="progress">
-        <div class="progress-bar progress-bar-striped progress-bar-animated bg-success" style="width: 100%"></div>
+        <div
+            class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+            style="width: 100%"
+        ></div>
     </div>
 </div>
 
@@ -375,41 +438,70 @@
         <div>
             <div class="eyebrow">Home environment</div>
             <h1 class="dashboard-title">Dashboard</h1>
-            <p class="dashboard-subtitle">Indoor climate and air quality, refreshed automatically.</p>
+            <p class="dashboard-subtitle">
+                Indoor climate, air quality and heating, refreshed automatically.
+            </p>
         </div>
 
         <div class="hero-actions">
             <div class="glass-pill" aria-live="polite">
-                <span id="connection-dot" class="status-dot is-live"></span>
-                <span id="connection-label">Live</span>
+                <span id="connection-dot" class="status-dot"></span>
+                <span id="connection-label">Connecting</span>
                 <span class="text-white-50">•</span>
                 <span id="last-updated">Not updated yet</span>
             </div>
 
-            <button id="refresh-button" class="btn btn-refresh" type="button">
-                <i id="refresh-icon" class="fa-solid fa-rotate me-2"></i>
+            <button
+                id="refresh-button"
+                class="btn btn-refresh"
+                type="button"
+            >
+                <i
+                    id="refresh-icon"
+                    class="fa-solid fa-rotate me-2"
+                    aria-hidden="true"
+                ></i>
                 Refresh
             </button>
         </div>
     </header>
 
-    <div id="error-alert" class="alert alert-dashboard d-none d-flex align-items-center justify-content-between gap-3" role="alert">
+    <div
+        id="error-alert"
+        class="alert alert-dashboard d-none d-flex align-items-center justify-content-between gap-3"
+        role="alert"
+    >
         <div>
-            <i class="fa-solid fa-triangle-exclamation me-2"></i>
+            <i
+                class="fa-solid fa-triangle-exclamation me-2"
+                aria-hidden="true"
+            ></i>
             <span id="error-message">Could not refresh data.</span>
         </div>
-        <button id="error-dismiss" type="button" class="btn-close btn-close-white" aria-label="Dismiss"></button>
+
+        <button
+            id="error-dismiss"
+            type="button"
+            class="btn-close btn-close-white"
+            aria-label="Dismiss"
+        ></button>
     </div>
 
     <main>
-        <section id="air-monitor-block" class="card glass-card mb-4 d-none">
+        <section
+            id="air-monitor-block"
+            class="card glass-card mb-4 d-none"
+        >
             <div class="card-header d-flex align-items-center justify-content-between gap-3">
                 <div>
                     <div class="eyebrow">Air monitor</div>
                     <h2 class="h4 mb-0">Air quality</h2>
                 </div>
 
-                <span id="air-quality-badge" class="badge rounded-pill text-bg-secondary">Waiting</span>
+                <span
+                    id="air-quality-badge"
+                    class="badge rounded-pill text-bg-secondary"
+                >Waiting</span>
             </div>
 
             <div class="card-body">
@@ -419,11 +511,18 @@
                             <div class="metric-top">
                                 <div class="metric-label">Temperature</div>
                                 <div class="metric-icon">
-                                    <i class="fa-solid fa-temperature-three-quarters"></i>
+                                    <i
+                                        class="fa-solid fa-temperature-three-quarters"
+                                        aria-hidden="true"
+                                    ></i>
                                 </div>
                             </div>
+
                             <div>
-                                <span id="air-monitor-temp" class="metric-value">-</span>
+                                <span
+                                    id="air-monitor-temp"
+                                    class="metric-value"
+                                >-</span>
                                 <span class="metric-unit">°C</span>
                             </div>
                         </div>
@@ -434,11 +533,18 @@
                             <div class="metric-top">
                                 <div class="metric-label">Humidity</div>
                                 <div class="metric-icon">
-                                    <i class="fa-solid fa-droplet"></i>
+                                    <i
+                                        class="fa-solid fa-droplet"
+                                        aria-hidden="true"
+                                    ></i>
                                 </div>
                             </div>
+
                             <div>
-                                <span id="air-monitor-hum" class="metric-value">-</span>
+                                <span
+                                    id="air-monitor-hum"
+                                    class="metric-value"
+                                >-</span>
                                 <span class="metric-unit">%</span>
                             </div>
                         </div>
@@ -449,11 +555,18 @@
                             <div class="metric-top">
                                 <div class="metric-label">CO₂</div>
                                 <div class="metric-icon">
-                                    <i class="fa-solid fa-wind"></i>
+                                    <i
+                                        class="fa-solid fa-wind"
+                                        aria-hidden="true"
+                                    ></i>
                                 </div>
                             </div>
+
                             <div>
-                                <span id="air-monitor-co2" class="metric-value">-</span>
+                                <span
+                                    id="air-monitor-co2"
+                                    class="metric-value"
+                                >-</span>
                                 <span class="metric-unit">ppm</span>
                             </div>
                         </div>
@@ -464,11 +577,18 @@
                             <div class="metric-top">
                                 <div class="metric-label">PM 1.0</div>
                                 <div class="metric-icon">
-                                    <i class="fa-solid fa-smog"></i>
+                                    <i
+                                        class="fa-solid fa-smog"
+                                        aria-hidden="true"
+                                    ></i>
                                 </div>
                             </div>
+
                             <div>
-                                <span id="air-monitor-pm10" class="metric-value">-</span>
+                                <span
+                                    id="air-monitor-pm10"
+                                    class="metric-value"
+                                >-</span>
                                 <span class="metric-unit">µg/m³</span>
                             </div>
                         </div>
@@ -479,11 +599,18 @@
                             <div class="metric-top">
                                 <div class="metric-label">PM 2.5</div>
                                 <div class="metric-icon">
-                                    <i class="fa-solid fa-cloud"></i>
+                                    <i
+                                        class="fa-solid fa-cloud"
+                                        aria-hidden="true"
+                                    ></i>
                                 </div>
                             </div>
+
                             <div>
-                                <span id="air-monitor-pm25" class="metric-value">-</span>
+                                <span
+                                    id="air-monitor-pm25"
+                                    class="metric-value"
+                                >-</span>
                                 <span class="metric-unit">µg/m³</span>
                             </div>
                         </div>
@@ -495,10 +622,32 @@
         <section>
             <div class="section-header">
                 <h2 class="section-title">Places</h2>
-                <span id="places-count" class="glass-pill py-2 px-3">0 places</span>
+                <span
+                    id="places-count"
+                    class="glass-pill py-2 px-3"
+                >0 places</span>
             </div>
 
-            <div id="places-row" class="row g-4 row-cols-1 row-cols-md-2 row-cols-xl-3"></div>
+            <div
+                id="places-row"
+                class="row g-4 row-cols-1 row-cols-md-2 row-cols-xl-3"
+            ></div>
+        </section>
+
+        <section id="radiators-section" class="mt-4 d-none">
+            <div class="section-header">
+                <h2 class="section-title">Radiators</h2>
+
+                <span
+                    id="radiators-count"
+                    class="glass-pill py-2 px-3"
+                >0 radiators</span>
+            </div>
+
+            <div
+                id="radiators-row"
+                class="row g-4 row-cols-1 row-cols-xl-2"
+            ></div>
         </section>
 
         <section class="row g-4 mt-1">
@@ -509,12 +658,19 @@
                             <div class="eyebrow">Trends</div>
                             <h2 class="h4 mb-0">Temperature</h2>
                         </div>
-                        <span class="badge rounded-pill text-bg-dark border border-light-subtle">°C</span>
+
+                        <span class="badge rounded-pill text-bg-dark border border-light-subtle">
+                            °C
+                        </span>
                     </div>
 
                     <div class="card-body">
                         <div class="chart-wrap">
-                            <canvas id="tempChart"></canvas>
+                            <canvas
+                                id="tempChart"
+                                role="img"
+                                aria-label="Temperature history"
+                            ></canvas>
                         </div>
                     </div>
                 </div>
@@ -527,12 +683,19 @@
                             <div class="eyebrow">Trends</div>
                             <h2 class="h4 mb-0">Humidity</h2>
                         </div>
-                        <span class="badge rounded-pill text-bg-dark border border-light-subtle">%</span>
+
+                        <span class="badge rounded-pill text-bg-dark border border-light-subtle">
+                            %
+                        </span>
                     </div>
 
                     <div class="card-body">
                         <div class="chart-wrap">
-                            <canvas id="humChart"></canvas>
+                            <canvas
+                                id="humChart"
+                                role="img"
+                                aria-label="Humidity history"
+                            ></canvas>
                         </div>
                     </div>
                 </div>
@@ -545,12 +708,19 @@
                             <div class="eyebrow">Air history</div>
                             <h2 class="h4 mb-0">CO₂</h2>
                         </div>
-                        <span class="badge rounded-pill text-bg-dark border border-light-subtle">ppm</span>
+
+                        <span class="badge rounded-pill text-bg-dark border border-light-subtle">
+                            ppm
+                        </span>
                     </div>
 
                     <div class="card-body">
                         <div class="chart-wrap">
-                            <canvas id="co2Chart"></canvas>
+                            <canvas
+                                id="co2Chart"
+                                role="img"
+                                aria-label="Carbon dioxide history"
+                            ></canvas>
                         </div>
                     </div>
                 </div>
@@ -588,20 +758,34 @@
         'is-muted',
     ]
 
+    const radiatorCharts = []
+
     Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)'
     Chart.defaults.color = 'rgba(255, 255, 255, 0.82)'
     Chart.defaults.font.family = "'Rubik', Arial, sans-serif"
 
     function isFiniteNumber(value) {
-        return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value))
+        if (typeof value !== 'number' && typeof value !== 'string') {
+            return false
+        }
+
+        if (typeof value === 'string' && value.trim() === '') {
+            return false
+        }
+
+        return Number.isFinite(Number(value))
     }
 
     function formatNumber(value, digits = 1) {
-        return isFiniteNumber(value) ? Number(value).toFixed(digits) : '-'
+        return isFiniteNumber(value)
+            ? Number(value).toFixed(digits)
+            : '-'
     }
 
     function formatInteger(value) {
-        return isFiniteNumber(value) ? Math.round(Number(value)).toString() : '-'
+        return isFiniteNumber(value)
+            ? Math.round(Number(value)).toString()
+            : '-'
     }
 
     function setText(id, value) {
@@ -620,10 +804,6 @@
         const b = value & 255
 
         return `rgba(${r}, ${g}, ${b}, ${alpha})`
-    }
-
-    function clampScore(score) {
-        return Math.max(0, Math.min(Number(score), 4))
     }
 
     function createAssessment(label, visualClass, severity, badgeClass) {
@@ -647,10 +827,6 @@
     }
 
     function pollutionAssessmentFromScore(score) {
-        if (score === null || score === undefined) {
-            return noDataAssessment()
-        }
-
         const statuses = [
             createAssessment('Good', 'is-good', 0, 'text-bg-success'),
             createAssessment('Fair', 'is-cool', 1, 'text-bg-info'),
@@ -659,7 +835,7 @@
             createAssessment('Very bad', 'is-very-bad', 4, 'badge-very-bad'),
         ]
 
-        return statuses[clampScore(score)]
+        return statuses[score] || noDataAssessment()
     }
 
     function temperatureAssessment(value) {
@@ -778,6 +954,7 @@
 
         element.classList.remove(...visualStatusClasses)
         element.classList.add(assessment?.visualClass || 'is-muted')
+        element.title = assessment?.label || 'No data'
     }
 
     function setMetricAssessment(valueElementId, assessment) {
@@ -794,24 +971,8 @@
             .sort((a, b) => b.severity - a.severity)[0] || null
     }
 
-    function airStatus(airMonitor) {
-        if (!airMonitor) {
-            return {
-                label: 'No data',
-                className: 'text-bg-secondary',
-                severity: null,
-            }
-        }
-
-        const pm1 = airMonitor.pm10 ?? airMonitor.pm1 ?? airMonitor.pm1_0
-
-        const worst = pickWorstAssessment([
-            temperatureAssessment(airMonitor.temperature),
-            humidityAssessment(airMonitor.humidity),
-            co2Assessment(airMonitor.co2),
-            pm1Assessment(pm1),
-            pm25Assessment(airMonitor.pm25),
-        ])
+    function statusFromAssessments(assessments) {
+        const worst = pickWorstAssessment(assessments)
 
         if (!worst) {
             return {
@@ -828,24 +989,45 @@
         }
     }
 
+    function airStatus(latest) {
+        if (!latest) return statusFromAssessments([])
+
+        const pm1 = latest.pm10 ?? latest.pm1 ?? latest.pm1_0
+
+        return statusFromAssessments([
+            temperatureAssessment(latest.temperature),
+            humidityAssessment(latest.humidity),
+            co2Assessment(latest.co2),
+            pm1Assessment(pm1),
+            pm25Assessment(latest.pm25),
+        ])
+    }
+
     function placeStatus(temp, hum) {
-        const worst = pickWorstAssessment([
+        return statusFromAssessments([
             temperatureAssessment(temp),
             humidityAssessment(hum),
         ])
+    }
 
-        if (!worst) {
+    function radiatorStatus(heating) {
+        if (heating === true) {
             return {
-                label: 'No data',
+                label: 'Heating',
+                className: 'text-bg-warning',
+            }
+        }
+
+        if (heating === false) {
+            return {
+                label: 'Idle',
                 className: 'text-bg-secondary',
-                severity: null,
             }
         }
 
         return {
-            label: worst.label,
-            className: worst.badgeClass,
-            severity: worst.severity,
+            label: 'No data',
+            className: 'text-bg-secondary',
         }
     }
 
@@ -896,6 +1078,7 @@
                     callbacks: {
                         label: context => {
                             const value = context.parsed.y
+
                             return `${context.dataset.label}: ${formatNumber(value, 1)} ${unit}`
                         },
                     },
@@ -972,13 +1155,14 @@
     function setLoading(isLoading) {
         $('loading-bar').classList.toggle('d-none', !isLoading)
         $('loading-bar').setAttribute('aria-hidden', String(!isLoading))
-
         $('refresh-button').disabled = isLoading
         $('refresh-icon').classList.toggle('fa-spin', isLoading)
     }
 
     function setConnectionState(isOnline) {
-        $('connection-dot').className = `status-dot ${isOnline ? 'is-live' : 'is-offline'}`
+        $('connection-dot').className =
+            `status-dot ${isOnline ? 'is-live' : 'is-offline'}`
+
         $('connection-label').textContent = isOnline ? 'Live' : 'Offline'
     }
 
@@ -1001,46 +1185,56 @@
         })}`
     }
 
-    function updateAirMonitorBlock(airMonitor) {
+    function updateAirMonitorBlock(latest) {
         const block = $('air-monitor-block')
 
-        if (!airMonitor) {
+        if (!latest) {
             block.classList.add('d-none')
             return
         }
 
         block.classList.remove('d-none')
 
-        const pm1 = airMonitor.pm10 ?? airMonitor.pm1 ?? airMonitor.pm1_0
+        const pm1 = latest.pm10 ?? latest.pm1 ?? latest.pm1_0
 
-        const airTempAssessment = temperatureAssessment(airMonitor.temperature)
-        const airHumAssessment = humidityAssessment(airMonitor.humidity)
-        const airCo2Assessment = co2Assessment(airMonitor.co2)
-        const airPm1Assessment = pm1Assessment(pm1)
-        const airPm25Assessment = pm25Assessment(airMonitor.pm25)
-
-        setText('air-monitor-temp', formatNumber(airMonitor.temperature, 1))
-        setText('air-monitor-hum', formatNumber(airMonitor.humidity, 1))
-        setText('air-monitor-co2', formatInteger(airMonitor.co2))
+        setText('air-monitor-temp', formatNumber(latest.temperature, 1))
+        setText('air-monitor-hum', formatNumber(latest.humidity, 1))
+        setText('air-monitor-co2', formatInteger(latest.co2))
         setText('air-monitor-pm10', formatNumber(pm1, 1))
-        setText('air-monitor-pm25', formatNumber(airMonitor.pm25, 1))
+        setText('air-monitor-pm25', formatNumber(latest.pm25, 1))
 
-        setMetricAssessment('air-monitor-temp', airTempAssessment)
-        setMetricAssessment('air-monitor-hum', airHumAssessment)
-        setMetricAssessment('air-monitor-co2', airCo2Assessment)
-        setMetricAssessment('air-monitor-pm10', airPm1Assessment)
-        setMetricAssessment('air-monitor-pm25', airPm25Assessment)
+        setMetricAssessment(
+            'air-monitor-temp',
+            temperatureAssessment(latest.temperature)
+        )
 
-        setBadge($('air-quality-badge'), airStatus(airMonitor))
+        setMetricAssessment(
+            'air-monitor-hum',
+            humidityAssessment(latest.humidity)
+        )
+
+        setMetricAssessment(
+            'air-monitor-co2',
+            co2Assessment(latest.co2)
+        )
+
+        setMetricAssessment(
+            'air-monitor-pm10',
+            pm1Assessment(pm1)
+        )
+
+        setMetricAssessment(
+            'air-monitor-pm25',
+            pm25Assessment(latest.pm25)
+        )
+
+        setBadge($('air-quality-badge'), airStatus(latest))
     }
 
-    function createPlaceCard(place, idx) {
-        const name = place?.name || `Place ${idx + 1}`
-        const temp = place?.last?.temperature
-        const hum = place?.last?.humidity
-        const tempStatus = temperatureAssessment(temp)
-        const humStatus = humidityAssessment(hum)
-        const status = placeStatus(temp, hum)
+    function createPlaceCard(place, index) {
+        const name = place?.name || `Place ${index + 1}`
+        const temp = place?.latest?.temperature
+        const hum = place?.latest?.humidity
 
         const col = document.createElement('div')
         col.className = 'col'
@@ -1063,7 +1257,10 @@
                                 <div class="metric-top">
                                     <div class="metric-label">Temperature</div>
                                     <div class="metric-icon place-temp-icon">
-                                        <i class="fa-solid fa-temperature-three-quarters"></i>
+                                        <i
+                                            class="fa-solid fa-temperature-three-quarters"
+                                            aria-hidden="true"
+                                        ></i>
                                     </div>
                                 </div>
 
@@ -1079,7 +1276,10 @@
                                 <div class="metric-top">
                                     <div class="metric-label">Humidity</div>
                                     <div class="metric-icon place-hum-icon">
-                                        <i class="fa-solid fa-droplet"></i>
+                                        <i
+                                            class="fa-solid fa-droplet"
+                                            aria-hidden="true"
+                                        ></i>
                                     </div>
                                 </div>
 
@@ -1098,37 +1298,53 @@
         col.querySelector('.place-temp').textContent = formatNumber(temp, 1)
         col.querySelector('.place-hum').textContent = formatNumber(hum, 1)
 
-        applyVisualStatus(col.querySelector('.place-temp-icon'), tempStatus)
-        applyVisualStatus(col.querySelector('.place-hum-icon'), humStatus)
+        applyVisualStatus(
+            col.querySelector('.place-temp-icon'),
+            temperatureAssessment(temp)
+        )
 
-        const statusElement = col.querySelector('.place-status')
-        statusElement.textContent = status.label
-        statusElement.className = `badge rounded-pill place-status ${status.className}`
+        applyVisualStatus(
+            col.querySelector('.place-hum-icon'),
+            humidityAssessment(hum)
+        )
+
+        setBadge(
+            col.querySelector('.place-status'),
+            placeStatus(temp, hum)
+        )
 
         return col
     }
 
     function renderPlaces(places) {
         const placesRow = $('places-row')
-        placesRow.innerHTML = ''
+        placesRow.replaceChildren()
 
-        $('places-count').textContent = `${places.length} ${places.length === 1 ? 'place' : 'places'}`
+        $('places-count').textContent =
+            `${places.length} ${places.length === 1 ? 'place' : 'places'}`
 
         if (places.length === 0) {
             placesRow.innerHTML = `
-                <div class="col-12">
+                <div class="col-12" style="width: 100%">
                     <div class="empty-state glass-card">
-                        <i class="fa-regular fa-face-smile-beam fa-2x mb-3"></i>
-                        <div class="fw-semibold">No places available yet</div>
-                        <div class="mt-1">Waiting for data from <code>/api/stats</code>.</div>
+                        <i
+                            class="fa-regular fa-face-smile-beam fa-2x mb-3"
+                            aria-hidden="true"
+                        ></i>
+                        <div class="fw-semibold">
+                            No places available yet
+                        </div>
+                        <div class="mt-1">
+                            Waiting for data from <code>/api/stats</code>.
+                        </div>
                     </div>
                 </div>
             `
             return
         }
 
-        places.forEach((place, idx) => {
-            placesRow.appendChild(createPlaceCard(place, idx))
+        places.forEach((place, index) => {
+            placesRow.appendChild(createPlaceCard(place, index))
         })
     }
 
@@ -1136,7 +1352,7 @@
         const date = new Date(time)
 
         if (Number.isNaN(date.getTime())) {
-            return time
+            return String(time ?? '')
         }
 
         return date.toLocaleString([], {
@@ -1152,9 +1368,9 @@
         const allTimestampsSet = new Set()
 
         places.forEach(place => {
-            if (!Array.isArray(place.aggregated)) return
+            if (!Array.isArray(place.history)) return
 
-            place.aggregated.forEach(entry => {
+            place.history.forEach(entry => {
                 if (entry?.time) {
                     allTimestampsSet.add(entry.time)
                 }
@@ -1162,13 +1378,14 @@
         })
 
         const timestamps = Array.from(allTimestampsSet)
+            .filter(time => Number.isFinite(new Date(time).getTime()))
             .sort((a, b) => new Date(a) - new Date(b))
 
         const placeDataMaps = places.map(place => {
             const map = new Map()
 
-            if (Array.isArray(place.aggregated)) {
-                place.aggregated.forEach(entry => {
+            if (Array.isArray(place.history)) {
+                place.history.forEach(entry => {
                     if (entry?.time) {
                         map.set(entry.time, entry)
                     }
@@ -1187,11 +1404,15 @@
                 const entry = placeDataMaps[placeIndex].get(time)
 
                 temperature[placeIndex].push(
-                    isFiniteNumber(entry?.temperature) ? Number(entry.temperature) : null
+                    isFiniteNumber(entry?.temperature)
+                        ? Number(entry.temperature)
+                        : null
                 )
 
                 humidity[placeIndex].push(
-                    isFiniteNumber(entry?.humidity) ? Number(entry.humidity) : null
+                    isFiniteNumber(entry?.humidity)
+                        ? Number(entry.humidity)
+                        : null
                 )
             })
         })
@@ -1215,10 +1436,10 @@
         const hiddenLabels = getHiddenDatasetLabels(chart)
 
         chart.data.labels = labels
+
         chart.data.datasets = places.map((place, index) => {
-            const placeName = place?.name || `Place ${index + 1}`
+            const label = place?.name || `Place ${index + 1}`
             const color = palette[index % palette.length]
-            const label = placeName
 
             return {
                 label,
@@ -1234,36 +1455,330 @@
         })
 
         chart.data.datasets.forEach((dataset, index) => {
-            chart.setDatasetVisibility(index, !hiddenLabels.has(dataset.label))
+            chart.setDatasetVisibility(
+                index,
+                !hiddenLabels.has(dataset.label)
+            )
         })
 
         chart.update('none')
     }
 
     function updateCo2Chart(airMonitor) {
-        const history = airMonitor && Array.isArray(airMonitor.history)
+        const history = Array.isArray(airMonitor?.history)
             ? airMonitor.history
             : []
 
-        const sortedHistory = [...history].sort((a, b) => new Date(a.time) - new Date(b.time))
+        const sortedHistory = history
+            .filter(entry => (
+                entry?.time &&
+                Number.isFinite(new Date(entry.time).getTime())
+            ))
+            .sort((a, b) => new Date(a.time) - new Date(b.time))
 
-        co2Chart.data.labels = sortedHistory.map(entry => formatTimestamp(entry.time))
+        co2Chart.data.labels = sortedHistory.map(
+            entry => formatTimestamp(entry.time)
+        )
+
         co2Chart.data.datasets[0].data = sortedHistory.map(entry => (
-            isFiniteNumber(entry?.co2) ? Number(entry.co2) : null
+            isFiniteNumber(entry.co2) ? Number(entry.co2) : null
         ))
 
         co2Chart.update('none')
     }
 
-    async function fetchWithTimeout(url, timeoutMs) {
+    function setHeatingSummary(card, period, summary) {
+        const valueElement = card.querySelector(
+            `[data-value="${period}"]`
+        )
+
+        const coverageElement = card.querySelector(
+            `[data-coverage="${period}"]`
+        )
+
+        if (!isFiniteNumber(summary?.heating_percent)) {
+            valueElement.textContent = '—'
+            coverageElement.textContent = 'No known state time'
+            return
+        }
+
+        valueElement.textContent =
+            `${formatNumber(summary.heating_percent, 1)}%`
+
+        const coverage = summary.coverage_percent
+
+        if (!isFiniteNumber(coverage)) {
+            coverageElement.textContent = 'Coverage unavailable'
+        } else if (Number(coverage) < 100) {
+            coverageElement.textContent =
+                `${formatNumber(coverage, 1)}% coverage · known time only`
+        } else {
+            coverageElement.textContent = 'Full period covered'
+        }
+    }
+
+    function buildRadiatorPoints(history) {
+        const entries = (Array.isArray(history) ? history : [])
+            .map(entry => ({
+                x: Date.parse(entry?.time),
+                y: entry?.heating === true
+                    ? 1
+                    : entry?.heating === false
+                        ? 0
+                        : null,
+            }))
+            .filter(entry => Number.isFinite(entry.x))
+            .sort((a, b) => a.x - b.x)
+
+        const points = []
+
+        entries.forEach((entry, index) => {
+            if (index > 0) {
+                // Hold the previous state until the transition timestamp.
+                // A second point at the same timestamp makes a vertical step.
+                // Null points preserve gaps for unknown intervals.
+                points.push({
+                    x: entry.x,
+                    y: entries[index - 1].y,
+                })
+            }
+
+            points.push(entry)
+        })
+
+        return points
+    }
+
+    function createRadiatorChart(canvas, history) {
+        const points = buildRadiatorPoints(history)
+        const options = chartOptions('Heating state', '')
+
+        options.animation = false
+
+        options.interaction = {
+            mode: 'nearest',
+            axis: 'x',
+            intersect: false,
+        }
+
+        options.plugins.legend.display = false
+
+        options.plugins.tooltip.callbacks = {
+            title: items => (
+                items.length ? formatTimestamp(items[0].parsed.x) : ''
+            ),
+            label: context => (
+                context.parsed.y === 1 ? 'Heating' : 'Idle'
+            ),
+        }
+
+        // Numeric timestamps keep real elapsed-time spacing without
+        // requiring a Chart.js date adapter.
+        options.scales.x = {
+            type: 'linear',
+            ...(points.length > 0
+                ? {
+                    min: points[0].x,
+                    max: points[points.length - 1].x,
+                }
+                : {}),
+            ticks: {
+                maxTicksLimit: 6,
+                maxRotation: 0,
+                callback: value => (
+                    new Date(Number(value)).toLocaleTimeString([], {
+                        hourCycle: 'h23',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                    })
+                ),
+            },
+            grid: {
+                display: false,
+            },
+        }
+
+        options.scales.y = {
+            min: 0,
+            max: 1,
+            ticks: {
+                stepSize: 1,
+                padding: 8,
+                callback: value => (
+                    Number(value) === 1 ? 'Heating' : 'Idle'
+                ),
+            },
+        }
+
+        return new Chart(canvas.getContext('2d'), {
+            type: 'line',
+            data: {
+                datasets: [
+                    {
+                        label: 'Heating',
+                        data: points,
+                        borderColor: '#fd7e14',
+                        backgroundColor: 'rgba(253, 126, 20, 0.18)',
+                        pointBackgroundColor: '#fd7e14',
+                        pointBorderColor: '#fd7e14',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        tension: 0,
+                        spanGaps: false,
+                        fill: 'origin',
+                    },
+                ],
+            },
+            options,
+        })
+    }
+
+    function renderRadiators(radiators) {
+        radiatorCharts.forEach(chart => chart.destroy())
+        radiatorCharts.length = 0
+
+        const section = $('radiators-section')
+        const row = $('radiators-row')
+
+        row.replaceChildren()
+
+        const items = Array.isArray(radiators)
+            ? radiators.filter(item => (
+                item &&
+                typeof item === 'object' &&
+                !Array.isArray(item)
+            ))
+            : []
+
+        section.classList.toggle('d-none', items.length === 0)
+
+        $('radiators-count').textContent =
+            `${items.length} ${items.length === 1 ? 'radiator' : 'radiators'}`
+
+        if (items.length === 0) return
+
+        items.forEach((radiator, index) => {
+            const name = radiator.name || `Radiator ${index + 1}`
+            const col = document.createElement('div')
+            col.className = 'col'
+
+            col.innerHTML = `
+                <article class="card glass-card h-100">
+                    <div class="card-header d-flex align-items-start justify-content-between gap-3">
+                        <div>
+                            <div class="eyebrow">Radiator</div>
+                            <h3 class="h5 mb-0 radiator-name"></h3>
+                        </div>
+
+                        <span class="badge rounded-pill radiator-status"></span>
+                    </div>
+
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <div class="metric-tile">
+                                    <div class="metric-label mb-3">
+                                        Last 24 hours
+                                    </div>
+
+                                    <div
+                                        class="metric-value"
+                                        data-value="last_24_hours"
+                                    >—</div>
+
+                                    <div
+                                        class="radiator-coverage"
+                                        data-coverage="last_24_hours"
+                                    ></div>
+                                </div>
+                            </div>
+
+                            <div class="col-6">
+                                <div class="metric-tile">
+                                    <div class="metric-label mb-3">
+                                        Last 30 days
+                                    </div>
+
+                                    <div
+                                        class="metric-value"
+                                        data-value="last_30_days"
+                                    >—</div>
+
+                                    <div
+                                        class="radiator-coverage"
+                                        data-coverage="last_30_days"
+                                    ></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="radiator-chart-wrap">
+                            <canvas role="img"></canvas>
+                        </div>
+
+                        <div class="radiator-note radiator-last-report"></div>
+                    </div>
+                </article>
+            `
+
+            col.querySelector('.radiator-name').textContent = name
+
+            setBadge(
+                col.querySelector('.radiator-status'),
+                radiatorStatus(radiator.latest?.heating)
+            )
+
+            setHeatingSummary(
+                col,
+                'last_24_hours',
+                radiator.heating_summary?.last_24_hours
+            )
+
+            setHeatingSummary(
+                col,
+                'last_30_days',
+                radiator.heating_summary?.last_30_days
+            )
+
+            const reportElement = col.querySelector('.radiator-last-report')
+            const reportTime = radiator.latest?.time
+
+            reportElement.textContent = reportTime
+                ? `Last report: ${formatTimestamp(reportTime)}`
+                : 'No report timestamp available'
+
+            const canvas = col.querySelector('canvas')
+
+            canvas.setAttribute(
+                'aria-label',
+                `${name}: heating state over the last 24 hours`
+            )
+
+            row.appendChild(col)
+
+            radiatorCharts.push(
+                createRadiatorChart(canvas, radiator.history)
+            )
+        })
+    }
+
+    async function fetchJsonWithTimeout(url, timeoutMs) {
         const controller = new AbortController()
         const timer = setTimeout(() => controller.abort(), timeoutMs)
 
         try {
-            return await fetch(url, {
+            const response = await fetch(url, {
                 signal: controller.signal,
                 cache: 'no-store',
             })
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`)
+            }
+
+            // Keep the timeout active while receiving and parsing the body.
+            return await response.json()
         } finally {
             clearTimeout(timer)
         }
@@ -1276,13 +1791,20 @@
             const date = new Date(now)
             date.setHours(date.getHours() - hours)
             date.setMinutes(0, 0, 0)
+
             return date.toISOString()
+        }
+
+        function exactHoursAgo(hours) {
+            return new Date(
+                now.getTime() - hours * 60 * 60 * 1000
+            ).toISOString()
         }
 
         const times = []
 
-        for (let i = 23; i >= 0; i--) {
-            times.push(hoursAgo(i))
+        for (let index = 23; index >= 0; index--) {
+            times.push(hoursAgo(index))
         }
 
         const placeNames = [
@@ -1293,10 +1815,20 @@
         ]
 
         const places = placeNames.map((name, placeIndex) => {
-            const aggregated = times.map((time, timeIndex) => {
+            const history = times.map((time, timeIndex) => {
                 const wave = Math.sin(timeIndex / 3 + placeIndex)
-                const temperature = 23.5 + placeIndex * 0.4 + wave * 1.8 + Math.random() * 0.4
-                const humidity = 46 + placeIndex * 2.2 + wave * 5 + Math.random() * 2
+
+                const temperature =
+                    23.5 +
+                    placeIndex * 0.4 +
+                    wave * 1.8 +
+                    Math.random() * 0.4
+
+                const humidity =
+                    46 +
+                    placeIndex * 2.2 +
+                    wave * 5 +
+                    Math.random() * 2
 
                 return {
                     time,
@@ -1305,15 +1837,19 @@
                 }
             })
 
-            const last = aggregated[aggregated.length - 1]
+            const latest = history[history.length - 1]
 
             return {
                 name,
-                last: {
-                    temperature: placeIndex === 2 ? 31.2 : last.temperature,
-                    humidity: placeIndex === 2 ? 77 : Math.round(last.humidity),
+                latest: {
+                    temperature: placeIndex === 2
+                        ? 31.2
+                        : latest.temperature,
+                    humidity: placeIndex === 2
+                        ? 77
+                        : Math.round(latest.humidity),
                 },
-                aggregated,
+                history,
             }
         })
 
@@ -1322,7 +1858,14 @@
             const eveningBump = timeIndex > 16 ? 210 : 0
             const morningBump = timeIndex > 7 && timeIndex < 11 ? 120 : 0
             const veryBadBump = timeIndex > 21 ? 1350 : 0
-            const co2 = 520 + wave * 90 + eveningBump + morningBump + veryBadBump + Math.random() * 45
+
+            const co2 =
+                520 +
+                wave * 90 +
+                eveningBump +
+                morningBump +
+                veryBadBump +
+                Math.random() * 45
 
             return {
                 time,
@@ -1330,22 +1873,104 @@
             }
         })
 
-        const latestCo2 = co2History[co2History.length - 1].co2
-
         return {
             places,
             air_monitor: {
-                temperature: 24.4,
-                humidity: 43.8,
-                co2: latestCo2,
-                pm10: 2.3,
-                pm25: 4.7,
+                latest: {
+                    temperature: 24.4,
+                    humidity: 43.8,
+                    co2: co2History[co2History.length - 1].co2,
+                    pm10: 2.3,
+                    pm25: 4.7,
+                },
                 history: co2History,
             },
+            radiators: [
+                {
+                    name: 'Bedroom',
+                    latest: {
+                        time: exactHoursAgo(0),
+                        heating: true,
+                    },
+                    history: [
+                        {
+                            time: exactHoursAgo(24),
+                            heating: false,
+                        },
+                        {
+                            time: exactHoursAgo(18),
+                            heating: true,
+                        },
+                        {
+                            time: exactHoursAgo(12),
+                            heating: false,
+                        },
+                        {
+                            time: exactHoursAgo(6),
+                            heating: true,
+                        },
+                        {
+                            time: exactHoursAgo(0),
+                            heating: true,
+                        },
+                    ],
+                    heating_summary: {
+                        last_24_hours: {
+                            heating_percent: 50,
+                            coverage_percent: 100,
+                        },
+                        // Illustrative monthly debug statistics.
+                        last_30_days: {
+                            heating_percent: 42.5,
+                            coverage_percent: 100,
+                        },
+                    },
+                },
+                {
+                    name: 'Living Room',
+                    latest: {
+                        time: exactHoursAgo(0),
+                        heating: false,
+                    },
+                    history: [
+                        {
+                            time: exactHoursAgo(24),
+                            heating: null,
+                        },
+                        {
+                            time: exactHoursAgo(12),
+                            heating: false,
+                        },
+                        {
+                            time: exactHoursAgo(8),
+                            heating: true,
+                        },
+                        {
+                            time: exactHoursAgo(4),
+                            heating: false,
+                        },
+                        {
+                            time: exactHoursAgo(0),
+                            heating: false,
+                        },
+                    ],
+                    heating_summary: {
+                        last_24_hours: {
+                            heating_percent: 33.3,
+                            coverage_percent: 50,
+                        },
+                        last_30_days: {
+                            heating_percent: 33.3,
+                            coverage_percent: 1.7,
+                        },
+                    },
+                },
+            ],
         }
     }
 
     let inFlight = false
+    let hasLoadedData = false
 
     async function fetchAndUpdate() {
         if (inFlight) return
@@ -1354,40 +1979,71 @@
         setLoading(true)
 
         try {
-            let data
+            const data = DEBUG
+                ? getFakeStats()
+                : await fetchJsonWithTimeout(
+                    '/api/stats',
+                    FETCH_TIMEOUT_MS
+                )
 
-            if (DEBUG) {
-                data = getFakeStats()
-            } else {
-                const resp = await fetchWithTimeout('/api/stats', FETCH_TIMEOUT_MS)
-
-                if (!resp.ok) {
-                    throw new Error(`HTTP ${resp.status}`)
-                }
-
-                data = await resp.json()
+            if (
+                !data ||
+                typeof data !== 'object' ||
+                Array.isArray(data)
+            ) {
+                throw new Error('Invalid /api/stats response')
             }
 
-            const places = Array.isArray(data?.places) ? data.places : []
-            const airMonitor = data?.air_monitor || null
+            const places = Array.isArray(data.places)
+                ? data.places.filter(place => (
+                    place &&
+                    typeof place === 'object' &&
+                    !Array.isArray(place)
+                ))
+                : []
 
-            updateAirMonitorBlock(airMonitor)
+            const airMonitor = data.air_monitor || null
+
+            updateAirMonitorBlock(airMonitor?.latest ?? null)
             renderPlaces(places)
+            renderRadiators(data.radiators)
 
             const series = buildTimeSeries(places)
 
-            updateChart(tempChart, series.labels, places, series.temperature)
-            updateChart(humChart, series.labels, places, series.humidity)
+            updateChart(
+                tempChart,
+                series.labels,
+                places,
+                series.temperature
+            )
+
+            updateChart(
+                humChart,
+                series.labels,
+                places,
+                series.humidity
+            )
+
             updateCo2Chart(airMonitor)
 
             hideError()
             setConnectionState(true)
             updateLastUpdated()
+            hasLoadedData = true
         } catch (error) {
-            console.error('Failed to fetch or parse /api/stats', error)
+            console.error('Failed to refresh /api/stats', error)
 
             setConnectionState(false)
-            showError('Could not refresh /api/stats. Showing the last known values.')
+
+            const reason = error?.name === 'AbortError'
+                ? 'The /api/stats request timed out.'
+                : 'Could not refresh /api/stats.'
+
+            showError(
+                hasLoadedData
+                    ? `${reason} Previously loaded values may be out of date.`
+                    : `${reason} No data has been loaded yet.`
+            )
         } finally {
             setLoading(false)
             inFlight = false

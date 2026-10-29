@@ -2,10 +2,11 @@ import datetime
 import typing
 
 from libs.qingping.base import CleargrassClient
-from .base import BaseSignalHandler, IntervalCheckMixin, SignalNotificationMixin, NotificationParams
-from .. import constants
-from ...signals.models import Signal
+
 from .... import config
+from ...signals.models import Signal
+from .. import constants
+from .base import BaseSignalHandler, IntervalCheckMixin, NotificationParams, SignalNotificationMixin
 
 
 class AirMonitorHandler(SignalNotificationMixin, IntervalCheckMixin, BaseSignalHandler):
@@ -40,7 +41,7 @@ class AirMonitorHandler(SignalNotificationMixin, IntervalCheckMixin, BaseSignalH
             constants.AIR_MONITOR_STATE: None,
         }
 
-    def process(self) -> None:
+    def process_by_interval(self) -> None:
         latest_measurement = self._client.get_latest_measurement(config.QINGPING_DEVICE_MAC)
 
         assert latest_measurement is not None and latest_measurement.measured_at is not None

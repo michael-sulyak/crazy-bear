@@ -23,5 +23,16 @@ class SubscriptionOnStateOfZigBeeDeviceMixin(abc.ABC):
         self.zig_bee.unsubscribe_from_state(self.friendly_name)
 
 
+class ZigBeeDevice(SubscriptionOnStateOfZigBeeDeviceMixin, BaseZigBeeDevice):
+    def set(self, payload: dict) -> None:
+        self.zig_bee.set(self.friendly_name, payload=payload)
+
+
+    def config_reporting(self, payload: dict) -> bool:
+        return self.zig_bee.config_reporting({
+            **payload,
+            'id': self.friendly_name,
+        })
+
 class ZigBeeDeviceWithOnlyState(SubscriptionOnStateOfZigBeeDeviceMixin, BaseZigBeeDevice):
     pass

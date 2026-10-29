@@ -6,7 +6,13 @@ from emoji.core import emojize
 
 from libs.casual_utils.time import get_current_time
 from libs.messengers.utils import escape_markdown
-from .wifi import WifiDevice
+
+from .... import config
+from ... import db
+from ...common.constants import INITED_AT
+from ...common.state import State
+from ...common.utils import get_cpu_temp, get_effective_temperature, get_free_disk_space, get_ram_usage
+from ...signals.models import Signal
 from .. import constants
 from ..constants import (
     AIR_MONITOR_CO2,
@@ -18,12 +24,7 @@ from ..constants import (
     USE_CAMERA,
     VIDEO_RECORDING_IS_ENABLED,
 )
-from ... import db
-from ...common.constants import INITED_AT
-from ...common.state import State
-from ...common.utils import get_cpu_temp, get_effective_temperature, get_free_disk_space, get_ram_usage
-from ...signals.models import Signal
-from .... import config
+from .wifi import WifiDevice
 
 
 class ShortTextReport:
@@ -77,7 +78,7 @@ class ShortTextReport:
                 f'{self.CLIPBOARD} *Other*',
                 f'WiFi: {self._connected_devices_info}',
                 f'Started: {self._code(self._started_at_info)}',
-            ]
+            ],
         )
 
     @cached_property
@@ -128,7 +129,7 @@ class ShortTextReport:
             Signal.get_one_aggregated(
                 AIR_MONITOR_HUMIDITY,
                 datetime_range=self._datetime_range_for_hour_average,
-            )
+            ),
         )
 
     @cached_property
@@ -141,7 +142,7 @@ class ShortTextReport:
             Signal.get_one_aggregated(
                 AIR_MONITOR_TEMPERATURE,
                 datetime_range=self._datetime_range_for_hour_average,
-            )
+            ),
         )
 
     def _get_last_signal_value(self, signal_type: str) -> float | None:
@@ -190,7 +191,7 @@ class ShortTextReport:
             get_effective_temperature(
                 temperature=self._temperature,
                 humidity=self._humidity,
-            )
+            ),
         )
 
         if temperature is None:
@@ -204,7 +205,7 @@ class ShortTextReport:
                 get_effective_temperature(
                     temperature=self._hour_average_temperature,
                     humidity=self._hour_average_humidity,
-                )
+                ),
             )
             temperature_info += self._format_delta(temperature, previous_temperature)
 
@@ -242,7 +243,7 @@ class ShortTextReport:
         shown_devices = connected_devices[:self.MAX_CONNECTED_DEVICES_TO_SHOW]
 
         devices_info = [
-            self._code(device.name if device.name else f'Unknown {device.mac_address}')
+            self._code(device.name or f'Unknown {device.mac_address}')
             for device in shown_devices
         ]
 

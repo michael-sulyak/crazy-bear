@@ -5,5 +5,6 @@ from .router import *
 from .security import *
 from .signals import *
 from .smart_lamp_controller import *
+from .thermostatic_radiator_valves import *
 from .utils import *
 from .zigbee import *

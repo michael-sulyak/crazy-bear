@@ -94,16 +94,19 @@ NORMAL_HUMIDITY_RANGE = json_config['normal_humidity_range']
 NORMAL_TEMPERATURE_RANGE = json_config['normal_temperature_range']
 ARTIFICIAL_SUNRISE_SCHEDULES = tuple(CronTab(schedule) for schedule in json_config['artificial_sunrise_schedules'])
 PROXY = json_config['proxy']
-
+HEATING_SEASON_DATE_RANGE = (datetime.date.fromisoformat('2026-10-01'), datetime.date.fromisoformat('2027-03-01'))
 
 class SmartDeviceNames:
     TEMP_HUM_SENSOR_NAME_PREFIX = 'temp_hum_sensor:'
+    SMOKE_DETECTOR_NAME_PREFIX = 'smoke_detector:'
+    WATER_LEAK_SENSOR_NAME_PREFIX = 'water_leak_sensor:'
+    THERMOSTATIC_RADIATOR_VALVE_NAME_PREFIX = 'thermostatic_radiator_valve:'
 
     MAIN_SMART_LAMP = 'lamp:main_room'
-    WATER_LEAK_SENSOR_BATH = 'water_leak_sensor:bath'
-    WATER_LEAK_SENSOR_KITCHEN_TAP = 'water_leak_sensor:kitchen:tap'
-    WATER_LEAK_SENSOR_KITCHEN_BOTTOM = 'water_leak_sensor:kitchen:bottom'
-    WATER_LEAK_SENSOR_WC = 'water_leak_sensor:wc'
+    WATER_LEAK_SENSOR_BATH = f'{WATER_LEAK_SENSOR_NAME_PREFIX}bath'
+    WATER_LEAK_SENSOR_KITCHEN_TAP = f'{WATER_LEAK_SENSOR_NAME_PREFIX}kitchen:tap'
+    WATER_LEAK_SENSOR_KITCHEN_BOTTOM = f'{WATER_LEAK_SENSOR_NAME_PREFIX}kitchen:bottom'
+    WATER_LEAK_SENSOR_WC = f'{WATER_LEAK_SENSOR_NAME_PREFIX}wc'
     TEMP_HUM_SENSOR_WORK_ROOM = f'{TEMP_HUM_SENSOR_NAME_PREFIX}work_room'
     TEMP_HUM_SENSOR_BEDROOM = f'{TEMP_HUM_SENSOR_NAME_PREFIX}bedroom'
     TEMP_HUM_SENSOR_KITCHEN = f'{TEMP_HUM_SENSOR_NAME_PREFIX}kitchen'
@@ -111,8 +114,9 @@ class SmartDeviceNames:
     TEMP_HUM_SENSOR_LOGGIA = f'{TEMP_HUM_SENSOR_NAME_PREFIX}loggia'
     MOTION_SENSOR_HALLWAY = 'motion_sensor:hallway'
     DOOR_SENSOR_NARNIA = 'door_sensor:narnia'
-    SMOKE_DETECTOR_KITCHEN = 'smoke_detector:kitchen'
-    SMOKE_DETECTOR_HALLWAY = 'smoke_detector:hallway'
+    SMOKE_DETECTOR_KITCHEN = f'{SMOKE_DETECTOR_NAME_PREFIX}kitchen'
+    SMOKE_DETECTOR_HALLWAY = f'{SMOKE_DETECTOR_NAME_PREFIX}hallway'
+    THERMOSTATIC_RADIATOR_VALVE_BEDROOM = f'{THERMOSTATIC_RADIATOR_VALVE_NAME_PREFIX}bedroom'
 
     WATER_LEAK_SENSORS: typing.ClassVar[set[str]] = {
         WATER_LEAK_SENSOR_BATH,
@@ -134,6 +138,10 @@ class SmartDeviceNames:
         SMOKE_DETECTOR_HALLWAY,
     }
 
+    THERMOSTATIC_RADIATOR_VALVES: typing.ClassVar[set[str]] = {
+        THERMOSTATIC_RADIATOR_VALVE_BEDROOM,
+    }
+
     ALL: typing.ClassVar[set[str]] = {
         MAIN_SMART_LAMP,
         MOTION_SENSOR_HALLWAY,
@@ -141,4 +149,5 @@ class SmartDeviceNames:
         *TEMP_HUM_SENSORS,
         *WATER_LEAK_SENSORS,
         *SMOKE_DETECTORS,
+        *THERMOSTATIC_RADIATOR_VALVES,
     }

@@ -46,7 +46,7 @@ services:
 
   zigbee2mqtt:
     restart: always
-    image: koenkk/zigbee2mqtt:2.6.3
+    image: koenkk/zigbee2mqtt:2.14.2
     privileged: true
     depends_on:
       - zigbee_mq

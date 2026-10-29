@@ -6,6 +6,7 @@ from libs.task_queue import IntervalTask, TaskPriorities
 from .... import config
 from ....config import SmartDeviceNames
 from ...common import interface
+from ...common.utils import get_zigbee_device_names_to_ignore_availability
 from ..base import BaseModule
 
 
@@ -68,8 +69,12 @@ class ZigBeeController(BaseModule):
 
     def _check_connected_devices(self, *, check_active_devices: bool) -> None:
         zig_bee = self.context.zig_bee
+        zigbee_device_names_to_ignore = get_zigbee_device_names_to_ignore_availability()
 
         for device in zig_bee.devices:
+            if device.friendly_name in zigbee_device_names_to_ignore:
+                continue
+
             if device.is_coordinator:
                 continue
 

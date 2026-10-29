@@ -1,10 +1,11 @@
 import datetime
 import io
+import logging
 import typing
 from collections import defaultdict
 
 from ....config import SmartDeviceNames
-from ...common.utils import create_plot
+from ...common.utils import create_plot, get_zigbee_device_names_to_ignore_availability
 from ...core import constants
 from ...signals.models import Signal
 from .base import BaseSimpleSensorStateHandler
@@ -28,7 +29,12 @@ class TemperatureHumiditySensorsHandler(BaseSimpleSensorStateHandler):
         super().__init__(*args, **kwargs)
         self._last_sent_at_map = defaultdict(lambda: datetime.datetime.min)
 
-    def handle(self, *, state: dict, device_name: str, received_at: datetime.datetime) -> None:
+    def handle_sensor_state(self, *, state: dict, device_name: str, received_at: datetime.datetime) -> None:
+        if device_name in get_zigbee_device_names_to_ignore_availability():
+            logging.error(f'Device {device_name} ignored',
+                          extra={'state': state, 'device_name': device_name, 'received_at': received_at.isoformat()})
+            return
+
         Signal.bulk_add((
             Signal(type=f'{device_name}{TEMPERATURE_SUFFIX}', value=state['temperature'], received_at=received_at),
             Signal(type=f'{device_name}{HUMIDITY_SUFFIX}', value=state['humidity'], received_at=received_at),
@@ -53,10 +59,10 @@ class TemperatureHumiditySensorsHandler(BaseSimpleSensorStateHandler):
             )
 
     def generate_plots(
-        self,
-        *,
-        date_range: tuple[datetime.datetime, datetime.datetime],
-        components: set[str],
+            self,
+            *,
+            date_range: tuple[datetime.datetime, datetime.datetime],
+            components: set[str],
     ) -> typing.Sequence[io.BytesIO] | None:
         if 'arduino' not in components:
             return None
@@ -143,11 +149,11 @@ class TemperatureHumiditySensorsHandler(BaseSimpleSensorStateHandler):
         humidity = state['humidity']
 
         if device_name == SmartDeviceNames.TEMP_HUM_SENSOR_LOGGIA:
-            temperature_range = (10, 40,)
-            humidity_range = (0, 85,)
+            temperature_range = (10, 40)
+            humidity_range = (0, 85)
         else:
-            temperature_range = (16, 28,)
-            humidity_range = (25, 70,)
+            temperature_range = (16, 28)
+            humidity_range = (25, 70)
 
         can_send_warning = self._can_send_warning(f'temperature_{device_name}', datetime.timedelta(hours=3))
 

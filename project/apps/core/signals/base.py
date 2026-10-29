@@ -67,13 +67,13 @@ class BaseSignalHandler(abc.ABC):
 
 class IntervalCheckMixin(abc.ABC):
     task_interval: datetime.timedelta
-    has_init_run: bool = False
+    has_init_run: bool = False  # todo: check this flag
     priority = task_queue.TaskPriorities.LOW
 
     def get_tasks(self) -> tuple[task_queue.Task, ...]:
         return (
             task_queue.IntervalTask(
-                target=self.process,
+                target=self.process_by_interval,
                 priority=self.priority,
                 interval=self.task_interval,
                 run_after=(
@@ -86,7 +86,7 @@ class IntervalCheckMixin(abc.ABC):
         )
 
     @abc.abstractmethod
-    def process(self) -> None:
+    def process_by_interval(self) -> None:
         pass
 
 
@@ -113,7 +113,7 @@ class BaseSimpleSignalHandler(SignalNotificationMixin, IntervalCheckMixin, BaseS
     compress_by_time: bool
     approximation_value: float = 0
 
-    def process(self) -> None:
+    def process_by_interval(self) -> None:
         value = self.get_value()
 
         if value is NOTHING:
@@ -162,7 +162,7 @@ class BaseSimpleSensorStateHandler(ZigBeeDeviceBatteryCheckerMixin, BaseSignalHa
             )
 
     @abc.abstractmethod
-    def handle(self, *, state: dict, device_name: str, received_at: datetime.datetime) -> None:
+    def handle_sensor_state(self, *, state: dict, device_name: str, received_at: datetime.datetime) -> None:
         pass
 
     def disable(self) -> None:
@@ -178,4 +178,4 @@ class BaseSimpleSensorStateHandler(ZigBeeDeviceBatteryCheckerMixin, BaseSignalHa
 
     @synchronized_method
     def _process_update(self, *, state: dict, device_name: str, received_at: datetime.datetime) -> None:
-        self.handle(state=state, device_name=device_name, received_at=received_at)
+        self.handle_sensor_state(state=state, device_name=device_name, received_at=received_at)
