@@ -4,8 +4,9 @@ import threading
 import typing
 
 import numpy as np
-from emoji import emojize
 from sqlalchemy import text
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.error import BadRequest
 
 from libs.casual_utils.time import get_current_time
 from libs.messengers.utils import ProgressBar, escape_markdown
@@ -14,15 +15,12 @@ from libs.task_queue import IntervalTask, TaskPriorities
 from ... import db
 from ...common import interface
 from ...common.exceptions import Shutdown
-from ...common.utils import (
-    convert_params_to_date_range,
-    get_weather,
-    is_sleep_hours,
-)
+from ...common.utils import convert_params_to_date_range, is_sleep_hours
 from ...core import constants
 from ...signals.models import Signal
 from .. import events
 from ..base import BaseModule, Command
+from ..telegram_ui import status_actions
 from ..utils.reports import ShortTextReport
 
 
@@ -41,9 +39,8 @@ class Report(BaseModule):
     _message_id_for_status: typing.Any = None
 
     def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-
         self._lock_for_status = threading.RLock()
+        super().__init__(*args, **kwargs)
 
     def get_initial_state(self) -> dict[str, typing.Any]:
         return {
@@ -62,7 +59,9 @@ class Report(BaseModule):
 
     def process_command(self, command: Command) -> typing.Any:
         with self._lock_for_status:
-            self._message_id_for_status = None
+            self._message_id_for_status = (
+                command.callback_message_id if command.name == constants.BotCommands.STATUS else None
+            )
 
         return super().process_command(command)
 
@@ -77,21 +76,34 @@ class Report(BaseModule):
         flags=(interface.Flag('s'),),
     )
     def _send_stats(self, command: Command) -> None:
-        delta_type = str(command.get_second_arg('hours', skip_flags=True))
-        delta_value = int(command.get_first_arg('24', skip_flags=True))
-
-        date_range = convert_params_to_date_range(
-            delta_type=delta_type,
-            delta_value=delta_value,
-        )
-
+        args = command.get_cleaned_args()
         flags = command.get_cleaned_flags()
 
-        if not flags or flags == {'f'}:
-            flags = self._stats_flags_map.keys()
+        try:
+            if len(args) not in {0, 2}:
+                raise ValueError
 
-        if flags == {'s'}:
-            flags = {'a', 'e', 'r'}
+            delta_type = args[1] if args else 'hours'
+            delta_value = int(args[0]) if args else 24
+
+            if delta_type not in {'days', 'hours', 'minutes', 'seconds'} or delta_value <= 0:
+                raise ValueError
+
+            if flags - (self._stats_flags_map.keys() | {'s', 'f'}):
+                raise ValueError
+
+            date_range = convert_params_to_date_range(delta_type=delta_type, delta_value=delta_value)
+        except (ValueError, OverflowError):
+            self.messenger.send_message(
+                'Choose a positive history period, for example /stats 6 hours -s.\n'
+                'Units: seconds, minutes, hours, days. Use /help commands for flags.',
+            )
+            return
+
+        if not flags or 'f' in flags:
+            flags = set(self._stats_flags_map)
+        elif 's' in flags:
+            flags = (flags - {'s'}) | {'a', 'e', 'r'}
 
         events.request_for_statistics.pipe(
             self._pipe_for_collecting_stats,
@@ -100,10 +112,40 @@ class Report(BaseModule):
         )
 
     @interface.command(constants.BotCommands.HELP)
-    def _send_help(self) -> None:
-        docs = sorted(events.getting_doc.process()[0], key=lambda x: x.title)
-        message = '\n\n'.join(doc_.to_str() for doc_ in docs)
-        self.messenger.send_message(message, use_markdown=True)
+    def _send_help(self, command: Command) -> None:
+        if not command.first_arg:
+            self.messenger.send_message(
+                '❓ CrazyBear · Quick guide\n\n'
+                '/start — restore the navigation keyboard and show status\n'
+                '/status — live home readings (/home is a compatibility alias)\n'
+                '/stats -s — a short history for the last 24 h\n'
+                '/to lamp — light, brightness, and colors\n'
+                '/to security — manual and automatic security\n'
+                '/to heating — pause, boost to 30 °C, or resume schedules\n'
+                '/to history — choose 1 h, 6 h, 24 h, or 7 days\n'
+                '/to all_funcs — camera, help, and system tools\n\n'
+                'The bottom keyboard always opens sections.\n'
+                'Control each section with the buttons on its message.\n'
+                'Use inline Back or Cancel in nested screens.\n'
+                'Status has only inline Refresh; open controls from the bottom keyboard.\n'
+                'The Telegram command menu lists common commands.\n\n'
+                'Advanced: /help commands — all commands\n'
+                'Examples: /stats 6 hours -s · /trv disable 1.5 · /trv boost 0.5',
+                reply_markup=InlineKeyboardMarkup([[
+                    InlineKeyboardButton(constants.PrettyBotCommands.ALL_COMMANDS, callback_data='ui:commands'),
+                ]]),
+            )
+            return
+
+        if command.first_arg != 'commands':
+            self.messenger.send_message('Use /help for the quick guide or /help commands for all commands.')
+            return
+
+        docs = sorted(events.getting_doc.process()[0], key=lambda doc: doc.title)
+
+        for doc in docs:
+            if doc.commands:
+                self.messenger.send_message(doc.to_str(), use_markdown=True)
 
     def _update_status(self) -> None:
         with self._lock_for_status:
@@ -164,45 +206,44 @@ class Report(BaseModule):
 
         yield None
 
+    @interface.command(constants.BotCommands.START)
+    @interface.command(constants.BotCommands.HOME)
     @interface.command(constants.BotCommands.STATUS)
-    def _send_status(self) -> None:
-        report = ShortTextReport(state=self.state)
-        message = report.generate()
-
-        with self._lock_for_status:
-            if self._message_id_for_status:
-                message += f'\nUpdated: `{escape_markdown(report.now.strftime("%d.%m.%Y, %H:%M:%S"))}`'
-
-            self._message_id_for_status = self.messenger.send_message(
-                message,
-                message_id=self._message_id_for_status,
-                use_markdown=True,
+    def _send_status(self, command: Command | None = None) -> None:
+        if command is not None or self._message_id_for_status is None:
+            self.messenger.ensure_navigation(
+                force=command is not None and command.name in {constants.BotCommands.START, constants.BotCommands.HOME},
             )
 
-    @interface.command(constants.BotCommands.REPORT)
-    def _send_report(self) -> None:
-        now = datetime.datetime.now()
-        hour = now.hour
-
-        if hour < 12:
-            greeting = f'{emojize(":sunrise:")} ️*Good morning\\!*'
-        elif 12 <= hour <= 17:
-            greeting = f'{emojize(":sunset:")} ️*Good afternoon\\!*'
-        elif 17 <= hour <= 24:
-            greeting = f'{emojize(":night_with_stars:")} ️*Good evening\\!*'
-        else:
-            greeting = ''
-
-        weather_data = get_weather()
-        weather = f'{emojize(":thermometer:")} ️The weather in {weather_data["name"]}: *{weather_data["main"]["temp"]}℃*'
-        weather += (
-            f' ({weather_data["main"]["temp_min"]} \\.\\. {weather_data["main"]["temp_max"]}), '
-            if weather_data['main']['temp_min'] != weather_data['main']['temp_max']
-            else ', '
+        report = ShortTextReport(state=self.state)
+        message = (
+            f'{report.generate()}\n\n'
+            f'🕒 Updated: `{escape_markdown(report.now.strftime("%d.%m.%Y, %H:%M:%S"), entity_type="code")}`'
         )
-        weather += f'{weather_data["weather"][0]["description"]}\\.'
 
-        self.messenger.send_message(f'{greeting}\n\n{weather}', use_markdown=True)
+        with self._lock_for_status:
+            try:
+                self._message_id_for_status = self.messenger.send_message(
+                    message,
+                    message_id=self._message_id_for_status,
+                    use_markdown=True,
+                    reply_markup=status_actions(),
+                )
+            except BadRequest as exc:
+                if not self._message_id_for_status or str(exc).casefold() not in {
+                    "message can't be edited",
+                    'message to edit not found',
+                }:
+                    raise
+
+                logging.info('Replacing uneditable status message %s: %s', self._message_id_for_status, exc)
+                # Clear before sending so a failed replacement cannot leave a stale ID.
+                self._message_id_for_status = None
+                self._message_id_for_status = self.messenger.send_message(
+                    message,
+                    use_markdown=True,
+                    reply_markup=status_actions(),
+                )
 
     @interface.command(constants.BotCommands.DB_STATS)
     def _send_db_stats(self) -> None:
@@ -214,20 +255,27 @@ class Report(BaseModule):
         """
 
         with db.db_engine.connect() as connection:
-            db_result = connection.execute(text(sql))
+            result = connection.execute(text(sql)).mappings().all()
 
-        result = tuple(dict(zip(db_result.keys(), row)) for row in db_result)
+        sections = [
+            '💾 Database usage\n\n' + '\n'.join(
+                f'{row["table_name"]}: {row["table_size"]}' for row in result
+            ),
+            '📊 Stored readings\n\n' + '\n'.join(
+                f'{name}: {count:,}' for name, count in Signal.get_table_stats().items()
+            ),
+        ]
 
-        prepared_result = '**Table:**\n'
+        for section in sections:
+            lines = section.splitlines(keepends=True)
+            chunk = ''
 
-        for row in result:
-            prepared_result += f'`{escape_markdown(row["table_name"])}`: {row["table_size"]}\n'
+            for line in lines:
+                if len(chunk) + len(line) > 3500:
+                    self.messenger.send_message(chunk.rstrip())
+                    chunk = ''
 
-        prepared_result += '\n**Table Signal:**\n'
+                chunk += line
 
-        signal_table_stats = Signal.get_table_stats()
-
-        for name, count in signal_table_stats.items():
-            prepared_result += f'`{name}`: {count}\n'
-
-        self.messenger.send_message(prepared_result, use_markdown=True)
+            if chunk:
+                self.messenger.send_message(chunk.rstrip())

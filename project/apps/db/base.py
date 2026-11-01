@@ -23,6 +23,8 @@ db_engine = create_engine(
     isolation_level='READ COMMITTED',
     echo=config.DATABASE_DEBUG,
     connect_args={'connect_timeout': 60},
+    pool_pre_ping=True,
+    pool_timeout=10,
 )
 
 session_factory = sessionmaker(bind=db_engine, autoflush=True, expire_on_commit=False)

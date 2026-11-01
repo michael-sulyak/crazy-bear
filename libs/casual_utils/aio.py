@@ -37,7 +37,21 @@ class AsyncThread:
 
     def _start_background_loop(self) -> None:
         asyncio.set_event_loop(self._loop)
-        self._loop.run_forever()
+
+        try:
+            self._loop.run_forever()
+        finally:
+            pending = asyncio.all_tasks(self._loop)
+
+            for task in pending:
+                task.cancel()
+
+            if pending:
+                self._loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+
+            self._loop.run_until_complete(self._loop.shutdown_asyncgens())
+            self._loop.run_until_complete(self._loop.shutdown_default_executor())
+            self._loop.close()
 
 
 async_thread = AsyncThread()

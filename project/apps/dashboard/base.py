@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import logging
+from pathlib import Path
 
 from aiohttp import web
 
@@ -23,7 +24,6 @@ class AioHttpServer:
     host: str
     port: int
     html_content: str
-    futures: list
 
     def __init__(
             self,
@@ -36,13 +36,8 @@ class AioHttpServer:
         self.host = host
         self.port = port
         self.runner = None
-        self.futures = []
-
-        with open(
-                './project/apps/dashboard/resources/index.html',
-                encoding='utf-8',
-        ) as file:
-            self.html_content = file.read()
+        self._stats_lock = asyncio.Lock()
+        self.html_content = (Path(__file__).parent / 'resources' / 'index.html').read_text(encoding='utf-8')
 
     async def handle_index(self, request: web.Request) -> web.Response:
         return web.Response(
@@ -51,6 +46,21 @@ class AioHttpServer:
         )
 
     async def handle_stats(self, request: web.Request) -> web.Response:
+        async with self._stats_lock:
+            try:
+                data = await asyncio.to_thread(self._collect_stats)
+            except Exception:
+                logging.exception('Cannot collect dashboard statistics')
+
+                return web.json_response(
+                    {'error': 'Statistics are temporarily unavailable'},
+                    status=503,
+                    headers={'Cache-Control': 'no-store'},
+                )
+
+        return web.json_response(data, headers={'Cache-Control': 'no-store'})
+
+    def _collect_stats(self) -> dict:
         now = datetime.datetime.now(datetime.UTC)
         day_ago = now - datetime.timedelta(hours=24)
         month_ago = now - datetime.timedelta(days=30)
@@ -191,9 +201,10 @@ class AioHttpServer:
                 'radiators': radiators,
             }
         finally:
-            session.close()
+            # Remove this worker thread's scoped session, including on failure.
+            db.close_db_session()
 
-        return web.json_response(data)
+        return data
 
     async def start_server(self) -> None:
         app = web.Application()
@@ -201,18 +212,26 @@ class AioHttpServer:
         app.router.add_get('/api/stats', self.handle_stats)
 
         self.runner = web.AppRunner(app)
-        await self.runner.setup()
+        try:
+            await self.runner.setup()
+            site = web.TCPSite(self.runner, self.host, self.port)
+            await site.start()
+        except BaseException:
+            await self.runner.cleanup()
+            self.runner = None
+            raise
 
-        site = web.TCPSite(self.runner, self.host, self.port)
-        await site.start()
-
-        logging.info(f'Serving at http://{self.host}:{self.port}')
+        logging.info('Serving at http://%s:%s', self.host, self.port)
 
     def start(self) -> None:
         loop = async_thread.get_loop()
-        self.futures.append(
-            asyncio.run_coroutine_threadsafe(self.start_server(), loop),
-        )
+        future = asyncio.run_coroutine_threadsafe(self.start_server(), loop)
+
+        try:
+            future.result(timeout=60)
+        except BaseException:
+            future.cancel()
+            raise
 
     def stop(self) -> None:
         if not self.runner:
@@ -220,12 +239,11 @@ class AioHttpServer:
 
         async def shutdown() -> None:
             await self.runner.cleanup()
+            self.runner = None
             logging.info('Server stopped.')
 
         loop = async_thread.get_loop()
-        self.futures.append(
-            asyncio.run_coroutine_threadsafe(shutdown(), loop),
-        )
+        asyncio.run_coroutine_threadsafe(shutdown(), loop).result(timeout=60)
 
     @staticmethod
     def _summarize_heating(

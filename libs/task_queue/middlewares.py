@@ -29,7 +29,7 @@ class SupportOfRetries(BaseMiddleware):
 
 class ConcreteRetries(BaseMiddleware):
     """
-    Need to be before `SupportOfRetries`.
+    Place after `SupportOfRetries`, which catches the generated `RepeatTask`.
     """
 
     max_retries: float

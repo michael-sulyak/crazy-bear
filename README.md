@@ -12,28 +12,23 @@
 ## Components
 
 1. **Raspberry Pi 4**
-2. **Arduino Nano V3.0 ATmega328P** (is connected via USB to the **Raspberry Pi**)
-    1. **AM2302 DHT22**
-    2. **HC-SR501**
-3. **Logitech C270 HD** (is connected via USB to the **Raspberry Pi**)
-4. **CC2531** (is connected via USB to the **Raspberry Pi**)
+2. **Logitech C270 HD** (is connected via USB to the **Raspberry Pi**)
+3. **CC2531** (is connected via USB to the **Raspberry Pi**)
+4. And a lot of different smart devices connected via ZigBee.
+
 
 ## Setup
 
-1. Create `prod.env` file in `./envs`. See `project/config/default.py`.
+1. Install Docker and Docker Compose on the Raspberry Pi.
+2. Create `config/prod.json` and `config/db.env` with your settings.
+   See `project/config/variables.py` for required JSON keys, and adapt device names to your home.
+3. Connect the Telegram webhook bridge and RabbitMQ service on the external `telehooks_mq` network.
+   Configure any device integrations you use.
+4. Build and start:
 
-2. Copy the code to a **Raspberry Pi** (or somewhere else).
-
-3. Build and run:
-    ```bash
-    docker-compose build
-    docker-compose up -d
-    ```
-
-4. If you want to use **Arduino** then you need to upload `arduino_core`. Libs:
-    ```bash
-    arduino-cli lib install RF24 "DHT sensor library" ArduinoJson
-    ```
+   ```bash
+   docker compose -f docker-compose.prod.yml up -d --build
+   ```
 
 5. Set **ZigBee Dongle** (if you use **CC2531**)
     1. Connect **CC2531**

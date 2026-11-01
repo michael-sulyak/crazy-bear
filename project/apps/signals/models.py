@@ -99,16 +99,22 @@ class Signal(db.Base):
             datetime_range: tuple[datetime.datetime, datetime.datetime],
             date_trunc: str = None,
     ) -> list['Signal']:
-        query_data = cls._get_query_data(
-            signal_type=signal_type,
-            datetime_range=datetime_range,
-        )
+        query_data: dict[str, typing.Any] | None
 
-        if not query_data:
-            return []
+        if date_trunc is None:
+            query_data = cls._get_query_data(
+                signal_type=signal_type,
+                datetime_range=datetime_range,
+            )
 
-        if date_trunc is not None:
-            query_data['date_trunc'] = date_trunc
+            if not query_data:
+                return []
+        else:
+            query_data = {
+                'start_time': datetime_range[0],
+                'end_time': datetime_range[1],
+                'date_trunc': date_trunc,
+            }
 
         signals = (
             db.get_db_session()
@@ -276,9 +282,8 @@ class Signal(db.Base):
     def get_table_stats(cls) -> dict[str, int]:
         session = db.get_db_session()
 
-        all_types = (item[0] for item in session.query(cls.type.distinct()).all())
-
-        return {item: session.query(cls).filter(cls.type == item).count() for item in all_types}
+        rows = session.query(cls.type, sa_func.count(cls.id)).group_by(cls.type).order_by(cls.type).all()
+        return dict(rows)
 
     @classmethod
     def _get_query_data(

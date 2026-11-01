@@ -28,7 +28,7 @@ PROJECT_ENV = json_config['project_env']
 DEBUG = json_config['debug']
 
 # Telegram
-TELEGRAM_CHAT_ID = json_config['telegram_chat_id']
+TELEGRAM_CHAT_ID = int(json_config['telegram_chat_id'])
 TELEGRAM_TOKEN = json_config['telegram_token']
 TELEGRAM_USERNAME = json_config['telegram_username']
 TELEHOOKS_QUEUE_NAME = json_config['telehooks_queue_name']
@@ -140,6 +140,10 @@ class SmartDeviceNames:
 
     THERMOSTATIC_RADIATOR_VALVES: typing.ClassVar[set[str]] = {
         THERMOSTATIC_RADIATOR_VALVE_BEDROOM,
+    }
+
+    TEMP_SENSORS_FOR_THERMOSTATIC_RADIATOR_VALVES: typing.ClassVar[dict[str, str]] = {
+        THERMOSTATIC_RADIATOR_VALVE_BEDROOM: TEMP_HUM_SENSOR_BEDROOM,
     }
 
     ALL: typing.ClassVar[set[str]] = {

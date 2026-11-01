@@ -70,7 +70,7 @@ class BaseModule(abc.ABC):
 
     def process_command(self, command: 'Command') -> typing.Any:
         if self.interface.use_auto_mapping:
-            for module_command in self.interface.commands_map[command.name]:
+            for module_command in self.interface.commands_map.get(command.name, ()):
                 if module_command.method_name and module_command.can_handle(command):
                     if module_command.need_to_pass_command:
                         getattr(self, module_command.method_name)(command)
@@ -111,6 +111,8 @@ class Command:
     kwargs: typing.Mapping = field(
         default_factory=FrozenDict,
     )
+    # Transport metadata, deliberately separate from user-supplied kwargs.
+    callback_message_id: int | None = None
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}('{self.name}', args={self.args}, kwargs={self.kwargs})"
@@ -161,12 +163,12 @@ class Command:
 
     @classmethod
     def from_string(cls, string: str) -> 'Command':
-        if string in constants.BOT_COMMAND_ALIASES:
-            string = constants.BOT_COMMAND_ALIASES[string]
+        string = string.strip()
+        string = constants.BOT_COMMAND_ALIASES.get(string, string)
 
-        params = string.split(' ')
-        command_name = params[0]
-        command_params = tuple(param.strip() for param in params[1:] if param)
+        params = string.split()
+        command_name = params[0] if params else ''
+        command_params = params[1:]
         command_args = []
         command_kwargs = {}
 

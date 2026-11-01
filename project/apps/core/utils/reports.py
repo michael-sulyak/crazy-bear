@@ -7,7 +7,6 @@ from emoji.core import emojize
 from libs.casual_utils.time import get_current_time
 from libs.messengers.utils import escape_markdown
 
-from .... import config
 from ... import db
 from ...common.constants import INITED_AT
 from ...common.state import State
@@ -58,24 +57,23 @@ class ShortTextReport:
     def generate(self) -> str:
         return '\n'.join(
             [
-                f'*Crazy Bear* `v{escape_markdown(str(config.VERSION))}`',
+                '📋 *CrazyBear · Status*',
                 '',
-                f'{self.SHIELD} *Security*',
-                f'Security: {self._code(self._security_summary)}',
-                f'Camera: {self._code(self._camera_summary)}',
-                '',
-                f'{self.CHART} *Home*',
-                f'Temp: {self._code(self._temperature_info)}',
-                f'Feels: {self._code(self._effective_temperature_info)}',
+                f'Temperature: {self._code(self._temperature_info)}',
+                f'Feels like: {self._code(self._effective_temperature_info)}',
                 f'Humidity: {self._code(self._humidity_info)}',
                 f'CO₂: {self._code(self._co2_info)}',
+                f'Lamp: {self._code(self._on_off(self._state_get(constants.MAIN_LAMP_IS_ON)))}',
+                '',
+                f'{self.SHIELD} *Security and camera*',
+                f'Security: {self._code(self._security_summary)}',
+                f'Auto security: {self._code(self._on_off(self._state_get(constants.AUTO_SECURITY_IS_ENABLED)))}',
+                f'Camera: {self._code(self._camera_summary)}',
                 '',
                 f'{self.SYSTEM} *System*',
                 f'CPU: {self._code(self._cpu_temperature_info)}',
                 f'RAM: {self._code(self._ram_usage_info)}',
-                f'Disk: {self._code(self._free_space_info)}',
-                '',
-                f'{self.CLIPBOARD} *Other*',
+                f'Free disk: {self._code(self._free_space_info)}',
                 f'WiFi: {self._connected_devices_info}',
                 f'Started: {self._code(self._started_at_info)}',
             ],
@@ -105,13 +103,18 @@ class ShortTextReport:
     def _camera_summary(self) -> str:
         camera_available = self._state_get(CAMERA_IS_AVAILABLE)
 
+        if camera_available is None:
+            return self._unknown_info()
+
         if not camera_available:
-            return self._on_off(camera_available)
+            return 'Unavailable'
+
+        use_camera = self._state_get(USE_CAMERA)
+        if not use_camera:
+            return self._on_off(use_camera)
 
         return (
-            f'{self._on_off(camera_available)} · '
-            f'View {self._on_off(self._state_get(USE_CAMERA))} · '
-            f'Rec {self._on_off(self._state_get(VIDEO_RECORDING_IS_ENABLED))} · '
+            f'On · Recording {self._on_off(self._state_get(VIDEO_RECORDING_IS_ENABLED))} · '
             f'FPS {self._fps_info}'
         )
 
@@ -293,7 +296,7 @@ class ShortTextReport:
     def _cpu_temperature_info(self) -> str:
         try:
             cpu_temperature = self._as_float(get_cpu_temp())
-        except RuntimeError:
+        except (OSError, RuntimeError):
             return self._no_data()
 
         if cpu_temperature is None:
@@ -315,19 +318,19 @@ class ShortTextReport:
         if value is None:
             return cls._unknown_info()
 
-        return cls.YES if value else cls.NO
+        return 'On' if value else 'Off'
 
     @classmethod
     def _no_data(cls) -> str:
-        return cls.NOTHING
+        return 'No recent data'
 
     @classmethod
     def _unknown_info(cls) -> str:
-        return cls.UNKNOWN
+        return 'Unknown'
 
     @staticmethod
     def _code(value: object) -> str:
-        return f'`{escape_markdown(str(value))}`'
+        return f'`{escape_markdown(str(value), entity_type="code")}`'
 
     @staticmethod
     def _format_datetime(value: datetime.datetime) -> str:

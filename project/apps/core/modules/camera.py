@@ -107,7 +107,7 @@ class Camera(BaseModule):
         if video_guard:
             assert self._video_camera is not None
 
-            if self._video_camera.is_run or not use_camera or not security_is_enabled:
+            if not self._video_camera.is_run or not use_camera or not security_is_enabled:
                 self._disable_security()
                 video_guard = None
 
@@ -152,14 +152,14 @@ class Camera(BaseModule):
             self._video_stream.start()
             self._video_camera = VideoCamera(
                 video_stream=self._video_stream,
-                callback=partial(events.frame_from_video_camera.send, source=MotionTypeSources.VIDEO),
+                callback=events.frame_from_video_camera.send,
                 max_fps=config.FPS,
             )
             self._video_camera.start()
 
         self.messenger.send_message('Camera is on')
 
-        if self.state[VIDEO_SECURITY_IS_ENABLED]:
+        if self.state[SECURITY_IS_ENABLED]:
             self._enable_security()
 
     @interface.command(BotCommands.CAMERA, OFF)
@@ -169,9 +169,12 @@ class Camera(BaseModule):
             self.messenger.send_message('Camera is already off')
             return
 
+        if self.state[VIDEO_RECORDING_IS_ENABLED]:
+            self._stop_video_recording()
+
         self.state[USE_CAMERA] = False
 
-        if self.state[SECURITY_IS_ENABLED]:
+        if self.state[VIDEO_SECURITY_IS_ENABLED]:
             self._disable_security()
 
         if self._video_stream is not None:
@@ -200,7 +203,7 @@ class Camera(BaseModule):
             video_guard = VideoGuard(
                 messenger=self.messenger,
                 task_queue=self.task_queue,
-                motion_detected_callback=events.motion_detected.send,
+                motion_detected_callback=partial(events.motion_detected.send, source=MotionTypeSources.VIDEO),
             )
             self.state[VIDEO_SECURITY_IS_ENABLED] = video_guard
             video_guard.start()
@@ -323,8 +326,18 @@ class Camera(BaseModule):
 
         self.state[CAMERA_IS_AVAILABLE] = camera_is_available(config.VIDEO_SRC)
 
-    @synchronized_method
     def _process_frame(self, frame, fps: float) -> None:
+        # A command may hold this lock while joining the camera thread.
+        # Drop a frame rather than wait and deadlock camera shutdown.
+        if not self._lock.acquire(blocking=False):
+            return
+
+        try:
+            self._process_frame_locked(frame, fps)
+        finally:
+            self._lock.release()
+
+    def _process_frame_locked(self, frame, fps: float) -> None:
         video_guard: VideoGuard = self.state[VIDEO_SECURITY_IS_ENABLED]
 
         if video_guard:
@@ -342,7 +355,8 @@ class Camera(BaseModule):
             except Exception as e:
                 logging.exception(e)
                 self.messenger.send_message("Can't process the frame")
-                self._disable_camera()
+                # Do not join the camera thread from its own callback.
+                self.task_queue.put(self._disable_camera, priority=task_queue.TaskPriorities.HIGH)
 
         if self.state[VIDEO_RECORDING_IS_ENABLED]:
             new_frame = np.copy(frame)

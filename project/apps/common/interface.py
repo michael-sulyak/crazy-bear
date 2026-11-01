@@ -21,13 +21,7 @@ class Module:
 
     @cached_property
     def use_auto_mapping(self) -> bool:
-        for command_ in self.commands:
-            self.commands_map[command_.name].append(command_)
-
-            if command_.method_name:
-                return True
-
-        return False
+        return any(command_.method_name for command_ in self.commands)
 
     @cached_property
     def commands_map(self) -> dict[str, list['Command']]:

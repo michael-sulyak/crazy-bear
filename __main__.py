@@ -7,6 +7,7 @@ from crontab import CronTab
 from sentry_sdk.integrations.logging import LoggingIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from sentry_sdk.integrations.threading import ThreadingIntegration
+from telegram.error import TelegramError
 
 from libs.casual_utils.aio import async_thread
 from libs.messengers.telegram import TelegramMessenger
@@ -26,6 +27,7 @@ from project.apps.core.base import Command, Message
 from project.apps.core.commander import Commander
 from project.apps.core.constants import BotCommands
 from project.apps.core.modules import TelegramMenu
+from project.apps.core.telegram_ui import CALLBACK_COMMANDS, COMMAND_MENU
 from project.apps.core.utils.messages import process_telegram_message
 from project.apps.dashboard.base import AioHttpServer
 
@@ -104,6 +106,7 @@ def main() -> None:
     messenger = TelegramMessenger(
         message_handler=process_telegram_message,
         default_reply_markup=TelegramMenu(state=state),
+        callback_commands=CALLBACK_COMMANDS,
     )
 
     zig_bee = ZigBee(
@@ -180,17 +183,28 @@ def main() -> None:
     for command in initial_commands:
         commander.message_queue.put(Message(command=command))
 
-    logging.info('Running server...')
-    server = AioHttpServer(state=state)
-    server.start()
-
-    logging.info('Running commander...')
+    server = None
     try:
+        try:
+            messenger.set_commands(COMMAND_MENU)
+        except TelegramError:
+            logging.warning('Cannot register Telegram command menu', exc_info=True)
+
+        logging.info('Running server...')
+        server = AioHttpServer(state=state)
+        server.start()
+
+        logging.info('Running commander...')
         commander.run()
     finally:
-        server.stop()
-        async_thread.close_loop()
-        db.close_db_session()
+        commander.close()
+
+        try:
+            if server is not None:
+                server.stop()
+        finally:
+            async_thread.close_loop()
+            db.close_db_session()
 
 
 if __name__ == '__main__':

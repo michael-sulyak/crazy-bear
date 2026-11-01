@@ -39,22 +39,24 @@ class Commander:
         zig_bee: ZigBee,
         smart_devices: tuple[BaseSmartDevice, ...],
     ) -> None:
+        self._closed = False
         self.message_queue = queue.Queue()
         self.task_queue = MemTaskQueue()
         self.task_worker = ThreadWorker(
             task_queue=self.task_queue,
             middlewares=(
                 ExceptionLogging(),
+                SupportOfRetries(),
                 ConcreteRetries(
                     exceptions=(
                         ConnectionError,
                         NetworkError,
                     ),
                 ),
-                SupportOfRetries(),
             ),
             count=2,
             on_close=close_db_session,
+            on_task_done=close_db_session,
         )
         self.messenger = messenger
         self.state = state
@@ -81,21 +83,25 @@ class Commander:
         self._receivers = (new_message.connect(lambda message: self.message_queue.put(message)),)
 
     def run(self) -> None:
-        self.zig_bee.open()
-        self.task_worker.run()
+        try:
+            self.zig_bee.open()
+            self.task_worker.run()
+            logging.info('Commander is started.')
 
-        logging.info('Commander is started.')
-
-        while True:
-            try:
-                self.process_updates()
-            except Shutdown:
-                break
-            except Exception as e:
-                logging.exception(e)
-                self.messenger.exception(e)
-
-        self.close()
+            while True:
+                try:
+                    self.process_updates()
+                except Shutdown:
+                    raise
+                except Exception as exc:
+                    logging.exception('Cannot process command')
+                    self._report_exception(exc)
+                finally:
+                    close_db_session()
+        except Shutdown:
+            logging.info('Commander received shutdown request.')
+        finally:
+            self.close()
 
     def process_updates(self) -> None:
         message = self.message_queue.get(block=True)
@@ -115,28 +121,43 @@ class Commander:
             is_processed = exceptions or any(map(lambda x: x is True, results))
 
             for exception in exceptions:
-                self.messenger.exception(exception)
+                self._report_exception(exception)
 
             if not is_processed and not exceptions:
-                self.messenger.send_message('Unknown command')
+                self.messenger.send_message(
+                    'Unknown command or invalid arguments. Use /help for commands or /start to restore navigation.',
+                )
 
     def close(self) -> None:
+        if self._closed:
+            return
+
+        self._closed = True
         logging.info('Home assistant is stopping...')
 
-        logging.info('[shutdown] Closing task queue...')
-        self.task_worker.stop()
+        def disconnect_receivers() -> None:
+            for receiver in self._receivers:
+                receiver.disconnect()
 
-        logging.info('[shutdown] Sending "shutdown" signal...')
-        core_events.shutdown.send()
+        cleanup_steps = (
+            ('task workers', self.task_worker.stop),
+            ('modules', core_events.shutdown.send),
+            ('receivers', disconnect_receivers),
+            ('ZigBee', self.zig_bee.close),
+            ('goodbye message', lambda: self.messenger.send_message('Goodbye!')),
+            ('messenger', self.messenger.close),
+        )
 
-        logging.info('[shutdown] Closing messenger...')
-        self.messenger.close()
+        for name, cleanup in cleanup_steps:
+            try:
+                logging.info('[shutdown] Closing %s...', name)
+                cleanup()
+            except Exception:
+                logging.exception('[shutdown] Cannot close %s', name)
 
-        logging.info('[shutdown] Disconnecting receivers...')
-        for receiver in self._receivers:
-            receiver.disconnect()
-
-        logging.info('[shutdown] Closing ZigBee...')
-        self.zig_bee.close()
-
-        self.messenger.send_message('Goodbye!')
+    def _report_exception(self, exception: Exception) -> None:
+        try:
+            self.messenger.exception(exception)
+        except Exception:
+            # Telegram being offline must not terminate command processing.
+            logging.exception('Cannot report command failure to Telegram')

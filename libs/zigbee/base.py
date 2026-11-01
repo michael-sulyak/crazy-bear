@@ -213,7 +213,19 @@ class ZigBee:
 
         assert response is not None
 
-        return response.get('status') == 'ok'
+        if response.get('status') != 'ok':
+            logging.warning(
+                'Zigbee2MQTT reporting configuration rejected '
+                '(device=%s, endpoint=%s, cluster=%s, attribute=%s): %s',
+                request.get('id'),
+                request.get('endpoint'),
+                request.get('cluster'),
+                request.get('attribute'),
+                response.get('error') or response,
+            )
+            return False
+
+        return True
 
     def read_reporting(
             self,

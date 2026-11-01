@@ -73,6 +73,7 @@ class ThreadWorker(BaseWorker):
     _is_run: threading.Event
     _threads: tuple[threading.Thread, ...]
     _on_close: typing.Callable | None
+    _on_task_done: typing.Callable | None
     _getting_delay: float = 0.1
 
     def __init__(
@@ -80,12 +81,14 @@ class ThreadWorker(BaseWorker):
         *,
         task_queue: BaseTaskQueue,
         on_close: typing.Callable | None = None,
+        on_task_done: typing.Callable | None = None,
         middlewares: tuple[BaseMiddleware, ...],
         count: int = 1,
     ) -> None:
         self.task_queue = task_queue
         self.middlewares = middlewares
         self._on_close = on_close
+        self._on_task_done = on_task_done
         self._is_run = threading.Event()
 
         self._middleware_chain = self._run_task
@@ -144,6 +147,12 @@ class ThreadWorker(BaseWorker):
                 self._middleware_chain(task=task)
             except Exception as e:
                 logging.exception(e)
+            finally:
+                if self._on_task_done is not None:
+                    try:
+                        self._on_task_done()
+                    except Exception:
+                        logging.exception('Task resource cleanup failed')
 
         if self._on_close is not None:
             self._on_close()

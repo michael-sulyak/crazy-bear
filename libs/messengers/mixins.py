@@ -2,10 +2,10 @@ import abc
 import io
 import os
 import tempfile
+import typing
 
 import cv2
 import numpy as np
-import telegram
 
 
 class BaseCVMixin(abc.ABC):
@@ -21,17 +21,22 @@ class BaseCVMixin(abc.ABC):
 
 
 class CVMixin(BaseCVMixin):
-    _bot: telegram.Bot
-    chat_id: int
+    @abc.abstractmethod
+    def send_image(self, image: typing.Any, *, caption: str | None = None) -> None:
+        pass
+
+    @abc.abstractmethod
+    def send_video(self, video: typing.BinaryIO, *, caption: str | None = None) -> None:
+        pass
 
     def send_frame(self, frame: np.ndarray, caption: str | None = None) -> None:
         is_success, buffer = cv2.imencode('.jpg', frame)
-        io_buf = io.BytesIO(buffer)
-        self._bot.send_photo(
-            self.chat_id,
-            photo=io_buf,
-            caption=caption,
-        )
+
+        if not is_success:
+            raise RuntimeError('Cannot encode camera frame as JPEG')
+
+        with io.BytesIO(buffer.tobytes()) as image:
+            self.send_image(image, caption=caption)
 
     def send_frames_as_video(
         self, frames: list[np.ndarray], *, fps: int, caption: str | None = None,
@@ -39,30 +44,33 @@ class CVMixin(BaseCVMixin):
         if not frames:
             return
 
-        height, width, layers = frames[0].shape
+        if fps <= 0:
+            raise ValueError('Video FPS must be positive')
+
+        height, width = frames[0].shape[:2]
         size = (
             width,
             height,
         )
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            filename = os.path.join(temp_dir, 'video.avi')
+            filename = os.path.join(temp_dir, 'video.mp4')
 
             video_writer = cv2.VideoWriter(
                 filename=filename,
-                fourcc=cv2.VideoWriter_fourcc(*'DIVX'),
+                fourcc=cv2.VideoWriter_fourcc(*'mp4v'),
                 fps=fps,
                 frameSize=size,
             )
 
-            for frame in frames:
-                video_writer.write(frame)
+            try:
+                if not video_writer.isOpened():
+                    raise RuntimeError('Cannot open MP4 video encoder')
 
-            video_writer.release()
+                for frame in frames:
+                    video_writer.write(frame)
+            finally:
+                video_writer.release()
 
             with open(filename, 'rb') as file:
-                self._bot.send_video(
-                    self.chat_id,
-                    video=file,
-                    caption=caption,
-                )
+                self.send_video(file, caption=caption)

@@ -17,9 +17,9 @@ from project import config
 from ...common import interface
 from ...common.constants import OFF, ON
 from ...common.utils import get_sunrise_time
+from .. import constants
 from ..base import BaseModule, Command
 from ..constants import LAST_CRITICAL_SITUATION_OCCURRED_AT, BotCommands
-from . import constants
 
 
 __all__ = ('LampControllerInBedroom',)
@@ -102,7 +102,9 @@ class LampControllerInBedroom(BaseModule):
             'brightness': lambda: self.smart_lamp.set_brightness(
                 int(command.second_arg), transition=self._default_transition,
             ),
-            'color_temp': lambda: self.smart_lamp.set_color_temp(int(command.second_arg)),
+            'color_temp': lambda: self.smart_lamp.set_color_temp(
+                command.second_arg if command.second_arg in self.smart_lamp.color_temps else int(command.second_arg),
+            ),
             'increase_brightness': lambda: self.smart_lamp.step_brightness(50, transition=self._default_transition),
             'decrease_brightness': lambda: self.smart_lamp.step_brightness(-50, transition=self._default_transition),
             'increase_color_temp': lambda: self.smart_lamp.step_color_temp(50, transition=self._default_transition),
@@ -114,23 +116,75 @@ class LampControllerInBedroom(BaseModule):
 
         if command.name == BotCommands.LAMP:
             with self._lock:
+                if not self._validate_lamp_command(command):
+                    return True
+
                 try:
                     handler = handlers_map.get(command.first_arg)
 
                     if handler:
                         self._last_manual_action = get_current_time()
                         handler()
-                        self.messenger.send_message('Done')
+                        feedback = {
+                            ON: (
+                                f'💡 Lamp on requested · brightness {command.second_arg} / 254.'
+                                if command.second_arg is not None else '💡 Lamp on requested.'
+                            ),
+                            OFF: '🌑 Lamp off requested.',
+                            'color': f'🎨 Color requested: {command.second_arg}.',
+                            'brightness': f'🔆 Brightness requested: {command.second_arg} / 254.',
+                            'color_temp': '💡 Light temperature update requested.',
+                            'increase_brightness': '🔆 Brighter light requested.',
+                            'decrease_brightness': '🔅 Dimmer light requested.',
+                            'increase_color_temp': '🕯️ Warmer light requested.',
+                            'decrease_color_temp': '❄️ Cooler light requested.',
+                        }
+
+                        if command.first_arg != 'state':
+                            self.messenger.send_message(feedback.get(command.first_arg, '💡 Lamp command completed.'))
+
                         return True
                 except ZigBeeTimeoutError:
-                    self.messenger.send_message("Can't connect")
+                    self.messenger.send_message('⚠️ The lamp did not respond. Check its power and Zigbee connection.')
+                    return True
                 else:
                     return False
 
         return False
 
+    def _validate_lamp_command(self, command: Command) -> bool:
+        action = command.first_arg
+        value = command.second_arg
+        usage = None
+
+        if action == 'color' and value not in self.smart_lamp.colors_map:
+            usage = f'Choose a color: /lamp color ({", ".join(self.smart_lamp.colors_map.keys())}).'
+        elif action == 'brightness' or (action == ON and value is not None):
+            try:
+                if not 0 <= int(value) <= 254:
+                    raise ValueError
+            except (ValueError, TypeError):
+                usage = 'Brightness must be a number from 0 to 254. Example: /lamp brightness 127.'
+        elif action == 'color_temp' and value not in self.smart_lamp.color_temps:
+            try:
+                if not 150 <= int(value) <= 500:
+                    raise ValueError
+            except (ValueError, TypeError):
+                usage = 'Use /lamp color_temp 250, or choose coolest, cool, or warmest.'
+        elif action not in {
+            ON, OFF, 'test', 'color', 'color_temp', 'increase_brightness', 'decrease_brightness',
+            'increase_color_temp', 'decrease_color_temp', 'sunrise', 'state', 'warning',
+        }:
+            usage = 'Open /to lamp for light controls, or use /help commands for advanced options.'
+
+        if usage is not None:
+            self.messenger.send_message(f'💡 {usage}')
+            return False
+
+        return True
+
     def _turn_on_lamp(self, brightness: int | None = None) -> None:
-        if brightness:
+        if brightness is not None:
             self.smart_lamp.turn_on(
                 brightness=brightness,
                 transition=self._default_transition,

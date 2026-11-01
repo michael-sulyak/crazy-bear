@@ -81,11 +81,19 @@ class Security(BaseModule):
     @interface.command(BotCommands.SECURITY, ON)
     @synchronized_method
     def _enable_security(self) -> None:
+        if self.state[SECURITY_IS_ENABLED]:
+            self.messenger.send_message('🛡️ Security is already enabled.')
+            return
+
         self.state[SECURITY_IS_ENABLED] = True
 
     @interface.command(BotCommands.SECURITY, OFF)
     @synchronized_method
     def _disable_security(self) -> None:
+        if not self.state[SECURITY_IS_ENABLED]:
+            self.messenger.send_message('🛡️ Security is already disabled.')
+            return
+
         self.state[SECURITY_IS_ENABLED] = False
 
     @interface.command(BotCommands.SECURITY, AUTO, ON)
